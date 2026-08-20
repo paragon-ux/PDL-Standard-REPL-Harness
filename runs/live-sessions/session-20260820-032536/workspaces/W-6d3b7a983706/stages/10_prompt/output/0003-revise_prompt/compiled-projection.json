@@ -1,0 +1,93 @@
+{
+  "operation": "REVISE_PROMPT",
+  "output_kind": "PROMPT_ARTIFACT_BODY",
+  "output_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "PromptArtifactBody",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "prompt_body"
+    ],
+    "properties": {
+      "prompt_body": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Complete replacement Prompt Pseudocode containing task/result semantics only."
+      }
+    }
+  },
+  "operation_inputs": {
+    "OPERATION_ID": "REVISE_PROMPT",
+    "CURRENT_PROMPT_BODY": "The user has sent the greeting \"hi\"; no substantive task, deliverable, scope, criteria, or output characteristics are specified.\n\nRETURN the currently understood request as-is, with no invented requirements, no substantive solution, and no clarification unless a higher-priority constraint makes the missing input genuinely blocking.",
+    "TASK_CHANGE_SOURCE": "no I want you to respond with the best response",
+    "APPLICABLE_STANDARD_CLAUSES": [
+      {
+        "requirement_id": "TASK-01",
+        "clause": "**TASK-01 — Task semantics.** Task semantics comprise operative requested actions, subjects, objects, scope, constraints, exclusions, priorities, conditions, ordering, quantities, dates, comparisons, criteria, audience, definitions, relationships, requested output characteristics, requested conclusions, and other operative instructions that constrain substantive work or its required result."
+      },
+      {
+        "requirement_id": "TASK-02",
+        "clause": "**TASK-02 — Approach semantics.** Approach semantics comprise instructions that change only how an already-defined task will be carried out, including research method, evidence-selection method, comparison method, scoring technique, analysis order, justification procedure, and other high-level procedural choices that do not independently alter `TASK-01`."
+      },
+      {
+        "requirement_id": "PROMPT-01",
+        "clause": "**PROMPT-01 — Semantic fidelity.** Prompt Pseudocode MUST represent all and only operative `TASK-01` semantics that remain applicable to the requested work after the confirmation protocol is complete."
+      },
+      {
+        "requirement_id": "PROMPT-02",
+        "clause": "**PROMPT-02 — No substantive solution.** Prompt Pseudocode MUST NOT solve the task, research task facts, inspect task-specific resources, plan the response, or include substantive task findings."
+      },
+      {
+        "requirement_id": "PROMPT-03",
+        "clause": "**PROMPT-03 — No invented requirements.** Prompt Pseudocode MUST NOT invent missing requirements or silently improve the user's request."
+      },
+      {
+        "requirement_id": "PROMPT-05",
+        "clause": "**PROMPT-05 — Revision semantics.** A Prompt revision MUST apply the user's changed `TASK-01` semantics and preserve every current `TASK-01` requirement not changed by the user."
+      },
+      {
+        "requirement_id": "PDL-01",
+        "clause": "**PDL-01 — Structured English.** Pseudocode MUST use readable structured English compatible with the project PDL profile."
+      },
+      {
+        "requirement_id": "PDL-02",
+        "clause": "**PDL-02 — Operation layout.** Each operation SHOULD appear on its own line; equally indented operations are read top to bottom; subordinate operations are indented beneath the operation that controls or qualifies them."
+      },
+      {
+        "requirement_id": "PDL-03",
+        "clause": "**PDL-03 — Domain terminology.** Pseudocode MUST use task-domain terminology rather than invent a separate task schema."
+      },
+      {
+        "requirement_id": "PDL-04",
+        "clause": "**PDL-04 — Action/control casing.** Common action verbs and control keywords MAY be uppercased when helpful for readability."
+      },
+      {
+        "requirement_id": "PDL-05",
+        "clause": "**PDL-05 — No invented field schema.** Pseudocode MUST NOT invent a fielded protocol schema."
+      },
+      {
+        "requirement_id": "PDL-06",
+        "clause": "**PDL-06 — Prefer ordinary structured English.** Pseudocode MUST NOT imitate programming syntax when ordinary structured English is clearer."
+      },
+      {
+        "requirement_id": "PDL-07",
+        "clause": "**PDL-07 — Standard control forms.** Standard-compatible `IF/ELSE/ENDIF`, `WHILE/ENDWHILE`, `REPEAT/UNTIL`, `FOR/ENDFOR`, and `CASE/ENDCASE` forms MAY be used when useful."
+      },
+      {
+        "requirement_id": "PDL-08",
+        "clause": "**PDL-08 — Purpose-complete notation.** Prompt and Response Plan Pseudocode MUST be complete for their protocol purpose without artificial expansion into implementation algorithms."
+      },
+      {
+        "requirement_id": "ARTIFACT-01",
+        "clause": "**ARTIFACT-01 — Complete replacement.** An authorized Prompt or Plan revision MUST produce a complete replacement artifact rather than a patch."
+      },
+      {
+        "requirement_id": "ARTIFACT-02",
+        "clause": "**ARTIFACT-02 — Artifact-body boundary.** Prompt or Plan generation/revision model output MUST contain only the requested artifact content and MUST NOT add lifecycle framing owned by the host presentation layer."
+      }
+    ],
+    "HIGHER_PRIORITY_CONSTRAINTS": "Obey applicable provider/platform safety, privacy, permission, and tool constraints."
+  },
+  "artifact_kind": "PROMPT_PSEUDOCODE"
+}

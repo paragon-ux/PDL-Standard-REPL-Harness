@@ -1,0 +1,9 @@
+{
+  "schema_version": "C0-ICM-WORKSPACE-5",
+  "workspace_id": "W-8c7b972d04c6",
+  "protocol_instance_id": "I-da88b8f0ab",
+  "created_at_utc": "2026-08-20T07:12:22.289795+00:00",
+  "icm_reference": "arXiv:2603.16021v2",
+  "context_flow": "filesystem_stage_handoffs",
+  "control_flow": "mechanical_controller"
+}

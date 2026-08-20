@@ -1,0 +1,8 @@
+{
+  "CONFIRMED_PROMPT_BODY": "confirmed_prompt_body.md",
+  "CONFIRMED_PLAN_BODY": "confirmed_plan_body.md",
+  "REQUIRED_TASK_INPUTS": "required_task_inputs.json",
+  "SUPPLIED_EXECUTION_INPUT_SOURCE": "supplied_execution_input_source.json",
+  "AVAILABLE_EXECUTION_TOOLS": "available_execution_tools.json",
+  "HIGHER_PRIORITY_CONSTRAINTS": "higher_priority_constraints.md"
+}

@@ -1,0 +1,42 @@
+{
+  "ANSWER_PROTOCOL_DISCUSSION": {
+    "requirements": [
+      "TASK-01",
+      "TASK-02",
+      "PROTO-02",
+      "PROTO-04",
+      "REVIEW-01",
+      "REVIEW-02",
+      "REVIEW-03",
+      "REVIEW-04",
+      "REVIEW-05",
+      "REVIEW-06",
+      "REVIEW-07",
+      "REVIEW-08",
+      "REVIEW-09",
+      "REVIEW-10",
+      "REVIEW-11",
+      "REVIEW-12",
+      "REVIEW-13",
+      "REVIEW-14",
+      "PDL-01",
+      "PDL-02",
+      "PDL-03",
+      "PDL-04",
+      "PDL-05",
+      "PDL-06",
+      "PDL-07",
+      "PDL-08"
+    ],
+    "declared_inputs": [
+      "RAW_PROTOCOL_QUESTION",
+      "CURRENT_STAGE_CLASS",
+      "BOUND_REVIEW_SUBJECT_KIND",
+      "BOUND_REVIEW_SUBJECT_BODY"
+    ],
+    "output_kind": "PROTOCOL_DISCUSSION_RESPONSE",
+    "output_fields": [
+      "body"
+    ]
+  }
+}

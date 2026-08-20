@@ -1,0 +1,12 @@
+{
+  "operation": "EXECUTE",
+  "stage": "50_execution",
+  "invocation_id": "0007-execute",
+  "input_symbols": [
+    "CONFIRMED_PROMPT_BODY",
+    "CONFIRMED_PLAN_BODY",
+    "REQUIRED_TASK_INPUTS",
+    "SUPPLIED_EXECUTION_INPUT_SOURCE",
+    "AVAILABLE_EXECUTION_TOOLS"
+  ]
+}

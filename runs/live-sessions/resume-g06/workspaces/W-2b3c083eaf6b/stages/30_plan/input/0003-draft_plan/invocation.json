@@ -1,0 +1,9 @@
+{
+  "operation": "DRAFT_PLAN",
+  "stage": "30_plan",
+  "invocation_id": "0003-draft_plan",
+  "input_symbols": [
+    "CONFIRMED_PROMPT_BODY",
+    "CARRIED_APPROACH_SOURCES"
+  ]
+}

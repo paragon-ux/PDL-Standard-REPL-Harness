@@ -53,7 +53,7 @@ def test_repl_command_loop_full_deterministic_session(tmp_path: Path) -> None:
     turns = _g06_turns()
     lines = (
         turns
-        + ["/status", "/help", "/session", "/worker recorded", "/mlflow on", "/new"]
+        + ["/status", "/help", "/session", "/mlflow on", "/worker recorded", "/new"]
         + turns
         + ["/status", "/resume repltest", "/status", "/quit"]
     )
@@ -69,7 +69,7 @@ def test_repl_command_loop_full_deterministic_session(tmp_path: Path) -> None:
     assert "resumed session:" in out
     assert out.count("[protocol closed]") >= 2
     assert out.count("CLOSED_SUCCESS") >= 3
-    assert "LIVE_SESSION_MLFLOW_RUN" in out
+    assert out.count("LIVE_SESSION_MLFLOW_RUN") >= 3  # worker switch, /new, and exit/resume logging
     assert "No such file" not in out
     assert "Traceback" not in out
     # First session completed -> durable session pointer exists.

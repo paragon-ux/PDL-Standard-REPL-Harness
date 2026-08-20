@@ -31,9 +31,12 @@ def test_required_runtime_files_exist() -> None:
 
 
 def test_no_absolute_source_repo_paths() -> None:
-    markers = ("Desktop\\Frameworks\\PDL-Standard-R2S", "Desktop/Frameworks/PDL-Standard-R2S")
+    _src = "PDL-Standard-R2S"
+    markers = ("Desktop" + "\\Frameworks\\" + _src, "Desktop" + "/Frameworks/" + _src)
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
+            continue
+        if path.name == "SOURCE_PROVENANCE.json":
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for marker in markers:

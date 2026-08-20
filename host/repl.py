@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
 
 from host.app import PDLtHost
 from providers.codex_worker import CodexWorker
-from providers.fixtures import build_recorded_fixture
+from providers.fixtures import build_recorded_fixture, build_recorded_fixture_from_vendored
 
 
 def _new_session_name() -> str:
@@ -264,15 +264,24 @@ def main() -> int:
             args.evidence = Path(input("evidence: ").strip())
         if not args.case_ids and sys.stdin.isatty():
             args.case_ids = input("case-ids (comma separated, optional): ").strip() or None
-        if not args.eval_root or not args.evidence:
-            raise SystemExit("--eval-root and --evidence are required for recorded worker")
+        if not args.evidence:
+            raise SystemExit("--evidence is required for recorded worker")
         case_ids = [item.strip() for item in args.case_ids.split(",") if item.strip()] if args.case_ids else None
-        worker = build_recorded_fixture(
-            args.candidate_repo,
-            args.eval_root,
-            args.evidence,
-            case_ids=case_ids,
-        )
+        if args.evidence.name == "recorded-cases.json":
+            worker = build_recorded_fixture_from_vendored(
+                args.candidate_repo,
+                args.evidence,
+                case_ids=case_ids,
+            )
+        else:
+            if not args.eval_root:
+                raise SystemExit("--eval-root is required for non-vendored recorded evidence")
+            worker = build_recorded_fixture(
+                args.candidate_repo,
+                args.eval_root,
+                args.evidence,
+                case_ids=case_ids,
+            )
     elif args.worker == "codex":
         worker = CodexWorker(
             model=args.model,

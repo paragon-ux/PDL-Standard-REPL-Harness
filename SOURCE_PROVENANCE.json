@@ -24,24 +24,54 @@
       "reason_for_adaptation": ""
     },
     {
-      "source_repository": "PDL-Standard-R2S",
-      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": ".gitignore",
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
       "extracted_path": ".gitignore",
-      "source_sha256": "89842427669560a2a1b085c4afca51a67b05c5234a5ea56e2d9fcd4fd8dbf26d",
+      "source_sha256": null,
       "extracted_sha256": "442e101c34e4b5f77dc71b6d51488ce31c0de54db0ba6c69f6175f31ed6ebdde",
-      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
-      "reason_for_adaptation": "content differs from source"
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness"
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": "confirm-with-pseudocode/agents/openai.yaml",
-      "extracted_path": "confirm-with-pseudocode/agents/openai.yaml",
-      "source_sha256": "0a288bf6a6d52d113b02ae2a48ea6cef9e30729e0b75356d43388641eed89442",
-      "extracted_sha256": "0a288bf6a6d52d113b02ae2a48ea6cef9e30729e0b75356d43388641eed89442",
+      "original_source_path": "LICENSE",
+      "extracted_path": "LICENSE",
+      "source_sha256": "770df0195cea22c2b37d6895d8cf32e4d42846e3cdb9e84ffa7c5a613f8c0277",
+      "extracted_sha256": "770df0195cea22c2b37d6895d8cf32e4d42846e3cdb9e84ffa7c5a613f8c0277",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
       "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "NOTICE.md",
+      "extracted_path": "NOTICE.md",
+      "source_sha256": "9088b017a2f27414b6a65d2b2ea66dee06575f2f172436caa04117fa5d2300d0",
+      "extracted_sha256": "9088b017a2f27414b6a65d2b2ea66dee06575f2f172436caa04117fa5d2300d0",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "README.md",
+      "source_sha256": null,
+      "extracted_sha256": "ea89cb29a1c5cdf16596bc93208bf1dcf6c8596cc224985ba3d3dc0ed5849c26",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness"
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "SOURCE_PROVENANCE.json",
+      "source_sha256": null,
+      "extracted_sha256": "96096cc50ebf7cdff1d2fad69977f0ea1bd47af139bfd6ea6a405fefdfd9e707",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -50,6 +80,16 @@
       "extracted_path": "confirm-with-pseudocode/SKILL.md",
       "source_sha256": "5211a6e7db5bfca289ae2469c680ad3ebef8516b3b1a546b1a8fc9b5b789ba57",
       "extracted_sha256": "5211a6e7db5bfca289ae2469c680ad3ebef8516b3b1a546b1a8fc9b5b789ba57",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "confirm-with-pseudocode/agents/openai.yaml",
+      "extracted_path": "confirm-with-pseudocode/agents/openai.yaml",
+      "source_sha256": "0a288bf6a6d52d113b02ae2a48ea6cef9e30729e0b75356d43388641eed89442",
+      "extracted_sha256": "0a288bf6a6d52d113b02ae2a48ea6cef9e30729e0b75356d43388641eed89442",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
       "reason_for_adaptation": ""
     },
@@ -100,6 +140,16 @@
       "extracted_path": "contracts/IMPLEMENTATION_BOUNDARY.json",
       "source_sha256": "18af2b85765cbd0f4cb69e8986b8dc7ab72f542f44d66a56e95a8473f46201c3",
       "extracted_sha256": "18af2b85765cbd0f4cb69e8986b8dc7ab72f542f44d66a56e95a8473f46201c3",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/VERIFICATION_CONTRACT.json",
+      "extracted_path": "contracts/VERIFICATION_CONTRACT.json",
+      "source_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
+      "extracted_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
       "reason_for_adaptation": ""
     },
@@ -246,16 +296,6 @@
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": "contracts/VERIFICATION_CONTRACT.json",
-      "extracted_path": "contracts/VERIFICATION_CONTRACT.json",
-      "source_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
-      "extracted_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
-    },
-    {
-      "source_repository": "PDL-Standard-R2S",
-      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/__init__.py",
       "extracted_path": "controller/__init__.py",
       "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -371,7 +411,7 @@
       "source_sha256": null,
       "extracted_sha256": "09e070d1c53f247939ed3fae397ee0c5b46485f988140c5ac982353762002d69",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+      "reason_for_adaptation": "created for standalone harness"
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
@@ -399,29 +439,9 @@
       "original_source_path": "host/repl.py",
       "extracted_path": "host/repl.py",
       "source_sha256": "9065990141ceae7b29b0b48eb9def086812d68faa61261c7e26ae54dc054d899",
-      "extracted_sha256": "9065990141ceae7b29b0b48eb9def086812d68faa61261c7e26ae54dc054d899",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
-    },
-    {
-      "source_repository": "PDL-Standard-R2S",
-      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": "LICENSE",
-      "extracted_path": "LICENSE",
-      "source_sha256": "770df0195cea22c2b37d6895d8cf32e4d42846e3cdb9e84ffa7c5a613f8c0277",
-      "extracted_sha256": "770df0195cea22c2b37d6895d8cf32e4d42846e3cdb9e84ffa7c5a613f8c0277",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
-    },
-    {
-      "source_repository": "PDL-Standard-R2S",
-      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": "NOTICE.md",
-      "extracted_path": "NOTICE.md",
-      "source_sha256": "9088b017a2f27414b6a65d2b2ea66dee06575f2f172436caa04117fa5d2300d0",
-      "extracted_sha256": "9088b017a2f27414b6a65d2b2ea66dee06575f2f172436caa04117fa5d2300d0",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "681dc7336bfcfe96f32857f593c8d1c3f40e0fe0517f84ddf09c24bb3e68679b",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "routed recorded-cases.json to build_recorded_fixture_from_vendored; original eval-workspace path preserved"
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
@@ -506,6 +526,16 @@
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/README.md",
+      "extracted_path": "providers/README.md",
+      "source_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
+      "extracted_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/__init__.py",
       "extracted_path": "providers/__init__.py",
       "source_sha256": "516f76f6a6988dedcd470fe9d3d95ba4849118b4ab0539c10d5619dba94b7fe8",
@@ -556,32 +586,12 @@
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
-      "original_source_path": "providers/README.md",
-      "extracted_path": "providers/README.md",
-      "source_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
-      "extracted_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
-    },
-    {
-      "source_repository": "PDL-Standard-R2S-Lab",
-      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/recorded.py",
       "extracted_path": "providers/recorded.py",
       "source_sha256": "b3e601d7ec22c7b0cb6773d27b319e4116dca51c36189dfb2db798dca79e8267",
       "extracted_sha256": "b3e601d7ec22c7b0cb6773d27b319e4116dca51c36189dfb2db798dca79e8267",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
       "reason_for_adaptation": ""
-    },
-    {
-      "source_repository": "PDL-Standard-R2S",
-      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": "README.md",
-      "extracted_path": "README.md",
-      "source_sha256": "08e7029df527990a0710c887fb99e423e89d2f3473b980121964abf456776441",
-      "extracted_sha256": "ea89cb29a1c5cdf16596bc93208bf1dcf6c8596cc224985ba3d3dc0ed5849c26",
-      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
-      "reason_for_adaptation": "content differs from source"
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
@@ -689,19 +699,9 @@
       "original_source_path": null,
       "extracted_path": "scripts/verify_repl_baseline.py",
       "source_sha256": null,
-      "extracted_sha256": "9424c08ae45be2177929d1021ce2c80b2640de35e8f91ccb357af7ccdc5e550a",
+      "extracted_sha256": "2bd4c4121db90888688fb21c8d8f1ef0000e740bd59327113b11874cc6ca72aa",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
-    },
-    {
-      "source_repository": null,
-      "source_head": null,
-      "original_source_path": null,
-      "extracted_path": "SOURCE_PROVENANCE.json",
-      "source_sha256": null,
-      "extracted_sha256": "54427c27245f5d2dfce862ad58b7c350b94f85ebdd3e29ed7750e363d340e12e",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+      "reason_for_adaptation": "created for standalone harness"
     },
     {
       "source_repository": null,
@@ -709,9 +709,9 @@
       "original_source_path": null,
       "extracted_path": "tests/test_harness_baseline.py",
       "source_sha256": null,
-      "extracted_sha256": "97b8ebce3009994f9af43ce8b8883183c00805508cf29447216a18d229d6eafd",
+      "extracted_sha256": "cc27e0be46f951199e0108d8cc7bf83aefde12d9da2cc258bf3dc45eb2967b60",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+      "reason_for_adaptation": "created for standalone harness"
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
@@ -736,6 +736,16 @@
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/CONTEXT.md",
+      "extracted_path": "workspace-template/CONTEXT.md",
+      "source_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
+      "extracted_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "workspace-template/_config/CONTEXT.md",
       "extracted_path": "workspace-template/_config/CONTEXT.md",
       "source_sha256": "085ca7d243b0b155f99f7a59a7042b6bd4bc24b02299413cf2af07dd757dce0f",
@@ -750,16 +760,6 @@
       "extracted_path": "workspace-template/_config/icm-reference.json",
       "source_sha256": "1d1ff4592b3fd2b585aa3404a23f885c6bffb7c2ea7b6f305c99d65228f5db5c",
       "extracted_sha256": "1d1ff4592b3fd2b585aa3404a23f885c6bffb7c2ea7b6f305c99d65228f5db5c",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
-    },
-    {
-      "source_repository": "PDL-Standard-R2S",
-      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
-      "original_source_path": "workspace-template/CONTEXT.md",
-      "extracted_path": "workspace-template/CONTEXT.md",
-      "source_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
-      "extracted_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
       "reason_for_adaptation": ""
     },

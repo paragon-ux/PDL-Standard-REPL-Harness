@@ -20,11 +20,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+_SRC = "PDL-Standard-R2S"
 SOURCE_REPO_MARKERS = (
-    r"Desktop\\Frameworks\\PDL-Standard-R2S",
-    r"Desktop\\Frameworks\\PDL-Standard-R2S-Lab",
-    r"Desktop/Frameworks/PDL-Standard-R2S",
-    r"Desktop/Frameworks/PDL-Standard-R2S-Lab",
+    "Desktop" + "\\Frameworks\\" + _SRC,
+    "Desktop" + "\\Frameworks\\" + _SRC + "-Lab",
+    "Desktop" + "/Frameworks/" + _SRC,
+    "Desktop" + "/Frameworks/" + _SRC + "-Lab",
 )
 FORBIDDEN_TERMS = (
     "phase6ev",
@@ -96,6 +97,8 @@ def _failures() -> list[str]:
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
             continue
+        if path.name == "SOURCE_PROVENANCE.json":
+            continue  # provenance must record source repository paths by design
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:

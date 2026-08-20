@@ -59,7 +59,7 @@
       "original_source_path": null,
       "extracted_path": "README.md",
       "source_sha256": null,
-      "extracted_sha256": "ea89cb29a1c5cdf16596bc93208bf1dcf6c8596cc224985ba3d3dc0ed5849c26",
+      "extracted_sha256": "329182c34184eedc75ad529bdd935559af22865079e9d80203ef95b9c8dadffa",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
       "reason_for_adaptation": "created for standalone harness"
     },
@@ -69,7 +69,7 @@
       "original_source_path": null,
       "extracted_path": "SOURCE_PROVENANCE.json",
       "source_sha256": null,
-      "extracted_sha256": "ddf3e3770192ef154127fc63f13a10fbd5a226aa135ab1f18de53c5fee410c4d",
+      "extracted_sha256": "a78884e874cafd9c6a399976687d072d639056494eb2320006adad1cfe0fc424",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
       "reason_for_adaptation": "created for standalone harness"
     },
@@ -602,6 +602,16 @@
       "extracted_sha256": "a72c62212a17bad89dd6606bbaba1d97450ceb170fae80480c85ffd825e67f09",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
       "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "requirements-test.txt",
+      "source_sha256": null,
+      "extracted_sha256": "5b49270ddf945ae086dbe082903120016d71df0dc50f58907c43e7e5149aafdc",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness"
     },
     {
       "source_repository": "PDL-Standard-R2S",

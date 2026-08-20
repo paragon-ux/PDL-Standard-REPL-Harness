@@ -68,10 +68,49 @@ Use `/new` or `--new-session` for a fresh workspace; use
 
 ## MLflow (optional)
 
-When `/mlflow on` is active, the REPL logs the closed session to a local
-`mlflow.db` (SQLite) on `/new`, `/resume`, `/worker`, and `/quit` via
-`scripts/log_live_session.py`. MLflow is post-hoc and non-authoritative; it is
-never required for protocol behavior. `mlflow.db` is gitignored.
+MLflow logging is post-hoc and non-authoritative; the protocol never requires it.
+
+### Setup
+
+```powershell
+python -m pip install -r requirements-mlflow.txt
+```
+
+### Enabling logging
+
+- Answer `y` to `Log this session to MLflow on exit?` at REPL startup, or
+- start with `--mlflow`, or
+- toggle at runtime with `/mlflow on`.
+
+### What happens
+
+When logging is on, the REPL logs the closed session via
+`scripts/log_live_session.py` on `/new`, `/resume`, `/worker`, and `/quit`. The
+logger creates a local SQLite tracking store at `mlflow.db` (gitignored), under
+experiment `PDL-R2S`, and prints:
+
+```text
+LIVE_SESSION_MLFLOW_RUN <run-id> session=<session-id> records=<n>
+```
+
+Only sessions that completed at least one protocol turn are logged (the
+`session.json` pointer is written lazily on the first turn; a brand-new session
+with no turns has nothing to log and reports `session.json missing`, which is
+expected).
+
+### Verify
+
+```powershell
+python -m pytest tests\test_mlflow_logger.py -q
+```
+
+### Inspect runs
+
+```powershell
+mlflow ui --backend-store-uri "sqlite:///$((Get-Location).Path.Replace('\','/'))/mlflow.db"
+```
+
+Then open http://localhost:5000 to browse the `PDL-R2S` experiment.
 
 ## Live worker path (optional)
 

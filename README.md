@@ -3,6 +3,13 @@
 Clean standalone R6S / Phase-5 PDLt REPL harness, extracted from the qualified
 source repositories. This repository is the published R6S REPL baseline; it is
 not the Phase 6-EV implementation and not a Host Tool overlay.
+## Baseline release
+
+Commit `r6s-repl-baseline-v1` is the published clean R6S / Phase-5 PDLt REPL
+harness baseline. It contains only the minimal standalone runtime, REPL,
+worker boundary, vendored deterministic fixture, focused tests, verifier, and
+provenance needed to reproduce the qualified path. It is **not** the future
+Host Tool overlay, Phase 6-EV work, or an evaluation/evidence archive.
 
 ## Install
 

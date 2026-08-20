@@ -69,6 +69,7 @@ REQUIRED_FILES = (
     "providers/codex_worker.py",
     "providers/live_stub.py",
     "tracking/mlflow_sink.py",
+    "scripts/log_live_session.py",
     "fixtures/r4-recorded-worker/recorded-cases.json",
     "fixtures/r4-recorded-worker/FIXTURE_MANIFEST.json",
     "README.md",
@@ -83,6 +84,12 @@ def _failures() -> list[str]:
     for relative in REQUIRED_FILES:
         if not (ROOT / relative).is_file():
             problems.append(f"missing_required_file:{relative}")
+
+    # 1b. Subprocess script targets referenced by the REPL must exist.
+    repl_text = (ROOT / "host" / "repl.py").read_text(encoding="utf-8")
+    for match in re.findall(r'ROOT / "scripts" / "([^"]+)"', repl_text):
+        if not (ROOT / "scripts" / match).is_file():
+            problems.append(f"missing_repl_subprocess_script:scripts/{match}")
 
     # 2. Broken imports.
     try:

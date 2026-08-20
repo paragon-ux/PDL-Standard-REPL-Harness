@@ -1,9 +1,0 @@
-{
-  "operation": "REVISE_PROMPT",
-  "stage": "10_prompt",
-  "invocation_id": "0003-revise_prompt",
-  "input_symbols": [
-    "CURRENT_PROMPT_BODY",
-    "TASK_CHANGE_SOURCE"
-  ]
-}

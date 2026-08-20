@@ -1,6 +1,0 @@
-{
-  "kind": "REVIEW_FACTS",
-  "task_change_dimensions": ["AUDIENCE_OR_OUTPUT_CHARACTERISTIC"],
-  "approach_change_dimensions": [],
-  "progression_requested": false
-}

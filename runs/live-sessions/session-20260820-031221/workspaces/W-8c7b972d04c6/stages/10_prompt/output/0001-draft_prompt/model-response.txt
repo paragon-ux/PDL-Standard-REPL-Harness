@@ -1,1 +1,0 @@
-{"kind":"PROMPT","prompt_body":"COMPARE Kafka and RabbitMQ for event delivery.","approach_handoff":"NONE"}

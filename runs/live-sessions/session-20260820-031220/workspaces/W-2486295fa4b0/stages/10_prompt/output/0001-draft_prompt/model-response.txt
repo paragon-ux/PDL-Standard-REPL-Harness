@@ -1,5 +1,0 @@
-{
-  "kind": "PROMPT",
-  "prompt_body": "Explain the difference between optimistic locking and pessimistic locking for an audience of senior developers.",
-  "approach_handoff": "NONE"
-}

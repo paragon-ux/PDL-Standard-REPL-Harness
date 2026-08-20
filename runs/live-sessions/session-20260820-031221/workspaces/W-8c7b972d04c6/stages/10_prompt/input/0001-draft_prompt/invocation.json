@@ -1,9 +1,0 @@
-{
-  "operation": "DRAFT_PROMPT",
-  "stage": "10_prompt",
-  "invocation_id": "0001-draft_prompt",
-  "input_symbols": [
-    "HOST_PROTOCOL_STATE",
-    "SUBSTANTIVE_REQUEST"
-  ]
-}

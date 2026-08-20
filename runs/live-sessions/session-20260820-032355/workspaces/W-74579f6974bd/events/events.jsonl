@@ -1,3 +1,0 @@
-{"at_utc":"2026-08-20T07:24:39.419211+00:00","kind":"WORKSPACE_CREATED","payload":{"workspace_id":"W-74579f6974bd"}}
-{"at_utc":"2026-08-20T07:24:39.424236+00:00","kind":"EXPLICIT_INVOCATION_OBSERVED","payload":{"substantive_request_present":true}}
-{"at_utc":"2026-08-20T07:24:39.483204+00:00","kind":"OPERATION_MATERIALIZED","payload":{"operation":"DRAFT_PROMPT","stage":"10_prompt","invocation_id":"0001-draft_prompt"}}

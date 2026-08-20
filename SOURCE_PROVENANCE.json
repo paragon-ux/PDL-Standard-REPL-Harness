@@ -69,7 +69,7 @@
       "original_source_path": null,
       "extracted_path": "SOURCE_PROVENANCE.json",
       "source_sha256": null,
-      "extracted_sha256": "28a994ecce724c31012e12168bca7000db16d3e42f9c46b82f6289f47211fa4b",
+      "extracted_sha256": "ddf3e3770192ef154127fc63f13a10fbd5a226aa135ab1f18de53c5fee410c4d",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
       "reason_for_adaptation": "created for standalone harness"
     },
@@ -730,6 +730,16 @@
       "extracted_path": "tests/test_mlflow_logger.py",
       "source_sha256": null,
       "extracted_sha256": "3704c0b137488f2bc16916b68924a7a9bce9cb58ee11bb52a2177c1229b2dae8",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness"
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "tests/test_repl_integration.py",
+      "source_sha256": null,
+      "extracted_sha256": "a6100b2c829bd5dbe043760fbe6944a858604750b80e900f97e339ac546263ce",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
       "reason_for_adaptation": "created for standalone harness"
     },

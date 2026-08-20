@@ -69,7 +69,7 @@
       "original_source_path": null,
       "extracted_path": "SOURCE_PROVENANCE.json",
       "source_sha256": null,
-      "extracted_sha256": "8268cc011bdc35006e4fa29575c2772eac787146ccc9371732247663794baefe",
+      "extracted_sha256": "28a994ecce724c31012e12168bca7000db16d3e42f9c46b82f6289f47211fa4b",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
       "reason_for_adaptation": "created for standalone harness"
     },
@@ -439,9 +439,9 @@
       "original_source_path": "host/repl.py",
       "extracted_path": "host/repl.py",
       "source_sha256": "9065990141ceae7b29b0b48eb9def086812d68faa61261c7e26ae54dc054d899",
-      "extracted_sha256": "681dc7336bfcfe96f32857f593c8d1c3f40e0fe0517f84ddf09c24bb3e68679b",
+      "extracted_sha256": "c6119c75eeb609b7277132eb43d6d76ce1897cb21e2ecc90db676577687d0484",
       "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
-      "reason_for_adaptation": "routed recorded-cases.json to build_recorded_fixture_from_vendored; original eval-workspace path preserved"
+      "reason_for_adaptation": "vendored recorded-cases.json routing at startup and interactive /worker recorded; legacy eval-workspace path preserved"
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",

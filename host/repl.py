@@ -433,25 +433,37 @@ def main() -> int:
                             allow_bypass=getattr(worker, "allow_bypass", args.allow_bypass),
                         )
                     elif target == "recorded":
-                        if not args.eval_root or not args.evidence:
+                        if not args.evidence:
                             if not sys.stdin.isatty():
-                                print("recorded worker requires --eval-root and --evidence in non-interactive mode", flush=True)
+                                print("recorded worker requires --evidence in non-interactive mode", flush=True)
                                 continue
-                            eval_root = input("eval-root: ").strip()
                             evidence = input("evidence: ").strip()
                         else:
-                            eval_root = str(args.eval_root)
                             evidence = str(args.evidence)
                         case_ids = args.case_ids
                         if not case_ids and sys.stdin.isatty():
                             case_ids = input("case-ids (comma separated, optional): ").strip() or None
                         case_ids_list = [item.strip() for item in case_ids.split(",") if item.strip()] if case_ids else None
-                        new_worker = build_recorded_fixture(
-                            args.candidate_repo,
-                            Path(eval_root),
-                            Path(evidence),
-                            case_ids=case_ids_list,
-                        )
+                        if Path(evidence).name == "recorded-cases.json":
+                            new_worker = build_recorded_fixture_from_vendored(
+                                args.candidate_repo,
+                                Path(evidence),
+                                case_ids=case_ids_list,
+                            )
+                        else:
+                            if not args.eval_root:
+                                if not sys.stdin.isatty():
+                                    print("recorded worker requires --eval-root for non-vendored evidence in non-interactive mode", flush=True)
+                                    continue
+                                eval_root = input("eval-root: ").strip()
+                            else:
+                                eval_root = str(args.eval_root)
+                            new_worker = build_recorded_fixture(
+                                args.candidate_repo,
+                                Path(eval_root),
+                                Path(evidence),
+                                case_ids=case_ids_list,
+                            )
                     else:
                         print(f"unknown worker: {target}", flush=True)
                         continue

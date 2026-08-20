@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResponsePlanArtifactBody",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["neutral_plan_body"],
+  "properties": {
+    "neutral_plan_body": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Epistemically neutral, minimum-sufficient, high-level response procedure only. Refer to unresolved substantive content by role (for example, the requested proof, evidence, calculation, comparison, or conclusion) instead of instantiating it. Do not select or preview a proof strategy, argument, derivation, hypothesis, finding, winner, source, example, calculation, or other execution substance. Include only operations needed to let the user reject a materially undesirable approach, while applying any explicit carried approach constraints without elaborating beyond them. The host already handles Plan confirmation; never add another confirmation or approval step."
+    }
+  }
+}

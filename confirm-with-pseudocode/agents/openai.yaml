@@ -1,0 +1,4 @@
+interface:
+  display_name: "Confirm with Pseudocode — ICM"
+  short_description: "Contract-projected confirmation runtime"
+  default_prompt: "Use $confirm-with-pseudocode through the configured contract-projected runtime."

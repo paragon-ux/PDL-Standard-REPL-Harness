@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PromptDraftOutcome",
+  "description": "The host has already activated the protocol. Produce Prompt Pseudocode unless an external higher-priority provider/platform constraint independently blocks the underlying substantive task.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "prompt_body", "approach_handoff"],
+      "properties": {
+        "kind": {"const": "PROMPT"},
+        "prompt_body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Lossless Prompt Pseudocode containing every operative TASK-01 instruction that constrains the requested work or its externally observable result. This includes result scope, dates or freshness, comparisons, criteria, required conclusions, attribution or evidence that must appear in the result, and requested output characteristics. Exclude only TASK-02 instructions that change solely the internal research, evidence-selection, comparison, ranking, scoring, analysis-order, or justification procedure, plus host-owned protocol lifecycle steps. The approach_handoff value is non-exclusive and never authorizes removing TASK-01 content from this body."
+        },
+        "approach_handoff": {
+          "type": "string",
+          "enum": ["NONE", "CARRY_SOURCE_TO_PLAN"],
+          "description": "Select CARRY_SOURCE_TO_PLAN when the substantive request contains any TASK-02 response-method instruction for the later Plan; otherwise select NONE. This is an independent source-handoff fact: even when CARRY_SOURCE_TO_PLAN is selected, prompt_body must still preserve every TASK-01 instruction. Protocol invocation or confirmation control is never a response-method instruction."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "blocking_basis", "response"],
+      "properties": {
+        "kind": {
+          "const": "TASK_BLOCKED_BY_HIGHER_PRIORITY",
+          "description": "Legal only when the underlying substantive task itself is prohibited or impossible under HIGHER_PRIORITY_CONSTRAINTS. A user's request to skip, alter, or discuss this active protocol is never a higher-priority blocking basis."
+        },
+        "blocking_basis": {
+          "const": "PROVIDER_PLATFORM_SAFETY_PRIVACY_PERMISSION_OR_TOOL"
+        },
+        "response": {"type": "string", "minLength": 1}
+      }
+    }
+  ]
+}

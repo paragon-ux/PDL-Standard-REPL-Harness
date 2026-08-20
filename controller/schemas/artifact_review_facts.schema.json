@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArtifactReviewFacts",
+  "description": "Report independent semantic facts about review of the currently bound Prompt or Response Plan. The host owns transition precedence and retains the complete source message, so do not copy message content or choose a transition.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "task_change_dimensions",
+        "approach_change_dimensions",
+        "progression_requested"
+      ],
+      "properties": {
+        "kind": {"const": "REVIEW_FACTS"},
+        "task_change_dimensions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ACTION_SUBJECT_OR_OBJECT",
+              "SCOPE_CONSTRAINT_EXCLUSION_OR_PRIORITY",
+              "TIME_FRESHNESS_QUANTITY_OR_CONDITION",
+              "COMPARISON_CRITERION_DEFINITION_OR_RELATIONSHIP",
+              "AUDIENCE_OR_OUTPUT_CHARACTERISTIC",
+              "REQUIRED_CONCLUSION",
+              "OTHER_TASK_OR_RESULT"
+            ]
+          },
+          "description": "List every TASK-01 dimension changed by the message; use [] only when none changed. These dimensions describe what work or externally observable result is required. A date, as-of point, currency/freshness requirement, or other factual time boundary belongs in TIME_FRESHNESS_QUANTITY_OR_CONDITION whenever it constrains which result may be returned, even if satisfying it also requires an evidence-selection method."
+        },
+        "approach_change_dimensions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "RESEARCH_OR_EVIDENCE_SELECTION_METHOD",
+              "COMPARISON_RANKING_OR_SCORING_METHOD",
+              "ANALYSIS_ORDER",
+              "JUSTIFICATION_PROCEDURE",
+              "OTHER_RESPONSE_PROCEDURE"
+            ]
+          },
+          "description": "List every TASK-02 dimension changed by the message; use [] only when none changed. These dimensions describe only how an already-defined result will be produced. A message may populate both arrays when a task/result change also imposes a response method."
+        },
+        "progression_requested": {
+          "type": "boolean",
+          "description": "True if the message confirms the bound artifact or asks to proceed or execute. Report this independently even when the same message also contains a correction; the host applies change precedence mechanically."
+        }
+      },
+      "anyOf": [
+        {"properties": {"task_change_dimensions": {"minItems": 1}}},
+        {"properties": {"approach_change_dimensions": {"minItems": 1}}},
+        {"properties": {"progression_requested": {"const": true}}}
+      ]
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "NEW_TASK"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "CANCEL"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "PROTOCOL_DISCUSSION"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "SUBSTANTIVE_DISCUSSION"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "UNRESOLVED"}}
+    }
+  ]
+}

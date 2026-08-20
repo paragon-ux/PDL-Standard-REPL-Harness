@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PromptArtifactBody",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prompt_body"],
+  "properties": {
+    "prompt_body": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Complete replacement Prompt Pseudocode containing task/result semantics only."
+    }
+  }
+}

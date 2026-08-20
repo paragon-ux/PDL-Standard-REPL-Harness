@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "fixture_set": "r4-recorded-worker-vendored",
+  "count": 8,
+  "entries": [
+    {
+      "source_evidence_run": "A02:0001-draft_prompt",
+      "operation": "DRAFT_PROMPT",
+      "prompt_sha256": "816b045edd8e711e6ecb15a1fe370d92a706906a2c283f1fae1627770f198d7b",
+      "raw_response_sha256": "41b96cb7ee9e94caca14390bec3da95538291534da419d02a647ad575681415d",
+      "fixture_id": "9ef329a09047e09b"
+    },
+    {
+      "source_evidence_run": "A02:0002-interpret_prompt_review",
+      "operation": "INTERPRET_PROMPT_REVIEW",
+      "prompt_sha256": "aa2b04200facd9ae96ee4ef830dd1a4cf949f4a3e098046c2510cf52f08b9af9",
+      "raw_response_sha256": "04b189031527e33092ddd869d43e3efb707d3ce9815c2aaa45be46d933c3e30f",
+      "fixture_id": "7950db44ce4e3d74"
+    },
+    {
+      "source_evidence_run": "A02:0003-revise_prompt",
+      "operation": "REVISE_PROMPT",
+      "prompt_sha256": "a80c5c5668fb9e89c4365dd5b931c7d22931b6af034216f3894ba855e7f79e03",
+      "raw_response_sha256": "8d96434b879544d1b2014afd0e0c94e6a82b38cfc7ce608e3d830138b576a731",
+      "fixture_id": "9b768596ee06ef83"
+    },
+    {
+      "source_evidence_run": "G06:0001-draft_prompt",
+      "operation": "DRAFT_PROMPT",
+      "prompt_sha256": "369c2703828997514f67866ed10338edfea753dd08556079e888fb76d1d38fb7",
+      "raw_response_sha256": "009953c2b1c848b9ff3af884487d010f8a345c3fe2861794b1a12fd648334fa9",
+      "fixture_id": "a25c1e1da70b1dd2"
+    },
+    {
+      "source_evidence_run": "G06:0002-interpret_prompt_review",
+      "operation": "INTERPRET_PROMPT_REVIEW",
+      "prompt_sha256": "9f6afa8e5bcbb3016a1e49d66c16356c08778d1894fe73b6b578582369838d32",
+      "raw_response_sha256": "fca61d024ce03b35f89ea208ec5b8af19228bbbe6d812e143523447f33699e9c",
+      "fixture_id": "680519bc4a93073d"
+    },
+    {
+      "source_evidence_run": "G06:0003-draft_plan",
+      "operation": "DRAFT_PLAN",
+      "prompt_sha256": "6dfadc49cb7dd4852475482dffa0b54cb88f643a262f3f2f64826441d545ac91",
+      "raw_response_sha256": "a0fd1f1f46460db29514e18ca1f1ba3465e75aa9e46991534a5cb172d87d390f",
+      "fixture_id": "17fcff773c0ef2f6"
+    },
+    {
+      "source_evidence_run": "G06:0004-interpret_plan_review",
+      "operation": "INTERPRET_PLAN_REVIEW",
+      "prompt_sha256": "5a0af1329d5286ad21d40a2937dbd2051805c697014c8a2657a86014020bd7ad",
+      "raw_response_sha256": "fa29dad9b401cf168d69fcca60f840e0d7ac8c85800352405137157810a73901",
+      "fixture_id": "ae82fe568d8f0aad"
+    },
+    {
+      "source_evidence_run": "G06:0005-execute",
+      "operation": "EXECUTE",
+      "prompt_sha256": "4ef00121e1df539f0106945266e1687893371135f9b70bb85709e080225861a8",
+      "raw_response_sha256": "329c9238781b6797f45d29fc3139000acba279ab897a8e860293a5130926e439",
+      "fixture_id": "a550ab817bcc4897"
+    }
+  ]
+}

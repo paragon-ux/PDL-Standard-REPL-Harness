@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionOutcome",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "body"],
+      "properties": {
+        "kind": {"const": "RESULT"},
+        "body": {"type": "string", "minLength": 1}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "body", "expected_type", "description"],
+      "properties": {
+        "kind": {"const": "REQUEST_INPUT"},
+        "body": {"type": "string", "minLength": 1},
+        "expected_type": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "body"],
+      "properties": {
+        "kind": {"const": "BLOCKED_BY_HIGHER_PRIORITY"},
+        "body": {"type": "string", "minLength": 1}
+      }
+    }
+  ]
+}

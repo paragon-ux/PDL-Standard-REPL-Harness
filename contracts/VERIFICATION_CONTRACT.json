@@ -1,0 +1,375 @@
+{
+  "contract_version": "C0-R4-1.0",
+  "normative": false,
+  "authority": "verification_mapping_only",
+  "baseline_profile": {
+    "M": "gate",
+    "H": "gate",
+    "S": "observe"
+  },
+  "checks": [
+    {
+      "id": "V-AUTH-STRUCT-M",
+      "requirements": [
+        "AUTH-01",
+        "AUTH-02",
+        "AUTH-07"
+      ],
+      "class": "M",
+      "resolver": "contract_boundary_linter",
+      "operations": [
+        "PACKAGE"
+      ],
+      "aspect": "authority_structure"
+    },
+    {
+      "id": "V-AUTH-SEM-S",
+      "requirements": [
+        "AUTH-03",
+        "AUTH-04",
+        "AUTH-05",
+        "AUTH-06"
+      ],
+      "class": "S",
+      "resolver": "fresh_authority_conformance_evaluator",
+      "operations": [
+        "RUNTIME",
+        "EXECUTE"
+      ],
+      "aspect": "semantic_authority_boundary"
+    },
+    {
+      "id": "V-INSTALL-M",
+      "requirements": [
+        "INSTALL-01",
+        "INSTALL-02",
+        "INSTALL-03",
+        "INSTALL-04",
+        "INSTALL-05",
+        "INSTALL-06",
+        "INSTALL-07"
+      ],
+      "class": "M",
+      "resolver": "runtime_manifest_verifier",
+      "operations": [
+        "INSTALL"
+      ]
+    },
+    {
+      "id": "V-PROTO-ACT-S",
+      "requirements": [
+        "PROTO-01"
+      ],
+      "class": "S",
+      "resolver": "fresh_activation_conformance_evaluator",
+      "operations": [
+        "INTERPRET_ACTIVATION"
+      ]
+    },
+    {
+      "id": "V-PROTO-EXPLICIT-ACT-M",
+      "requirements": [
+        "PROTO-01"
+      ],
+      "class": "M",
+      "resolver": "host_explicit_invocation_observer_suite",
+      "operations": [
+        "HOST_EXPLICIT_INVOCATION"
+      ],
+      "aspect": "explicit_invocation_authority"
+    },
+    {
+      "id": "V-PROTO-ORDER-M",
+      "requirements": [
+        "PROTO-02",
+        "PROTO-03"
+      ],
+      "class": "M",
+      "resolver": "controller_transition_guard",
+      "operations": [
+        "PLAN_ENTRY",
+        "EXECUTE"
+      ],
+      "aspect": "mechanical_transition_gate"
+    },
+    {
+      "id": "V-PROTO-PREEXEC-S",
+      "requirements": [
+        "PROTO-03",
+        "PROTO-04"
+      ],
+      "class": "S",
+      "resolver": "fresh_preexecution_conformance_evaluator",
+      "operations": [
+        "PROMPT_REVIEW",
+        "PLAN_REVIEW"
+      ],
+      "aspect": "semantic_preexecution_behavior"
+    },
+    {
+      "id": "V-PROTO-LIFECYCLE-M",
+      "requirements": [
+        "PROTO-05",
+        "PROTO-06",
+        "PROTO-07"
+      ],
+      "class": "M",
+      "resolver": "controller_transition_guard",
+      "operations": [
+        "ALL_HOST_TRANSITIONS"
+      ]
+    },
+    {
+      "id": "V-PROMPT-S",
+      "requirements": [
+        "TASK-01",
+        "TASK-03",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "PROMPT-01",
+        "PROMPT-02",
+        "PROMPT-03",
+        "PROMPT-04",
+        "PROMPT-05"
+      ],
+      "class": "S",
+      "resolver": "fresh_prompt_conformance_evaluator",
+      "operations": [
+        "DRAFT_PROMPT",
+        "REVISE_PROMPT"
+      ]
+    },
+    {
+      "id": "V-PLAN-S",
+      "requirements": [
+        "TASK-02",
+        "PLAN-01",
+        "PLAN-02",
+        "PLAN-03",
+        "PLAN-04",
+        "PLAN-05",
+        "PLAN-06",
+        "PLAN-07",
+        "PLAN-08"
+      ],
+      "class": "S",
+      "resolver": "fresh_plan_conformance_evaluator",
+      "operations": [
+        "DRAFT_PLAN",
+        "REVISE_PLAN"
+      ]
+    },
+    {
+      "id": "V-PDL-S",
+      "requirements": [
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08"
+      ],
+      "class": "S",
+      "resolver": "fresh_pdl_conformance_evaluator",
+      "operations": [
+        "DRAFT_PROMPT",
+        "REVISE_PROMPT",
+        "DRAFT_PLAN",
+        "REVISE_PLAN"
+      ]
+    },
+    {
+      "id": "V-REVIEW-S",
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "REVIEW-01",
+        "REVIEW-02",
+        "REVIEW-03",
+        "REVIEW-04",
+        "REVIEW-05",
+        "REVIEW-06",
+        "REVIEW-07",
+        "REVIEW-08",
+        "REVIEW-09",
+        "REVIEW-10",
+        "REVIEW-11",
+        "REVIEW-12",
+        "REVIEW-13",
+        "REVIEW-14"
+      ],
+      "class": "S",
+      "resolver": "fresh_review_conformance_evaluator",
+      "operations": [
+        "INTERPRET_PROMPT_REVIEW",
+        "INTERPRET_PLAN_REVIEW",
+        "INTERPRET_EXECUTION_INPUT"
+      ]
+    },
+    {
+      "id": "V-HANDOFF-M",
+      "requirements": [
+        "HANDOFF-01",
+        "HANDOFF-02",
+        "HANDOFF-03",
+        "HANDOFF-04",
+        "HANDOFF-05",
+        "HANDOFF-06",
+        "HANDOFF-07",
+        "HANDOFF-08",
+        "HANDOFF-09"
+      ],
+      "class": "M",
+      "resolver": "controller_state_and_source_handoff_validator",
+      "operations": [
+        "ALL_HOST_TRANSITIONS"
+      ]
+    },
+    {
+      "id": "V-CONTEXT-M",
+      "requirements": [
+        "CONTEXT-01",
+        "CONTEXT-02",
+        "CONTEXT-03",
+        "CONTEXT-04",
+        "CONTEXT-05",
+        "CONTEXT-06"
+      ],
+      "class": "M",
+      "resolver": "context_projection_auditor",
+      "operations": [
+        "ALL_MODEL_OPERATIONS"
+      ]
+    },
+    {
+      "id": "V-EXEC-S",
+      "requirements": [
+        "EXEC-01",
+        "EXEC-02",
+        "EXEC-03"
+      ],
+      "class": "S",
+      "resolver": "fresh_execution_conformance_evaluator",
+      "operations": [
+        "EXECUTE",
+        "WAITING_INPUT"
+      ]
+    },
+    {
+      "id": "V-ARTIFACT-S",
+      "requirements": [
+        "ARTIFACT-01",
+        "ARTIFACT-02"
+      ],
+      "class": "S",
+      "resolver": "fresh_artifact_boundary_evaluator",
+      "operations": [
+        "DRAFT_PROMPT",
+        "REVISE_PROMPT",
+        "DRAFT_PLAN",
+        "REVISE_PLAN"
+      ]
+    },
+    {
+      "id": "V-CONFORM-M",
+      "requirements": [
+        "CONFORM-01",
+        "CONFORM-02",
+        "CONFORM-04",
+        "CONFORM-05",
+        "CONFORM-06"
+      ],
+      "class": "M",
+      "resolver": "verification_contract_auditor",
+      "operations": [
+        "PACKAGE",
+        "RUNTIME"
+      ]
+    },
+    {
+      "id": "V-H-PROMPT",
+      "requirements": [
+        "PROTO-02",
+        "HANDOFF-03",
+        "CONFORM-03"
+      ],
+      "class": "H",
+      "resolver": "user_prompt_confirmation",
+      "operations": [
+        "PROMPT_REVIEW"
+      ]
+    },
+    {
+      "id": "V-H-PLAN",
+      "requirements": [
+        "PROTO-02",
+        "HANDOFF-03",
+        "CONFORM-03"
+      ],
+      "class": "H",
+      "resolver": "user_plan_confirmation",
+      "operations": [
+        "PLAN_REVIEW"
+      ]
+    },
+    {
+      "id": "V-WIRE-M",
+      "requirements": [
+        "AUTH-05",
+        "AUTH-06",
+        "HANDOFF-01",
+        "HANDOFF-02",
+        "HANDOFF-03"
+      ],
+      "class": "M",
+      "resolver": "exact_conditional_schema_and_mechanical_id_auditor",
+      "operations": [
+        "INTERPRET_ACTIVATION",
+        "INTERPRET_PROMPT_REVIEW",
+        "INTERPRET_PLAN_REVIEW",
+        "INTERPRET_EXECUTION_INPUT",
+        "ALL_ARTIFACT_OPERATIONS"
+      ],
+      "aspect": "wire_identity_absence"
+    },
+    {
+      "id": "V-COMPILER-M",
+      "requirements": [
+        "AUTH-02",
+        "CONTEXT-01",
+        "CONTEXT-02",
+        "CONTEXT-03",
+        "CONTEXT-04",
+        "CONTEXT-05",
+        "CONTEXT-06"
+      ],
+      "class": "M",
+      "resolver": "projection_contract_suite",
+      "operations": [
+        "CONTEXT_COMPILER"
+      ],
+      "aspect": "projection_structure"
+    },
+    {
+      "id": "V-BOOTSTRAP-M",
+      "requirements": [
+        "AUTH-02",
+        "AUTH-06"
+      ],
+      "class": "M",
+      "resolver": "worker_bootstrap_auditor",
+      "operations": [
+        "WORKER_BOOTSTRAP"
+      ],
+      "aspect": "bootstrap_non_authority"
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "manifest_version": "C0-R4-1.0",
+  "package": "PDL-Standard-DS-Split-C0",
+  "normative_roots": [
+    "contracts/standards"
+  ],
+  "non_normative_contracts": [
+    "contracts/AUTHORITY_MAP.json",
+    "contracts/CALIBRATION.json",
+    "contracts/EXECUTION_CONTRACT.json",
+    "contracts/VERIFICATION_CONTRACT.json",
+    "contracts/IMPLEMENTATION_BOUNDARY.json"
+  ],
+  "requirement_index": {
+    "ARTIFACT-01": "contracts/standards/ARTIFACT_STANDARD.md",
+    "ARTIFACT-02": "contracts/standards/ARTIFACT_STANDARD.md",
+    "AUTH-01": "contracts/standards/AUTHORITY_STANDARD.md",
+    "AUTH-02": "contracts/standards/AUTHORITY_STANDARD.md",
+    "AUTH-03": "contracts/standards/AUTHORITY_STANDARD.md",
+    "AUTH-04": "contracts/standards/AUTHORITY_STANDARD.md",
+    "AUTH-05": "contracts/standards/AUTHORITY_STANDARD.md",
+    "AUTH-06": "contracts/standards/AUTHORITY_STANDARD.md",
+    "AUTH-07": "contracts/standards/AUTHORITY_STANDARD.md",
+    "CONFORM-01": "contracts/standards/CONFORMANCE_STANDARD.md",
+    "CONFORM-02": "contracts/standards/CONFORMANCE_STANDARD.md",
+    "CONFORM-03": "contracts/standards/CONFORMANCE_STANDARD.md",
+    "CONFORM-04": "contracts/standards/CONFORMANCE_STANDARD.md",
+    "CONFORM-05": "contracts/standards/CONFORMANCE_STANDARD.md",
+    "CONFORM-06": "contracts/standards/CONFORMANCE_STANDARD.md",
+    "CONTEXT-01": "contracts/standards/CONTEXT_STANDARD.md",
+    "CONTEXT-02": "contracts/standards/CONTEXT_STANDARD.md",
+    "CONTEXT-03": "contracts/standards/CONTEXT_STANDARD.md",
+    "CONTEXT-04": "contracts/standards/CONTEXT_STANDARD.md",
+    "CONTEXT-05": "contracts/standards/CONTEXT_STANDARD.md",
+    "CONTEXT-06": "contracts/standards/CONTEXT_STANDARD.md",
+    "EXEC-01": "contracts/standards/EXECUTION_STANDARD.md",
+    "EXEC-02": "contracts/standards/EXECUTION_STANDARD.md",
+    "EXEC-03": "contracts/standards/EXECUTION_STANDARD.md",
+    "HANDOFF-01": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-02": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-03": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-04": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-05": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-06": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-07": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-08": "contracts/standards/HANDOFF_STANDARD.md",
+    "HANDOFF-09": "contracts/standards/HANDOFF_STANDARD.md",
+    "INSTALL-01": "contracts/standards/INSTALLATION_STANDARD.md",
+    "INSTALL-02": "contracts/standards/INSTALLATION_STANDARD.md",
+    "INSTALL-03": "contracts/standards/INSTALLATION_STANDARD.md",
+    "INSTALL-04": "contracts/standards/INSTALLATION_STANDARD.md",
+    "INSTALL-05": "contracts/standards/INSTALLATION_STANDARD.md",
+    "INSTALL-06": "contracts/standards/INSTALLATION_STANDARD.md",
+    "INSTALL-07": "contracts/standards/INSTALLATION_STANDARD.md",
+    "PDL-01": "contracts/standards/PDL_STANDARD.md",
+    "PDL-02": "contracts/standards/PDL_STANDARD.md",
+    "PDL-03": "contracts/standards/PDL_STANDARD.md",
+    "PDL-04": "contracts/standards/PDL_STANDARD.md",
+    "PDL-05": "contracts/standards/PDL_STANDARD.md",
+    "PDL-06": "contracts/standards/PDL_STANDARD.md",
+    "PDL-07": "contracts/standards/PDL_STANDARD.md",
+    "PDL-08": "contracts/standards/PDL_STANDARD.md",
+    "PLAN-01": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-02": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-03": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-04": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-05": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-06": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-07": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-08": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PROMPT-01": "contracts/standards/PROMPT_STANDARD.md",
+    "PROMPT-02": "contracts/standards/PROMPT_STANDARD.md",
+    "PROMPT-03": "contracts/standards/PROMPT_STANDARD.md",
+    "PROMPT-04": "contracts/standards/PROMPT_STANDARD.md",
+    "PROMPT-05": "contracts/standards/PROMPT_STANDARD.md",
+    "PROTO-01": "contracts/standards/PROTOCOL_STANDARD.md",
+    "PROTO-02": "contracts/standards/PROTOCOL_STANDARD.md",
+    "PROTO-03": "contracts/standards/PROTOCOL_STANDARD.md",
+    "PROTO-04": "contracts/standards/PROTOCOL_STANDARD.md",
+    "PROTO-05": "contracts/standards/PROTOCOL_STANDARD.md",
+    "PROTO-06": "contracts/standards/PROTOCOL_STANDARD.md",
+    "PROTO-07": "contracts/standards/PROTOCOL_STANDARD.md",
+    "REVIEW-01": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-02": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-03": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-04": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-05": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-06": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-07": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-08": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-09": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-10": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-11": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-12": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-13": "contracts/standards/REVIEW_STANDARD.md",
+    "REVIEW-14": "contracts/standards/REVIEW_STANDARD.md",
+    "SEM-01": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+    "SEM-02": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+    "SEM-03": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+    "SEM-04": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+    "TASK-01": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
+    "TASK-02": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
+    "TASK-03": "contracts/standards/TASK_SEMANTICS_STANDARD.md"
+  },
+  "source_provenance": {
+    "compact_b3_repository": "paragon-ux/PDL-Standard-DS-Split-B3",
+    "compact_b3_commit": "b10dac6a935ea1f2f63a139b18f65d8221150dd6",
+    "trd_0001": "paragon-ux/PDL-Standard:docs/architecture/trd/0001-controller-gated-pseudocode-protocol.md",
+    "trd_0002": "paragon-ux/PDL-Standard:docs/architecture/trd/0002-contract-substrate-and-mechanical-verification.md",
+    "source_substrate_zip_sha256": "f73911166cdcedfaff3a6b663f30109d251cee9fccd9ffade3dfc5f1ae0625b3",
+    "icm": {
+      "title": "Interpretable Context Methodology: Folder Structure as Agentic Architecture",
+      "authors": [
+        "Jake Van Clief",
+        "David McDermott"
+      ],
+      "arxiv": "2603.16021v2",
+      "doi": "10.48550/arXiv.2603.16021",
+      "role": "methodological lineage for filesystem modular orchestration, layered context loading, stage contracts, and explicit artifact handoffs"
+    }
+  },
+  "standard_semantics_changed": false,
+  "files": [
+    {
+      "path": "contracts/AUTHORITY_MAP.json",
+      "sha256": "7d791c6ab68b5b3d25825b28e5d1527b634e48e65fcd02fc00f03c51d2173e18"
+    },
+    {
+      "path": "contracts/CALIBRATION.json",
+      "sha256": "942bee312a6c26dd41e38c1339e29823e51928cab78a4a4a1ea9f615fb1dbe42"
+    },
+    {
+      "path": "contracts/EXECUTION_CONTRACT.json",
+      "sha256": "156cc7b270866fb4c2343a826da8ea8ca044aefb447317b8a07ab13aa30cbf40"
+    },
+    {
+      "path": "contracts/IMPLEMENTATION_BOUNDARY.json",
+      "sha256": "18af2b85765cbd0f4cb69e8986b8dc7ab72f542f44d66a56e95a8473f46201c3"
+    },
+    {
+      "path": "contracts/VERIFICATION_CONTRACT.json",
+      "sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b"
+    },
+    {
+      "path": "contracts/standards/ARTIFACT_STANDARD.md",
+      "sha256": "c861fe08bef0ab7089a99ad8703c70ae7069db3e098a41ac0a55fc76f90d9816"
+    },
+    {
+      "path": "contracts/standards/AUTHORITY_STANDARD.md",
+      "sha256": "1c021f943d635e3cb0da6708f066eb814035e8226658a63eda5c048a9c8a7ec8"
+    },
+    {
+      "path": "contracts/standards/CONFORMANCE_STANDARD.md",
+      "sha256": "d5af9d2e6418fd2c225de61264ffd8b2725d18a585375641415777c5f25c481c"
+    },
+    {
+      "path": "contracts/standards/CONTEXT_STANDARD.md",
+      "sha256": "7cb7a7b33277422a174baec0bb63c5394c42f1f1f43b8914b3a3d2fbb0113859"
+    },
+    {
+      "path": "contracts/standards/EXECUTION_STANDARD.md",
+      "sha256": "c5145ad84d53de6674f25589df447a4c9c4ddcf4b17790e8d6c7d270fb10d8b2"
+    },
+    {
+      "path": "contracts/standards/HANDOFF_STANDARD.md",
+      "sha256": "d0c09687031b8e64c701bbf83718c49234dde504bd9c9b8bbd6f570c9733054a"
+    },
+    {
+      "path": "contracts/standards/INSTALLATION_STANDARD.md",
+      "sha256": "2d0751c11eae0edbd88cf3b0d848dcee74877feded84fe3f508338e24fd9de2d"
+    },
+    {
+      "path": "contracts/standards/PDL_STANDARD.md",
+      "sha256": "f896399f8bd07df65a8fa4e8767674f89cc75ad34eaadc4f751a545631458ce1"
+    },
+    {
+      "path": "contracts/standards/PROMPT_STANDARD.md",
+      "sha256": "928f36a248b78f4399020d0d9ffe33e33526607ffc551cb16fb5571d5564de44"
+    },
+    {
+      "path": "contracts/standards/PROTOCOL_STANDARD.md",
+      "sha256": "1bda17cb0ff6a2a007dbadee673cf73eea3247a3264e10dae29f54ce103c6c79"
+    },
+    {
+      "path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+      "sha256": "f928362c47081b4e66e2563a5b9d467f4dba962e67ee60586227efe0a2858fef"
+    },
+    {
+      "path": "contracts/standards/REVIEW_STANDARD.md",
+      "sha256": "d297a2301a2b6391c5ba5063cc691a4606a213cc9f423bc20003367d40931717"
+    },
+    {
+      "path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+      "sha256": "67136fa570136cff665020669905fa414860e5ed98ed11ec9e9737a03a5fc4f0"
+    },
+    {
+      "path": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
+      "sha256": "baeea45dc390bfe9d3e7ce6e34811f3a0113e33899358685c4381149b4021656"
+    }
+  ],
+  "standard_semantics_changed_from_finalized_source_substrate": false,
+  "pre_freeze_extraction_corrections": [
+    "TASK-03",
+    "HANDOFF-09",
+    "PLAN-08"
+  ],
+  "workspace_architecture": {
+    "template_root": "workspace-template",
+    "control_flow_owner": "controller/mechanical_controller.py",
+    "context_flow_owner": "runtime/workspace.py",
+    "stage_routing_owner": "contracts/EXECUTION_CONTRACT.json",
+    "normative_authority": "contracts/standards",
+    "standard_semantics_changed_by_round4": false
+  }
+}

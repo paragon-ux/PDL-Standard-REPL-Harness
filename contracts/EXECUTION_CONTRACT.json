@@ -1,0 +1,464 @@
+{
+  "contract_version": "C0-R4-1.0",
+  "normative": false,
+  "authority": "applicability_orchestration_only",
+  "context_policy": "positive_inclusion",
+  "semantic_handoff": "reference_source_messages_do_not_echo_content",
+  "operations": {
+    "INTERPRET_ACTIVATION": {
+      "requirements": [
+        "SEM-01",
+        "SEM-03",
+        "SEM-04",
+        "PROTO-01"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "RAW_USER_MESSAGE",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "EXPLICIT_PROTOCOL_INVOCATION",
+        "GLOBAL_PROTOCOL_PROSE",
+        "ARTIFACT_BODIES",
+        "CONTROLLER_STATE_DUMP",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "ACTIVATION_DECISION",
+      "output_fields": [
+        "route",
+        "response"
+      ],
+      "output_schema": "controller/schemas/activation_decision.schema.json",
+      "workspace_stage": "00_activation"
+    },
+    "DRAFT_PROMPT": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "TASK-03",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "PROTO-01",
+        "PROTO-02",
+        "PROTO-03",
+        "PROMPT-01",
+        "PROMPT-02",
+        "PROMPT-03",
+        "PROMPT-04",
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08",
+        "ARTIFACT-02"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "HOST_PROTOCOL_STATE",
+        "SUBSTANTIVE_REQUEST",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "EXPLICIT_INVOCATION_WRAPPER",
+        "GLOBAL_PROTOCOL_PROSE",
+        "PLAN_ARTIFACTS",
+        "REJECTED_ARTIFACTS",
+        "EXECUTION_OUTPUT",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "PROMPT_DRAFT_OUTCOME",
+      "output_fields": [
+        "kind",
+        "prompt_body",
+        "approach_handoff",
+        "blocking_basis",
+        "response"
+      ],
+      "output_schema": "controller/schemas/prompt_artifact.schema.json",
+      "artifact_kind": "PROMPT_PSEUDOCODE",
+      "workspace_stage": "10_prompt"
+    },
+    "INTERPRET_PROMPT_REVIEW": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "REVIEW-01",
+        "REVIEW-02",
+        "REVIEW-03",
+        "REVIEW-04",
+        "REVIEW-05",
+        "REVIEW-06",
+        "REVIEW-07",
+        "REVIEW-08",
+        "REVIEW-09",
+        "REVIEW-10",
+        "REVIEW-11",
+        "REVIEW-12",
+        "REVIEW-13",
+        "REVIEW-14"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "BOUND_REVIEW_SUBJECT_KIND",
+        "BOUND_REVIEW_SUBJECT_BODY",
+        "RAW_USER_REVIEW_MESSAGE",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "ARTIFACT_ID_GENERATION",
+        "GLOBAL_PROTOCOL_PROSE",
+        "UNRELATED_ARTIFACT_BODIES",
+        "REJECTED_ARTIFACTS",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "ARTIFACT_REVIEW_FACTS",
+      "output_fields": [
+        "kind",
+        "task_change_dimensions",
+        "approach_change_dimensions",
+        "progression_requested"
+      ],
+      "output_schema": "controller/schemas/artifact_review_facts.schema.json",
+      "workspace_stage": "20_prompt_review"
+    },
+    "INTERPRET_PLAN_REVIEW": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "REVIEW-01",
+        "REVIEW-02",
+        "REVIEW-03",
+        "REVIEW-04",
+        "REVIEW-05",
+        "REVIEW-06",
+        "REVIEW-07",
+        "REVIEW-08",
+        "REVIEW-09",
+        "REVIEW-10",
+        "REVIEW-11",
+        "REVIEW-12",
+        "REVIEW-13",
+        "REVIEW-14"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "BOUND_REVIEW_SUBJECT_KIND",
+        "BOUND_REVIEW_SUBJECT_BODY",
+        "RAW_USER_REVIEW_MESSAGE",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "ARTIFACT_ID_GENERATION",
+        "GLOBAL_PROTOCOL_PROSE",
+        "UNRELATED_ARTIFACT_BODIES",
+        "REJECTED_ARTIFACTS",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "ARTIFACT_REVIEW_FACTS",
+      "output_fields": [
+        "kind",
+        "task_change_dimensions",
+        "approach_change_dimensions",
+        "progression_requested"
+      ],
+      "output_schema": "controller/schemas/artifact_review_facts.schema.json",
+      "workspace_stage": "40_plan_review"
+    },
+    "INTERPRET_EXECUTION_INPUT": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "REVIEW-01",
+        "REVIEW-02",
+        "REVIEW-03",
+        "REVIEW-04",
+        "REVIEW-05",
+        "REVIEW-06",
+        "REVIEW-07",
+        "REVIEW-08",
+        "REVIEW-09",
+        "REVIEW-10",
+        "REVIEW-11",
+        "REVIEW-12",
+        "REVIEW-13",
+        "REVIEW-14"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "BOUND_REVIEW_SUBJECT_KIND",
+        "BOUND_REVIEW_SUBJECT_BODY",
+        "RAW_USER_REVIEW_MESSAGE",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "ARTIFACT_ID_GENERATION",
+        "GLOBAL_PROTOCOL_PROSE",
+        "UNRELATED_ARTIFACT_BODIES",
+        "REJECTED_ARTIFACTS",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "EXECUTION_INPUT_DECISION",
+      "output_fields": [
+        "kind",
+        "also_changes_approach"
+      ],
+      "output_schema": "controller/schemas/execution_input_decision.schema.json",
+      "workspace_stage": "50_execution"
+    },
+    "REVISE_PROMPT": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "PROMPT-01",
+        "PROMPT-02",
+        "PROMPT-03",
+        "PROMPT-05",
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08",
+        "ARTIFACT-01",
+        "ARTIFACT-02"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "CURRENT_PROMPT_BODY",
+        "TASK_CHANGE_SOURCE",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "CURRENT_PLAN_BODY",
+        "DISCARDED_PLAN_BODY",
+        "CARRIED_APPROACH_SOURCES",
+        "GLOBAL_PROTOCOL_PROSE",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "PROMPT_ARTIFACT_BODY",
+      "output_fields": [
+        "prompt_body"
+      ],
+      "output_schema": "controller/schemas/artifact_body.schema.json",
+      "artifact_kind": "PROMPT_PSEUDOCODE",
+      "workspace_stage": "10_prompt"
+    },
+    "DRAFT_PLAN": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "PROTO-02",
+        "PROTO-03",
+        "EXEC-01",
+        "PLAN-01",
+        "PLAN-02",
+        "PLAN-03",
+        "PLAN-04",
+        "PLAN-05",
+        "PLAN-06",
+        "PLAN-08",
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08",
+        "ARTIFACT-02"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "CONFIRMED_PROMPT_BODY",
+        "CARRIED_APPROACH_SOURCES",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "RAW_ORIGINAL_REQUEST_WHEN_PROMPT_SUFFICIENT",
+        "REJECTED_PROMPTS",
+        "REJECTED_PLANS",
+        "EXECUTION_OUTPUT",
+        "GLOBAL_PROTOCOL_PROSE",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "RESPONSE_PLAN_ARTIFACT_BODY",
+      "output_fields": [
+        "neutral_plan_body"
+      ],
+      "output_schema": "controller/schemas/plan_artifact.schema.json",
+      "artifact_kind": "RESPONSE_PLAN_PSEUDOCODE",
+      "workspace_stage": "30_plan"
+    },
+    "REVISE_PLAN": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "PROTO-02",
+        "PROTO-03",
+        "EXEC-01",
+        "PLAN-01",
+        "PLAN-02",
+        "PLAN-03",
+        "PLAN-04",
+        "PLAN-05",
+        "PLAN-06",
+        "PLAN-07",
+        "PLAN-08",
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08",
+        "ARTIFACT-01",
+        "ARTIFACT-02"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "CONFIRMED_PROMPT_BODY",
+        "CURRENT_PLAN_BODY",
+        "CARRIED_APPROACH_SOURCES",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "TASK_CHANGE_SOURCE",
+        "REJECTED_ARTIFACTS",
+        "GLOBAL_PROTOCOL_PROSE",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "RESPONSE_PLAN_ARTIFACT_BODY",
+      "output_fields": [
+        "neutral_plan_body"
+      ],
+      "output_schema": "controller/schemas/plan_artifact.schema.json",
+      "artifact_kind": "RESPONSE_PLAN_PSEUDOCODE",
+      "workspace_stage": "30_plan"
+    },
+    "EXECUTE": {
+      "requirements": [
+        "AUTH-03",
+        "AUTH-04",
+        "EXEC-01"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "CONFIRMED_PROMPT_BODY",
+        "CONFIRMED_PLAN_BODY",
+        "REQUIRED_TASK_INPUTS",
+        "SUPPLIED_EXECUTION_INPUT_SOURCE",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS",
+        "AVAILABLE_EXECUTION_TOOLS"
+      ],
+      "exclude": [
+        "REJECTED_ARTIFACTS",
+        "REVISION_CONVERSATION",
+        "CONFIRMATION_CONVERSATION",
+        "ARTIFACT_GENERATION_EXAMPLES",
+        "GLOBAL_PROTOCOL_PROSE",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "EXECUTION_OUTCOME",
+      "output_fields": [
+        "kind",
+        "body",
+        "expected_type",
+        "description"
+      ],
+      "output_schema": "controller/schemas/execution_outcome.schema.json",
+      "workspace_stage": "50_execution"
+    },
+    "ANSWER_PROTOCOL_DISCUSSION": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "PROTO-02",
+        "PROTO-04",
+        "REVIEW-01",
+        "REVIEW-02",
+        "REVIEW-03",
+        "REVIEW-04",
+        "REVIEW-05",
+        "REVIEW-06",
+        "REVIEW-07",
+        "REVIEW-08",
+        "REVIEW-09",
+        "REVIEW-10",
+        "REVIEW-11",
+        "REVIEW-12",
+        "REVIEW-13",
+        "REVIEW-14",
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "RAW_PROTOCOL_QUESTION",
+        "CURRENT_STAGE_CLASS",
+        "BOUND_REVIEW_SUBJECT_KIND",
+        "BOUND_REVIEW_SUBJECT_BODY",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "ARTIFACT_IDS",
+        "INSTANCE_IDS",
+        "REJECTED_ARTIFACTS",
+        "EXECUTION_OUTPUT",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "PROTOCOL_DISCUSSION_RESPONSE",
+      "output_fields": [
+        "body"
+      ],
+      "output_schema": "controller/schemas/protocol_discussion.schema.json",
+      "workspace_stage": "90_protocol_discussion"
+    }
+  }
+}

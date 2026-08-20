@@ -1,0 +1,32 @@
+{
+  "version": "C0-implementation-boundary-6-round4",
+  "normative": false,
+  "roles": {
+    "contracts/standards": "sole_normative_authority",
+    "contracts/EXECUTION_CONTRACT.json": "applicability_and_projection_only",
+    "contracts/VERIFICATION_CONTRACT.json": "verification_mapping_only",
+    "runtime/context_compiler.py": "selection_and_assembly_only",
+    "runtime/operation_bridge.py": "wire_shape_and_parsing_only",
+    "runtime/session_engine.py": "orchestration_and_explicit_invocation_observation_only",
+    "controller/mechanical_controller.py": "mechanical_state_only",
+    "confirm-with-pseudocode/SKILL.md": "bootstrap_only",
+    "runtime/worker-bootstrap.txt": "generic_worker_bootstrap_only",
+    "runtime/workspace.py": "icm_context_flow_and_filesystem_handoff_only",
+    "workspace-template": "non_normative_stage_routing_context_bindings_and_source_handoffs_only"
+  },
+  "runtime_files_forbidden_from_hardcoding_standard_requirement_ids": [
+    "controller/mechanical_controller.py",
+    "runtime/context_compiler.py",
+    "runtime/operation_bridge.py",
+    "runtime/session_engine.py",
+    "runtime/workspace.py",
+    "runtime/presentation.py",
+    "confirm-with-pseudocode/SKILL.md",
+    "runtime/worker-bootstrap.txt"
+  ],
+  "controller_forbidden_dependencies": [
+    "contracts/standards",
+    "StandardRegistry",
+    "APPLICABLE_STANDARD_CLAUSES"
+  ]
+}

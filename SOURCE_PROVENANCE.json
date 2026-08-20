@@ -1,0 +1,917 @@
+{
+  "schema": 1,
+  "product": "PDL-Standard-REPL-Harness",
+  "source_repositories": {
+    "PDL-Standard-R2S": {
+      "path": "C:\\Users\\USER\\Desktop\\Frameworks\\PDL-Standard-R2S",
+      "HEAD": "0503f98141a439679a4a59dba6c21524b78d762f"
+    },
+    "PDL-Standard-R2S-Lab": {
+      "path": "C:\\Users\\USER\\Desktop\\Frameworks\\PDL-Standard-R2S-Lab",
+      "HEAD": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7"
+    }
+  },
+  "extraction_notes": "Byte-identical copies preferred; adaptations limited to fixture relocation and standalone verification. No architecture docs, evidence trees, or existing workspaces copied.",
+  "files": [
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": ".gitattributes",
+      "extracted_path": ".gitattributes",
+      "source_sha256": "f2b55b4f91d5a48abe6ae8ebe5b7d3b011511bdb6a701c54b2444ddf78c7f85f",
+      "extracted_sha256": "f2b55b4f91d5a48abe6ae8ebe5b7d3b011511bdb6a701c54b2444ddf78c7f85f",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": ".gitignore",
+      "extracted_path": ".gitignore",
+      "source_sha256": "89842427669560a2a1b085c4afca51a67b05c5234a5ea56e2d9fcd4fd8dbf26d",
+      "extracted_sha256": "442e101c34e4b5f77dc71b6d51488ce31c0de54db0ba6c69f6175f31ed6ebdde",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "content differs from source"
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "confirm-with-pseudocode/agents/openai.yaml",
+      "extracted_path": "confirm-with-pseudocode/agents/openai.yaml",
+      "source_sha256": "0a288bf6a6d52d113b02ae2a48ea6cef9e30729e0b75356d43388641eed89442",
+      "extracted_sha256": "0a288bf6a6d52d113b02ae2a48ea6cef9e30729e0b75356d43388641eed89442",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "confirm-with-pseudocode/SKILL.md",
+      "extracted_path": "confirm-with-pseudocode/SKILL.md",
+      "source_sha256": "5211a6e7db5bfca289ae2469c680ad3ebef8516b3b1a546b1a8fc9b5b789ba57",
+      "extracted_sha256": "5211a6e7db5bfca289ae2469c680ad3ebef8516b3b1a546b1a8fc9b5b789ba57",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/AUTHORITY_MAP.json",
+      "extracted_path": "contracts/AUTHORITY_MAP.json",
+      "source_sha256": "7d791c6ab68b5b3d25825b28e5d1527b634e48e65fcd02fc00f03c51d2173e18",
+      "extracted_sha256": "7d791c6ab68b5b3d25825b28e5d1527b634e48e65fcd02fc00f03c51d2173e18",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/CALIBRATION.json",
+      "extracted_path": "contracts/CALIBRATION.json",
+      "source_sha256": "942bee312a6c26dd41e38c1339e29823e51928cab78a4a4a1ea9f615fb1dbe42",
+      "extracted_sha256": "942bee312a6c26dd41e38c1339e29823e51928cab78a4a4a1ea9f615fb1dbe42",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/CONTRACT_MANIFEST.json",
+      "extracted_path": "contracts/CONTRACT_MANIFEST.json",
+      "source_sha256": "95aacd25c78c726168eed174d3e4ee0cd03d231cc3351c3fae40aa207f7bd3c6",
+      "extracted_sha256": "95aacd25c78c726168eed174d3e4ee0cd03d231cc3351c3fae40aa207f7bd3c6",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/EXECUTION_CONTRACT.json",
+      "extracted_path": "contracts/EXECUTION_CONTRACT.json",
+      "source_sha256": "156cc7b270866fb4c2343a826da8ea8ca044aefb447317b8a07ab13aa30cbf40",
+      "extracted_sha256": "156cc7b270866fb4c2343a826da8ea8ca044aefb447317b8a07ab13aa30cbf40",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/IMPLEMENTATION_BOUNDARY.json",
+      "extracted_path": "contracts/IMPLEMENTATION_BOUNDARY.json",
+      "source_sha256": "18af2b85765cbd0f4cb69e8986b8dc7ab72f542f44d66a56e95a8473f46201c3",
+      "extracted_sha256": "18af2b85765cbd0f4cb69e8986b8dc7ab72f542f44d66a56e95a8473f46201c3",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/ARTIFACT_STANDARD.md",
+      "extracted_path": "contracts/standards/ARTIFACT_STANDARD.md",
+      "source_sha256": "c861fe08bef0ab7089a99ad8703c70ae7069db3e098a41ac0a55fc76f90d9816",
+      "extracted_sha256": "c861fe08bef0ab7089a99ad8703c70ae7069db3e098a41ac0a55fc76f90d9816",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/AUTHORITY_STANDARD.md",
+      "extracted_path": "contracts/standards/AUTHORITY_STANDARD.md",
+      "source_sha256": "1c021f943d635e3cb0da6708f066eb814035e8226658a63eda5c048a9c8a7ec8",
+      "extracted_sha256": "1c021f943d635e3cb0da6708f066eb814035e8226658a63eda5c048a9c8a7ec8",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/CONFORMANCE_STANDARD.md",
+      "extracted_path": "contracts/standards/CONFORMANCE_STANDARD.md",
+      "source_sha256": "d5af9d2e6418fd2c225de61264ffd8b2725d18a585375641415777c5f25c481c",
+      "extracted_sha256": "d5af9d2e6418fd2c225de61264ffd8b2725d18a585375641415777c5f25c481c",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/CONTEXT_STANDARD.md",
+      "extracted_path": "contracts/standards/CONTEXT_STANDARD.md",
+      "source_sha256": "7cb7a7b33277422a174baec0bb63c5394c42f1f1f43b8914b3a3d2fbb0113859",
+      "extracted_sha256": "7cb7a7b33277422a174baec0bb63c5394c42f1f1f43b8914b3a3d2fbb0113859",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/EXECUTION_STANDARD.md",
+      "extracted_path": "contracts/standards/EXECUTION_STANDARD.md",
+      "source_sha256": "c5145ad84d53de6674f25589df447a4c9c4ddcf4b17790e8d6c7d270fb10d8b2",
+      "extracted_sha256": "c5145ad84d53de6674f25589df447a4c9c4ddcf4b17790e8d6c7d270fb10d8b2",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/HANDOFF_STANDARD.md",
+      "extracted_path": "contracts/standards/HANDOFF_STANDARD.md",
+      "source_sha256": "d0c09687031b8e64c701bbf83718c49234dde504bd9c9b8bbd6f570c9733054a",
+      "extracted_sha256": "d0c09687031b8e64c701bbf83718c49234dde504bd9c9b8bbd6f570c9733054a",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/INSTALLATION_STANDARD.md",
+      "extracted_path": "contracts/standards/INSTALLATION_STANDARD.md",
+      "source_sha256": "2d0751c11eae0edbd88cf3b0d848dcee74877feded84fe3f508338e24fd9de2d",
+      "extracted_sha256": "2d0751c11eae0edbd88cf3b0d848dcee74877feded84fe3f508338e24fd9de2d",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/PDL_STANDARD.md",
+      "extracted_path": "contracts/standards/PDL_STANDARD.md",
+      "source_sha256": "f896399f8bd07df65a8fa4e8767674f89cc75ad34eaadc4f751a545631458ce1",
+      "extracted_sha256": "f896399f8bd07df65a8fa4e8767674f89cc75ad34eaadc4f751a545631458ce1",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/PROMPT_STANDARD.md",
+      "extracted_path": "contracts/standards/PROMPT_STANDARD.md",
+      "source_sha256": "928f36a248b78f4399020d0d9ffe33e33526607ffc551cb16fb5571d5564de44",
+      "extracted_sha256": "928f36a248b78f4399020d0d9ffe33e33526607ffc551cb16fb5571d5564de44",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/PROTOCOL_STANDARD.md",
+      "extracted_path": "contracts/standards/PROTOCOL_STANDARD.md",
+      "source_sha256": "1bda17cb0ff6a2a007dbadee673cf73eea3247a3264e10dae29f54ce103c6c79",
+      "extracted_sha256": "1bda17cb0ff6a2a007dbadee673cf73eea3247a3264e10dae29f54ce103c6c79",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+      "extracted_path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+      "source_sha256": "f928362c47081b4e66e2563a5b9d467f4dba962e67ee60586227efe0a2858fef",
+      "extracted_sha256": "f928362c47081b4e66e2563a5b9d467f4dba962e67ee60586227efe0a2858fef",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/REVIEW_STANDARD.md",
+      "extracted_path": "contracts/standards/REVIEW_STANDARD.md",
+      "source_sha256": "d297a2301a2b6391c5ba5063cc691a4606a213cc9f423bc20003367d40931717",
+      "extracted_sha256": "d297a2301a2b6391c5ba5063cc691a4606a213cc9f423bc20003367d40931717",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+      "extracted_path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+      "source_sha256": "67136fa570136cff665020669905fa414860e5ed98ed11ec9e9737a03a5fc4f0",
+      "extracted_sha256": "67136fa570136cff665020669905fa414860e5ed98ed11ec9e9737a03a5fc4f0",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
+      "extracted_path": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
+      "source_sha256": "baeea45dc390bfe9d3e7ce6e34811f3a0113e33899358685c4381149b4021656",
+      "extracted_sha256": "baeea45dc390bfe9d3e7ce6e34811f3a0113e33899358685c4381149b4021656",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "contracts/VERIFICATION_CONTRACT.json",
+      "extracted_path": "contracts/VERIFICATION_CONTRACT.json",
+      "source_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
+      "extracted_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/__init__.py",
+      "extracted_path": "controller/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extracted_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/mechanical_controller.py",
+      "extracted_path": "controller/mechanical_controller.py",
+      "source_sha256": "692897c68def26ade092230cfbea9f1ed735acdf888e9f1698ec0a57c44d6b3d",
+      "extracted_sha256": "692897c68def26ade092230cfbea9f1ed735acdf888e9f1698ec0a57c44d6b3d",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/activation_decision.schema.json",
+      "extracted_path": "controller/schemas/activation_decision.schema.json",
+      "source_sha256": "85058fbe97c0a70113ae2a9bc08b15cfbbed4d4858372b5e5094ed92d3a15c10",
+      "extracted_sha256": "85058fbe97c0a70113ae2a9bc08b15cfbbed4d4858372b5e5094ed92d3a15c10",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/artifact_body.schema.json",
+      "extracted_path": "controller/schemas/artifact_body.schema.json",
+      "source_sha256": "b85f6e2833d90215d18e1c768ff6bcb19502b384fa321ced0e707f060d8b75c3",
+      "extracted_sha256": "b85f6e2833d90215d18e1c768ff6bcb19502b384fa321ced0e707f060d8b75c3",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/artifact_review_facts.schema.json",
+      "extracted_path": "controller/schemas/artifact_review_facts.schema.json",
+      "source_sha256": "62b138e6685da763ca671551ec14a672d61a87dc9b1193dfbb4e65b72dab265c",
+      "extracted_sha256": "62b138e6685da763ca671551ec14a672d61a87dc9b1193dfbb4e65b72dab265c",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/execution_input_decision.schema.json",
+      "extracted_path": "controller/schemas/execution_input_decision.schema.json",
+      "source_sha256": "a67204eb79771d1b326106f0f91c44be85eba939807e5a7861a12dbf4cfd8e90",
+      "extracted_sha256": "a67204eb79771d1b326106f0f91c44be85eba939807e5a7861a12dbf4cfd8e90",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/execution_outcome.schema.json",
+      "extracted_path": "controller/schemas/execution_outcome.schema.json",
+      "source_sha256": "240cb15870954a5d73e2158498283bb632ef8f8e4f4001d5384196cb2a83014c",
+      "extracted_sha256": "240cb15870954a5d73e2158498283bb632ef8f8e4f4001d5384196cb2a83014c",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/plan_artifact.schema.json",
+      "extracted_path": "controller/schemas/plan_artifact.schema.json",
+      "source_sha256": "31c182639c4f668d620115e5f0afc6088f5a864304b4b326ba4d3e346668cf2a",
+      "extracted_sha256": "31c182639c4f668d620115e5f0afc6088f5a864304b4b326ba4d3e346668cf2a",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/prompt_artifact.schema.json",
+      "extracted_path": "controller/schemas/prompt_artifact.schema.json",
+      "source_sha256": "88e67315cada26233878be63874bd74c63fa79f5a28f0113c20ac891b2d43189",
+      "extracted_sha256": "88e67315cada26233878be63874bd74c63fa79f5a28f0113c20ac891b2d43189",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "controller/schemas/protocol_discussion.schema.json",
+      "extracted_path": "controller/schemas/protocol_discussion.schema.json",
+      "source_sha256": "5404567a49c72513eb744a68fcc5329bdf82a7eaf6bf3bede832c4fb6bf61af4",
+      "extracted_sha256": "5404567a49c72513eb744a68fcc5329bdf82a7eaf6bf3bede832c4fb6bf61af4",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "fixtures/r4-recorded-worker/FIXTURE_MANIFEST.json",
+      "extracted_path": "fixtures/r4-recorded-worker/FIXTURE_MANIFEST.json",
+      "source_sha256": "1b5ae0c11e91ff22bd93adffab0d325647a52fea688f89bac60cd0071ae937ca",
+      "extracted_sha256": "41798b1e6ef10b7ff76f8feefd44e87ae279e400c941013d28bddff4c777b518",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "regenerated from vendored recorded-cases.json (G06+A02)"
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "fixtures/r4-recorded-worker/recorded-cases.json",
+      "source_sha256": null,
+      "extracted_sha256": "09e070d1c53f247939ed3fae397ee0c5b46485f988140c5ac982353762002d69",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "host/__init__.py",
+      "extracted_path": "host/__init__.py",
+      "source_sha256": "1579a9cb4d0b0a12932d0614253a18d789f84fafda848dc35c533e0ba5429407",
+      "extracted_sha256": "1579a9cb4d0b0a12932d0614253a18d789f84fafda848dc35c533e0ba5429407",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "host/app.py",
+      "extracted_path": "host/app.py",
+      "source_sha256": "bcba372a65395ae7b80bbd38078937c2fc41e0526b0a41346708cd0a6fc49121",
+      "extracted_sha256": "bcba372a65395ae7b80bbd38078937c2fc41e0526b0a41346708cd0a6fc49121",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "host/repl.py",
+      "extracted_path": "host/repl.py",
+      "source_sha256": "9065990141ceae7b29b0b48eb9def086812d68faa61261c7e26ae54dc054d899",
+      "extracted_sha256": "9065990141ceae7b29b0b48eb9def086812d68faa61261c7e26ae54dc054d899",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "LICENSE",
+      "extracted_path": "LICENSE",
+      "source_sha256": "770df0195cea22c2b37d6895d8cf32e4d42846e3cdb9e84ffa7c5a613f8c0277",
+      "extracted_sha256": "770df0195cea22c2b37d6895d8cf32e4d42846e3cdb9e84ffa7c5a613f8c0277",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "NOTICE.md",
+      "extracted_path": "NOTICE.md",
+      "source_sha256": "9088b017a2f27414b6a65d2b2ea66dee06575f2f172436caa04117fa5d2300d0",
+      "extracted_sha256": "9088b017a2f27414b6a65d2b2ea66dee06575f2f172436caa04117fa5d2300d0",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/__init__.py",
+      "extracted_path": "observation/__init__.py",
+      "source_sha256": "97021f430c7262ffd8cd630b53ac8feba4c9745360986eb4970d9f03cc6dad70",
+      "extracted_sha256": "97021f430c7262ffd8cd630b53ac8feba4c9745360986eb4970d9f03cc6dad70",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/cli.py",
+      "extracted_path": "observation/cli.py",
+      "source_sha256": "08d60dc56283732a3f9ba89e2291a28c21fe3f3b987a618ebdb49595e2787a6d",
+      "extracted_sha256": "08d60dc56283732a3f9ba89e2291a28c21fe3f3b987a618ebdb49595e2787a6d",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/observed_session.py",
+      "extracted_path": "observation/observed_session.py",
+      "source_sha256": "2585fc9b9969247fdde79749d59f24133f678a041009d28a40a8ad85b88ad808",
+      "extracted_sha256": "2585fc9b9969247fdde79749d59f24133f678a041009d28a40a8ad85b88ad808",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/parsers.py",
+      "extracted_path": "observation/parsers.py",
+      "source_sha256": "b6a835ec891d8e77ad0f85ec20a8f18786e75f1187c40b8af09b4a689243ac40",
+      "extracted_sha256": "b6a835ec891d8e77ad0f85ec20a8f18786e75f1187c40b8af09b4a689243ac40",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/records.py",
+      "extracted_path": "observation/records.py",
+      "source_sha256": "29125cceb41cd0c7ce293627a8ffd2059134b5faf9545db8bb09a6357b17676b",
+      "extracted_sha256": "29125cceb41cd0c7ce293627a8ffd2059134b5faf9545db8bb09a6357b17676b",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/session.py",
+      "extracted_path": "observation/session.py",
+      "source_sha256": "f067b9e628f2cb155c7330195d4a548eccf69fd50874c41549fc254a1346a35d",
+      "extracted_sha256": "f067b9e628f2cb155c7330195d4a548eccf69fd50874c41549fc254a1346a35d",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/sink.py",
+      "extracted_path": "observation/sink.py",
+      "source_sha256": "07aa5655cf285d27e74432cd80c3fbf3744a00fd0c8b05f7e93734e8baff45a6",
+      "extracted_sha256": "07aa5655cf285d27e74432cd80c3fbf3744a00fd0c8b05f7e93734e8baff45a6",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "observation/sinks.py",
+      "extracted_path": "observation/sinks.py",
+      "source_sha256": "60f4171d5aab7ed2071b477bb55150c6c7387805eaea046d76ea243203fba6d0",
+      "extracted_sha256": "60f4171d5aab7ed2071b477bb55150c6c7387805eaea046d76ea243203fba6d0",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/__init__.py",
+      "extracted_path": "providers/__init__.py",
+      "source_sha256": "516f76f6a6988dedcd470fe9d3d95ba4849118b4ab0539c10d5619dba94b7fe8",
+      "extracted_sha256": "516f76f6a6988dedcd470fe9d3d95ba4849118b4ab0539c10d5619dba94b7fe8",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/base.py",
+      "extracted_path": "providers/base.py",
+      "source_sha256": "95587c258929eb468af8ba3b113a7fe0534956b004565bdf326109414ed70488",
+      "extracted_sha256": "95587c258929eb468af8ba3b113a7fe0534956b004565bdf326109414ed70488",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/codex_worker.py",
+      "extracted_path": "providers/codex_worker.py",
+      "source_sha256": "c4e3b9f31f4b44e4af944933b681e4eb411bdb63467939baaf28c255abebc921",
+      "extracted_sha256": "c4e3b9f31f4b44e4af944933b681e4eb411bdb63467939baaf28c255abebc921",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/fixtures.py",
+      "extracted_path": "providers/fixtures.py",
+      "source_sha256": "d0e786b14d49d23a01380e22f13dca2ffc103f7120a5f8bd03bf01aff1e5a2af",
+      "extracted_sha256": "91eb5ce03329d828a8e7b05cdb165beb54525f8e1065b1647d626b6d2584381f",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "appended build_recorded_fixture_from_vendored() for standalone vendored fixture"
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/live_stub.py",
+      "extracted_path": "providers/live_stub.py",
+      "source_sha256": "b1f8d44ae165531a79a6a97a0c1a50afd15d5650c33711521b3941e2fd322bf9",
+      "extracted_sha256": "b1f8d44ae165531a79a6a97a0c1a50afd15d5650c33711521b3941e2fd322bf9",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/README.md",
+      "extracted_path": "providers/README.md",
+      "source_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
+      "extracted_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "providers/recorded.py",
+      "extracted_path": "providers/recorded.py",
+      "source_sha256": "b3e601d7ec22c7b0cb6773d27b319e4116dca51c36189dfb2db798dca79e8267",
+      "extracted_sha256": "b3e601d7ec22c7b0cb6773d27b319e4116dca51c36189dfb2db798dca79e8267",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "README.md",
+      "extracted_path": "README.md",
+      "source_sha256": "08e7029df527990a0710c887fb99e423e89d2f3473b980121964abf456776441",
+      "extracted_sha256": "ea89cb29a1c5cdf16596bc93208bf1dcf6c8596cc224985ba3d3dc0ed5849c26",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "content differs from source"
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "requirements-mlflow.txt",
+      "extracted_path": "requirements-mlflow.txt",
+      "source_sha256": "a72c62212a17bad89dd6606bbaba1d97450ceb170fae80480c85ffd825e67f09",
+      "extracted_sha256": "a72c62212a17bad89dd6606bbaba1d97450ceb170fae80480c85ffd825e67f09",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/__init__.py",
+      "extracted_path": "runtime/__init__.py",
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "extracted_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/context_compiler.py",
+      "extracted_path": "runtime/context_compiler.py",
+      "source_sha256": "a4257de44d3d8adddabf37041e928360f55306a753bb998ec85ab1148252da84",
+      "extracted_sha256": "a4257de44d3d8adddabf37041e928360f55306a753bb998ec85ab1148252da84",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/operation_bridge.py",
+      "extracted_path": "runtime/operation_bridge.py",
+      "source_sha256": "7c274f6dc9a5286a2f156d76d4256dd90b73cf7856a978faf33157685177bf3a",
+      "extracted_sha256": "7c274f6dc9a5286a2f156d76d4256dd90b73cf7856a978faf33157685177bf3a",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/presentation.py",
+      "extracted_path": "runtime/presentation.py",
+      "source_sha256": "be26575d764fdfe748105cd7c9122591cc6d28153f3010feea92c7861da415da",
+      "extracted_sha256": "be26575d764fdfe748105cd7c9122591cc6d28153f3010feea92c7861da415da",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/semantic_observer.py",
+      "extracted_path": "runtime/semantic_observer.py",
+      "source_sha256": "763c3ed430079a3aac953c4d742900759d540142924153781d5422e77c4a5be0",
+      "extracted_sha256": "763c3ed430079a3aac953c4d742900759d540142924153781d5422e77c4a5be0",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/session_engine.py",
+      "extracted_path": "runtime/session_engine.py",
+      "source_sha256": "c12a84c6c1c09a827402afcf940fa04f3c510a2b8971fa2a40a428987115edcd",
+      "extracted_sha256": "c12a84c6c1c09a827402afcf940fa04f3c510a2b8971fa2a40a428987115edcd",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/standard_registry.py",
+      "extracted_path": "runtime/standard_registry.py",
+      "source_sha256": "f1056ac9470abe9af31c91812da5a9727a8ec7ac6e4b3c317599df66b72ba1e1",
+      "extracted_sha256": "f1056ac9470abe9af31c91812da5a9727a8ec7ac6e4b3c317599df66b72ba1e1",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/worker-bootstrap.txt",
+      "extracted_path": "runtime/worker-bootstrap.txt",
+      "source_sha256": "2fb6fddf711126c1edde0ca0256d34864547730b1fb48222f7396191e4f2dcad",
+      "extracted_sha256": "2fb6fddf711126c1edde0ca0256d34864547730b1fb48222f7396191e4f2dcad",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "runtime/workspace.py",
+      "extracted_path": "runtime/workspace.py",
+      "source_sha256": "d07a5fd673f225bd6e798ff51ae95d63d6c39e11298ce9776a952ce6cad745de",
+      "extracted_sha256": "d07a5fd673f225bd6e798ff51ae95d63d6c39e11298ce9776a952ce6cad745de",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "scripts/verify_repl_baseline.py",
+      "source_sha256": null,
+      "extracted_sha256": "9424c08ae45be2177929d1021ce2c80b2640de35e8f91ccb357af7ccdc5e550a",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "SOURCE_PROVENANCE.json",
+      "source_sha256": null,
+      "extracted_sha256": "54427c27245f5d2dfce862ad58b7c350b94f85ebdd3e29ed7750e363d340e12e",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+    },
+    {
+      "source_repository": null,
+      "source_head": null,
+      "original_source_path": null,
+      "extracted_path": "tests/test_harness_baseline.py",
+      "source_sha256": null,
+      "extracted_sha256": "97b8ebce3009994f9af43ce8b8883183c00805508cf29447216a18d229d6eafd",
+      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
+      "reason_for_adaptation": "created for standalone harness (README, .gitignore, verify script, tests, vendored fixture, provenance)"
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "tracking/__init__.py",
+      "extracted_path": "tracking/__init__.py",
+      "source_sha256": "5493df0b50c34a2dc914be28423228ab3534d2773d7ac8efdb936324b82db1ad",
+      "extracted_sha256": "5493df0b50c34a2dc914be28423228ab3534d2773d7ac8efdb936324b82db1ad",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S-Lab",
+      "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
+      "original_source_path": "tracking/mlflow_sink.py",
+      "extracted_path": "tracking/mlflow_sink.py",
+      "source_sha256": "465d94681fd31552dcfb2536fc1d56b7749d21cf1e567351acb3934596fda4d8",
+      "extracted_sha256": "465d94681fd31552dcfb2536fc1d56b7749d21cf1e567351acb3934596fda4d8",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/_config/CONTEXT.md",
+      "extracted_path": "workspace-template/_config/CONTEXT.md",
+      "source_sha256": "085ca7d243b0b155f99f7a59a7042b6bd4bc24b02299413cf2af07dd757dce0f",
+      "extracted_sha256": "085ca7d243b0b155f99f7a59a7042b6bd4bc24b02299413cf2af07dd757dce0f",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/_config/icm-reference.json",
+      "extracted_path": "workspace-template/_config/icm-reference.json",
+      "source_sha256": "1d1ff4592b3fd2b585aa3404a23f885c6bffb7c2ea7b6f305c99d65228f5db5c",
+      "extracted_sha256": "1d1ff4592b3fd2b585aa3404a23f885c6bffb7c2ea7b6f305c99d65228f5db5c",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/CONTEXT.md",
+      "extracted_path": "workspace-template/CONTEXT.md",
+      "source_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
+      "extracted_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/shared/CONTEXT.md",
+      "extracted_path": "workspace-template/shared/CONTEXT.md",
+      "source_sha256": "2b69d7ba172d9bbc2691f84606556724b740b68d1605ed9315b2e7bada1db3d9",
+      "extracted_sha256": "2b69d7ba172d9bbc2691f84606556724b740b68d1605ed9315b2e7bada1db3d9",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/00_activation/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/00_activation/CONTEXT.md",
+      "source_sha256": "648597d2e2275eae3cdf65c68ad35b795249ab0eec1d03f0df61802a99f6837e",
+      "extracted_sha256": "648597d2e2275eae3cdf65c68ad35b795249ab0eec1d03f0df61802a99f6837e",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/00_activation/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/00_activation/references/operation-bindings.json",
+      "source_sha256": "b54ba78403aca77c599e5fafee0106d96923e7fbaee26fbf93833c02963976cc",
+      "extracted_sha256": "b54ba78403aca77c599e5fafee0106d96923e7fbaee26fbf93833c02963976cc",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/10_prompt/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/10_prompt/CONTEXT.md",
+      "source_sha256": "45a9cfb56c4e270787e46a5155fff8626c22e8a3fd2af610daff99686a7720fa",
+      "extracted_sha256": "45a9cfb56c4e270787e46a5155fff8626c22e8a3fd2af610daff99686a7720fa",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/10_prompt/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/10_prompt/references/operation-bindings.json",
+      "source_sha256": "ab171d5e6343856831e539cc3aa60c27f1a1d316ecb72c9a1d08cfd2a887eb2c",
+      "extracted_sha256": "ab171d5e6343856831e539cc3aa60c27f1a1d316ecb72c9a1d08cfd2a887eb2c",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/20_prompt_review/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/20_prompt_review/CONTEXT.md",
+      "source_sha256": "38c38f0280cdd233188f592e676648c0fa6ed142a9757c12f2e311d07bd20f5c",
+      "extracted_sha256": "38c38f0280cdd233188f592e676648c0fa6ed142a9757c12f2e311d07bd20f5c",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/20_prompt_review/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/20_prompt_review/references/operation-bindings.json",
+      "source_sha256": "8dd290a49ee1472b00dc161618eafce3fe6e02747e314175ac3e08f16bfb9776",
+      "extracted_sha256": "8dd290a49ee1472b00dc161618eafce3fe6e02747e314175ac3e08f16bfb9776",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/30_plan/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/30_plan/CONTEXT.md",
+      "source_sha256": "8ce634ad40cb5c638c50d27478a6c4a954c6915655f0cd53cc1237d84defc37b",
+      "extracted_sha256": "8ce634ad40cb5c638c50d27478a6c4a954c6915655f0cd53cc1237d84defc37b",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/30_plan/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/30_plan/references/operation-bindings.json",
+      "source_sha256": "aab456769f15a5367a6e093105161b6a0647b7712f460ee60fac06d308a2f65a",
+      "extracted_sha256": "aab456769f15a5367a6e093105161b6a0647b7712f460ee60fac06d308a2f65a",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/40_plan_review/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/40_plan_review/CONTEXT.md",
+      "source_sha256": "b7c1bed681787d8753d3d8d1acadbac1a1aa6a48e70da6bb4a92016d155c0ca7",
+      "extracted_sha256": "b7c1bed681787d8753d3d8d1acadbac1a1aa6a48e70da6bb4a92016d155c0ca7",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/40_plan_review/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/40_plan_review/references/operation-bindings.json",
+      "source_sha256": "f8c49c10ffe163478659b130f18f19869435e3c579fb5e246cca891dc07fd000",
+      "extracted_sha256": "f8c49c10ffe163478659b130f18f19869435e3c579fb5e246cca891dc07fd000",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/50_execution/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/50_execution/CONTEXT.md",
+      "source_sha256": "77fe92df039fc930b73dd6674423ee416a2fd46c2c5eaa60779838768f6adc04",
+      "extracted_sha256": "77fe92df039fc930b73dd6674423ee416a2fd46c2c5eaa60779838768f6adc04",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/50_execution/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/50_execution/references/operation-bindings.json",
+      "source_sha256": "eeeb8accc87bb7b65bbd2cb58d2566e925912068117c641225aa356d7b43dc73",
+      "extracted_sha256": "eeeb8accc87bb7b65bbd2cb58d2566e925912068117c641225aa356d7b43dc73",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/90_protocol_discussion/CONTEXT.md",
+      "extracted_path": "workspace-template/stages/90_protocol_discussion/CONTEXT.md",
+      "source_sha256": "f985e443284e0b31649b923a43ffdb63070256f99d813d433fa1ac90742007df",
+      "extracted_sha256": "f985e443284e0b31649b923a43ffdb63070256f99d813d433fa1ac90742007df",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    },
+    {
+      "source_repository": "PDL-Standard-R2S",
+      "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
+      "original_source_path": "workspace-template/stages/90_protocol_discussion/references/operation-bindings.json",
+      "extracted_path": "workspace-template/stages/90_protocol_discussion/references/operation-bindings.json",
+      "source_sha256": "e9351953acefad5555c373a0bac7fb6bc6ce7431764b62203909bcd4b109a870",
+      "extracted_sha256": "e9351953acefad5555c373a0bac7fb6bc6ce7431764b62203909bcd4b109a870",
+      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
+      "reason_for_adaptation": ""
+    }
+  ]
+}

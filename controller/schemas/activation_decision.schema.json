@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImplicitActivationDecision",
+  "description": "Used only when the host did not observe explicit protocol invocation.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route"],
+      "properties": {"route": {"const": "APPLY_PROTOCOL"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route"],
+      "properties": {"route": {"const": "PROTOCOL_DISCUSSION"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route"],
+      "properties": {"route": {"const": "BYPASS"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route", "response"],
+      "properties": {
+        "route": {"const": "BLOCKED_BY_HIGHER_PRIORITY"},
+        "response": {"type": "string", "minLength": 1}
+      }
+    }
+  ]
+}

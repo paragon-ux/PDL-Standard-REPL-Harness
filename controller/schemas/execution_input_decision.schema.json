@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionInputDecision",
+  "description": "Classify a message received only while execution is waiting for a requested input. The host retains the complete source message, so never copy its content.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "SUPPLY_EXECUTION_INPUT"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "also_changes_approach"],
+      "properties": {
+        "kind": {"const": "REVISE_TASK"},
+        "also_changes_approach": {
+          "type": "boolean",
+          "description": "Whether the same task-changing message also changes the response approach."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "NEW_TASK"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "CANCEL"}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {"kind": {"const": "UNRESOLVED"}}
+    }
+  ]
+}

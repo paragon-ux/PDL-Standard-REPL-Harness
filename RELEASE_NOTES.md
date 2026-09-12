@@ -53,6 +53,12 @@ findings: `docs/EFFICIENCY_REPORT.md`.
 
 ## Other changes
 
+- `docs/FRAMING.md`: the alignment frame — fidelity (positive alignment) and
+  prompt-injection defense (negative alignment) as one protocol, with the
+  SEM-05 fidelity case and the boundary-test results (control 2/5 latent-probe
+  violations vs protocol 0/5) as headline evidence.
+- `docs/EFFICIENCY_REPORT.md`: official efficiency measurements and NO-GO
+  verdicts.
 - `scripts/log_live_session.py`: `--worker-profile` flag; the REPL passes the
   active worker identity so MLflow params are correctly labeled.
 - `scripts/control_api_call.py`: plain-call control harness used for

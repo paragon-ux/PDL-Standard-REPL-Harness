@@ -3,6 +3,15 @@
 Clean standalone R6S / Phase-5 PDLt REPL harness, extracted from the qualified
 source repositories. This repository is the published R6S REPL baseline; it is
 not the Phase 6-EV implementation and not a Host Tool overlay.
+
+**Why this exists:** read `docs/FRAMING.md` — the alignment frame. The harness
+enforces task fidelity (the requester's meaning, confirmed and enforced) and
+prompt-injection defense (quoted and pasted content stays data, never
+instruction) with one mechanism: interpretation before execution, standards
+compiled into every model call, and a user-owned confirmation boundary.
+Live evidence includes a boundary test where the identical model on a plain
+API call leaked 2/5 injection probes while the protocol arm held 0/5.
+
 ## Baseline release
 
 Commit `r6s-repl-baseline-v1` is the published clean R6S / Phase-5 PDLt REPL

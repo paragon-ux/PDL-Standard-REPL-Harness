@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 import re
 import tempfile
+import hashlib
 
 from controller.mechanical_controller import (
     AtomicJsonStore,
@@ -85,12 +86,13 @@ class SessionEngine:
         higher_priority_constraints: Any = None,
         available_execution_tools: Any = None,
         workspace_root: str | Path | None = None,
+        render_compact: bool = False,
     ):
         self.repo_root = Path(repo_root)
         self.model_call = model_call
         self.higher_priority_constraints = higher_priority_constraints
         self.available_execution_tools = available_execution_tools
-        self.bridge = OperationBridge(self.repo_root)
+        self.bridge = OperationBridge(self.repo_root, render_compact=render_compact)
         self.controller: Optional[MechanicalController] = None
         self.workspace: Optional[WorkspaceRun] = None
         if workspace_root is None:
@@ -108,6 +110,7 @@ class SessionEngine:
         *,
         higher_priority_constraints: Any = None,
         available_execution_tools: Any = None,
+        render_compact: bool = False,
     ) -> "SessionEngine":
         workspace_path = Path(workspace_path)
         engine = cls(
@@ -116,6 +119,7 @@ class SessionEngine:
             higher_priority_constraints=higher_priority_constraints,
             available_execution_tools=available_execution_tools,
             workspace_root=workspace_path.parent,
+            render_compact=render_compact,
         )
         workspace = WorkspaceRun.open(repo_root, workspace_path)
         if workspace.protocol_instance_id is None or not workspace.controller_state_path.is_file():
@@ -172,12 +176,15 @@ class SessionEngine:
         assert self.controller is not None and self.workspace is not None
         plan = self.controller.state.current_plan
         assert plan is not None
+        prompt = self.controller.state.current_prompt
+        assert prompt is not None
         self.workspace.publish_artifact(
             "plan",
             plan.artifact_id,
             plan.body,
             confirmed=plan.confirmed,
             source_prompt_id=plan.source_prompt_id,
+            confirmed_prompt_hash=hashlib.sha256(prompt.body.encode("utf-8")).hexdigest(),
         )
         self.workspace.publish_approach_sources(list(self.controller.state.approach_sources))
 
@@ -381,8 +388,19 @@ class SessionEngine:
             self.controller.cancel()
             self.workspace.publish_execution_outcome(outcome.kind, outcome.body)
             return EngineResponse(outcome.body, traces, closed=True)
-        self.controller.complete_success()
-        self.workspace.publish_execution_outcome(outcome.kind, outcome.body)
+        result_body_hash = hashlib.sha256(outcome.body.encode("utf-8")).hexdigest()
+        self.controller.complete_success(result_body_hash)
+        self.workspace.publish_execution_outcome(
+            outcome.kind,
+            outcome.body,
+            {
+                "source_prompt_id": prompt.artifact_id,
+                "source_plan_id": plan.artifact_id,
+                "result_body_hash": result_body_hash,
+                "confirmed_prompt_hash": hashlib.sha256(prompt.body.encode("utf-8")).hexdigest(),
+                "confirmed_plan_hash": hashlib.sha256(plan.body.encode("utf-8")).hexdigest(),
+            },
+        )
         return EngineResponse(outcome.body, traces, closed=True)
 
     def _answer_protocol(self, user_message: str, traces: list[CallTrace]) -> EngineResponse:

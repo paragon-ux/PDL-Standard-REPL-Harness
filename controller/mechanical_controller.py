@@ -8,9 +8,10 @@ import json
 import os
 import tempfile
 import uuid
+import hashlib
 
 
-SCHEMA_VERSION = "C0-HOST-3"
+SCHEMA_VERSION = "C0-HOST-4"
 
 
 class ControllerError(RuntimeError):
@@ -63,6 +64,7 @@ class Artifact:
     body: str
     confirmed: bool = False
     source_prompt_id: Optional[str] = None
+    source_plan_id: Optional[str] = None
 
 
 @dataclass
@@ -113,8 +115,10 @@ class ProtocolState:
     prompt_highwater: int = 0
     plan_highwater: int = 0
     action_highwater: int = 0
+    result_highwater: int = 0
     current_prompt: Optional[Artifact] = None
     current_plan: Optional[Artifact] = None
+    current_result: Optional[Artifact] = None
     pending_change: Optional[PendingChange] = None
     approach_sources: list[str] = field(default_factory=list)
     pending_input: Optional[PendingInput] = None
@@ -144,8 +148,10 @@ class ProtocolState:
             prompt_highwater=int(value.get("prompt_highwater", 0)),
             plan_highwater=int(value.get("plan_highwater", 0)),
             action_highwater=int(value.get("action_highwater", 0)),
+            result_highwater=int(value.get("result_highwater", 0)),
             current_prompt=Artifact(**value["current_prompt"]) if value.get("current_prompt") else None,
             current_plan=Artifact(**value["current_plan"]) if value.get("current_plan") else None,
+            current_result=Artifact(**value["current_result"]) if value.get("current_result") else None,
             pending_change=PendingChange(**value["pending_change"]) if value.get("pending_change") else None,
             approach_sources=list(value.get("approach_sources", [])),
             pending_input=PendingInput(**value["pending_input"]) if value.get("pending_input") else None,
@@ -183,6 +189,17 @@ class ProtocolState:
         if self.stage in {Stage.EXECUTION_READY, Stage.WAITING_INPUT, Stage.OUTCOME_UNCERTAIN}:
             if not self.current_plan or not self.current_plan.confirmed:
                 raise ControllerError("plan_gate")
+        if self.current_result:
+            if not self.current_result.artifact_id.startswith(f"{self.instance_id}-X"):
+                raise ControllerError("result_instance")
+            if not self.current_prompt or not self.current_plan:
+                raise ControllerError("result_without_ancestors")
+            if self.current_result.source_prompt_id != self.current_prompt.artifact_id:
+                raise ControllerError("result_source_prompt")
+            if self.current_result.source_plan_id != self.current_plan.artifact_id:
+                raise ControllerError("result_source_plan")
+        if self.stage == Stage.CLOSED_SUCCESS and not self.current_result:
+            raise ControllerError("closed_without_result")
         if self.stage == Stage.WAITING_INPUT and not self.pending_input:
             raise ControllerError("waiting_descriptor")
         if self.stage != Stage.WAITING_INPUT and self.pending_input:
@@ -232,6 +249,10 @@ class MechanicalController:
     def _next_plan_id(self) -> str:
         self.state.plan_highwater += 1
         return f"{self.state.instance_id}-R{self.state.plan_highwater}"
+
+    def _next_result_id(self) -> str:
+        self.state.result_highwater += 1
+        return f"{self.state.instance_id}-X{self.state.result_highwater}"
 
     def review_subject(self) -> tuple[str, str]:
         if self.state.stage == Stage.PROMPT_REVIEW and self.state.current_prompt:
@@ -468,9 +489,17 @@ class MechanicalController:
         self._commit()
         return Transition(NextAction.EXECUTE, {"previous_action_committed": action_committed, "action_id": action_id})
 
-    def complete_success(self) -> None:
+    def complete_success(self, result_body_hash: str) -> None:
         if not self.can_execute():
             raise ControllerError("success_stage")
+        result = Artifact(
+            artifact_id=self._next_result_id(),
+            body=result_body_hash,
+            confirmed=True,
+            source_prompt_id=self.state.current_prompt.artifact_id,
+            source_plan_id=self.state.current_plan.artifact_id,
+        )
+        self.state.current_result = result
         self.state.stage = Stage.CLOSED_SUCCESS
         self.state.pending_change = None
         self.state.approach_sources = []

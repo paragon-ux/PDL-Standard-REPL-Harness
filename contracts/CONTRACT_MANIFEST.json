@@ -68,6 +68,7 @@
     "PLAN-06": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
     "PLAN-07": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
     "PLAN-08": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
+    "PLAN-09": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
     "PROMPT-01": "contracts/standards/PROMPT_STANDARD.md",
     "PROMPT-02": "contracts/standards/PROMPT_STANDARD.md",
     "PROMPT-03": "contracts/standards/PROMPT_STANDARD.md",
@@ -98,6 +99,7 @@
     "SEM-02": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "SEM-03": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "SEM-04": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+    "SEM-05": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "TASK-01": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
     "TASK-02": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
     "TASK-03": "contracts/standards/TASK_SEMANTICS_STANDARD.md"
@@ -119,7 +121,7 @@
       "role": "methodological lineage for filesystem modular orchestration, layered context loading, stage contracts, and explicit artifact handoffs"
     }
   },
-  "standard_semantics_changed": false,
+  "standard_semantics_changed": true,
   "files": [
     {
       "path": "contracts/AUTHORITY_MAP.json",
@@ -131,7 +133,7 @@
     },
     {
       "path": "contracts/EXECUTION_CONTRACT.json",
-      "sha256": "156cc7b270866fb4c2343a826da8ea8ca044aefb447317b8a07ab13aa30cbf40"
+      "sha256": "a96568dcd84203cea9833545826692f66705663244201a26016168d38e9891d6"
     },
     {
       "path": "contracts/IMPLEMENTATION_BOUNDARY.json",
@@ -183,7 +185,7 @@
     },
     {
       "path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
-      "sha256": "f928362c47081b4e66e2563a5b9d467f4dba962e67ee60586227efe0a2858fef"
+      "sha256": "c79469bcc86b6663de546adf2f4c92e84c0d46917ce38edd29e8a20c186defb6"
     },
     {
       "path": "contracts/standards/REVIEW_STANDARD.md",
@@ -191,14 +193,14 @@
     },
     {
       "path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
-      "sha256": "67136fa570136cff665020669905fa414860e5ed98ed11ec9e9737a03a5fc4f0"
+      "sha256": "c6b43b68ee5c2f2ec49e5108c0e45c438d9d875e3ee5b58af936a2c472eb2cea"
     },
     {
       "path": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
       "sha256": "baeea45dc390bfe9d3e7ce6e34811f3a0113e33899358685c4381149b4021656"
     }
   ],
-  "standard_semantics_changed_from_finalized_source_substrate": false,
+  "standard_semantics_changed_from_finalized_source_substrate": true,
   "pre_freeze_extraction_corrections": [
     "TASK-03",
     "HANDOFF-09",
@@ -210,6 +212,6 @@
     "context_flow_owner": "runtime/workspace.py",
     "stage_routing_owner": "contracts/EXECUTION_CONTRACT.json",
     "normative_authority": "contracts/standards",
-    "standard_semantics_changed_by_round4": false
+    "standard_semantics_changed_by_round4": true
   }
 }

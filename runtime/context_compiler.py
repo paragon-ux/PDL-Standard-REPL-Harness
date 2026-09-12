@@ -20,8 +20,19 @@ class CompiledProjection:
     document: dict[str, Any]
     manifest: dict[str, Any]
 
-    def render(self, bootstrap: str) -> str:
-        return bootstrap.rstrip() + "\n\n" + json.dumps(self.document, ensure_ascii=False, indent=2) + "\n"
+    def render(self, bootstrap: str, *, compact: bool = False) -> str:
+        """Render bootstrap + projection document.
+
+        compact=True serializes the document without indentation (~23% smaller);
+        the parsed JSON is identical, so semantics are unchanged. Fixture replay
+        hashes the full rendered prompt, so recorded fixtures must keep the
+        default pretty rendering.
+        """
+        if compact:
+            body = json.dumps(self.document, ensure_ascii=False, separators=(",", ":"))
+        else:
+            body = json.dumps(self.document, ensure_ascii=False, indent=2)
+        return bootstrap.rstrip() + "\n\n" + body + "\n"
 
 
 class ContextCompiler:

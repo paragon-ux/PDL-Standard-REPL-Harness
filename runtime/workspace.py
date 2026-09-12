@@ -257,27 +257,24 @@ class WorkspaceRun:
             return self.path / "stages" / "10_prompt" / "output"
         if kind == "plan":
             return self.path / "stages" / "30_plan" / "output"
+        if kind == "result":
+            return self.path / "stages" / "50_execution" / "output"
         raise WorkspaceError(f"artifact_kind:{kind}")
 
-    def publish_artifact(self, kind: str, artifact_id: str, body: str, *, confirmed: bool, source_prompt_id: str | None = None) -> None:
+    def publish_artifact(self, kind: str, artifact_id: str, body: str, *, confirmed: bool, source_prompt_id: str | None = None, confirmed_prompt_hash: str | None = None) -> None:
         output = self._artifact_stage(kind)
         versions = output / "versions"
         versions.mkdir(parents=True, exist_ok=True)
         self._atomic_write(versions / f"{artifact_id}.md", body.rstrip() + "\n")
         self._atomic_write(output / "current.md", body.rstrip() + "\n")
-        self._atomic_write(
-            output / "current.json",
-            json.dumps(
-                {
-                    "artifact_id": artifact_id,
-                    "confirmed": confirmed,
-                    "source_prompt_id": source_prompt_id,
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
-        )
+        payload: dict[str, Any] = {
+            "artifact_id": artifact_id,
+            "confirmed": confirmed,
+            "source_prompt_id": source_prompt_id,
+        }
+        if confirmed_prompt_hash:
+            payload["confirmed_prompt_hash"] = confirmed_prompt_hash
+        self._atomic_write(output / "current.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         self.append_event(
             "ARTIFACT_PUBLISHED",
             {"kind": kind, "artifact_id": artifact_id, "confirmed": confirmed},

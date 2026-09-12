@@ -6,9 +6,9 @@
     {
       "source_evidence_run": "A02:0001-draft_prompt",
       "operation": "DRAFT_PROMPT",
-      "prompt_sha256": "816b045edd8e711e6ecb15a1fe370d92a706906a2c283f1fae1627770f198d7b",
+      "prompt_sha256": "cfcf4de300aa382af425b70e31bbb258d5a8627a4537c5e99afd4b819881f95d",
       "raw_response_sha256": "41b96cb7ee9e94caca14390bec3da95538291534da419d02a647ad575681415d",
-      "fixture_id": "9ef329a09047e09b"
+      "fixture_id": "e93cd8ea3d36776a"
     },
     {
       "source_evidence_run": "A02:0002-interpret_prompt_review",
@@ -20,16 +20,16 @@
     {
       "source_evidence_run": "A02:0003-revise_prompt",
       "operation": "REVISE_PROMPT",
-      "prompt_sha256": "a80c5c5668fb9e89c4365dd5b931c7d22931b6af034216f3894ba855e7f79e03",
+      "prompt_sha256": "4f2cb256ec27192c3921ae1087c4920759c6052a4d3093c4ba929dedc93a7091",
       "raw_response_sha256": "8d96434b879544d1b2014afd0e0c94e6a82b38cfc7ce608e3d830138b576a731",
-      "fixture_id": "9b768596ee06ef83"
+      "fixture_id": "17fb7fde203665c4"
     },
     {
       "source_evidence_run": "G06:0001-draft_prompt",
       "operation": "DRAFT_PROMPT",
-      "prompt_sha256": "369c2703828997514f67866ed10338edfea753dd08556079e888fb76d1d38fb7",
+      "prompt_sha256": "82ebd5e31e41b0b0488861519f361b3f6dbd9a15845205bbbe8096252ed4c376",
       "raw_response_sha256": "009953c2b1c848b9ff3af884487d010f8a345c3fe2861794b1a12fd648334fa9",
-      "fixture_id": "a25c1e1da70b1dd2"
+      "fixture_id": "f8c891b123293cb4"
     },
     {
       "source_evidence_run": "G06:0002-interpret_prompt_review",
@@ -41,9 +41,9 @@
     {
       "source_evidence_run": "G06:0003-draft_plan",
       "operation": "DRAFT_PLAN",
-      "prompt_sha256": "6dfadc49cb7dd4852475482dffa0b54cb88f643a262f3f2f64826441d545ac91",
+      "prompt_sha256": "fa9717fa36a0de4148fa1900aee77f50cb70621b0c0589eff20e67d6f251a8d7",
       "raw_response_sha256": "a0fd1f1f46460db29514e18ca1f1ba3465e75aa9e46991534a5cb172d87d390f",
-      "fixture_id": "17fcff773c0ef2f6"
+      "fixture_id": "e22a528e82dd756d"
     },
     {
       "source_evidence_run": "G06:0004-interpret_plan_review",

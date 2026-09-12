@@ -42,6 +42,7 @@ class PDLtHost:
         case_id: str | None = None,
         observation_dir: str | Path | None = None,
         include_bodies: bool = False,
+        render_compact: bool = False,
     ):
         self.candidate_repo = Path(candidate_repo).resolve()
         self.worker = worker
@@ -51,6 +52,7 @@ class PDLtHost:
         self.case_id = case_id
         self.observation_dir = Path(observation_dir) if observation_dir else None
         self.include_bodies = include_bodies
+        self.render_compact = render_compact
         self.engine: Any = None
         self.observed: ObservedSession | None = None
         self.sink: JsonlSink | None = None
@@ -71,6 +73,7 @@ class PDLtHost:
                 self.restore_path,
                 higher_priority_constraints="Obey applicable provider/platform safety, privacy, permission, and tool constraints.",
                 available_execution_tools=[],
+                render_compact=self.render_compact,
             )
         else:
             engine = SessionEngine(
@@ -79,6 +82,7 @@ class PDLtHost:
                 higher_priority_constraints="Obey applicable provider/platform safety, privacy, permission, and tool constraints.",
                 available_execution_tools=[],
                 workspace_root=self.workspace_root,
+                render_compact=self.render_compact,
             )
         self.engine = engine
         if self.observation_dir is not None:

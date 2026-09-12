@@ -18,6 +18,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Log one live PDLt session to MLflow")
     parser.add_argument("--session-dir", type=Path, required=True)
     parser.add_argument("--run-name", default=None)
+    parser.add_argument("--worker-profile", default="codex", help="worker identity to record (codex|api|recorded)")
     args = parser.parse_args()
 
     session_dir = args.session_dir.resolve()
@@ -46,6 +47,9 @@ def main() -> int:
     if transcript.is_file():
         artifacts.append(str(transcript))
     artifacts.extend(str(path) for path in observation_files)
+    worker_progress = session_dir / "worker-progress.log"
+    if worker_progress.is_file():
+        artifacts.append(str(worker_progress))
 
     mlflow.set_tracking_uri(f"sqlite:///{(ROOT / 'mlflow.db').as_posix()}")
     mlflow.set_experiment("PDL-R2S")
@@ -56,7 +60,7 @@ def main() -> int:
             "session_id": session_id,
             "candidate_repository": "PDL-Standard-R2S",
             "candidate_commit": "6df3bf5733cd3fcd16b1560ff7a80810c96bbe6c",
-            "worker_profile": "codex",
+            "worker_profile": args.worker_profile,
             "observation_jsonl_path": ",".join(str(path) for path in observation_files),
             "transcript_path": str(transcript) if transcript.is_file() else "none",
             "workspace_path": str(session_data.get("workspace_path", "none")),

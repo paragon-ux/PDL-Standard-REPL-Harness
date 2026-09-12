@@ -36,7 +36,7 @@ class CodexWorker:
     def __init__(
         self,
         *,
-        model: str = "deepseek-v4-flash",
+        model: str | None = None,
         workdir: str | Path | None = None,
         allowed_workdir_root: str | Path | None = None,
         timeout: float = 600.0,
@@ -47,6 +47,7 @@ class CodexWorker:
         approval_policy: str = "never",
         allow_bypass: bool = False,
         json_mode: bool | None = None,
+        config_overrides: list[str] | None = None,
     ):
         if sandbox_mode not in {"read-only", "workspace-write"}:
             raise ValueError(f"unsupported sandbox mode: {sandbox_mode}")
@@ -62,6 +63,10 @@ class CodexWorker:
         self.approval_policy = approval_policy
         self.allow_bypass = allow_bypass
         self.json_mode = capture_tokens if json_mode is None else json_mode
+        self.config_overrides = list(config_overrides or [])
+        self.worker_profile = "codex"
+        self.effective_model: str | None = self._read_effective_model()
+        self.observed_model: str | None = None
         self.allowed_workdir_root = str(
             Path(allowed_workdir_root).resolve() if allowed_workdir_root else Path(initial_workdir).resolve()
         )
@@ -82,6 +87,23 @@ class CodexWorker:
             return (proc.stdout or proc.stderr or "").strip() or "unknown"
         except Exception:
             return "unknown"
+
+    @staticmethod
+    def _read_effective_model() -> str | None:
+        try:
+            config_path = Path.home() / ".codex" / "config.toml"
+            if not config_path.is_file():
+                return None
+            for line in config_path.read_text(encoding="utf-8").splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                match = re.match(r'^model\s*=\s*"([^"]+)"', stripped)
+                if match:
+                    return match.group(1)
+        except Exception:
+            return None
+        return None
 
     @property
     def workdir(self) -> str:
@@ -135,14 +157,16 @@ class CodexWorker:
                 "--skip-git-repo-check",
                 "-C",
                 self.workdir,
-                "-m",
-                self.model,
             ]
+            if self.model:
+                cmd += ["-m", self.model]
             if self.allow_bypass:
                 # Separate hardened/disposable execution condition only.
                 cmd.append("--dangerously-bypass-approvals-and-sandbox")
             else:
                 cmd += ["--sandbox", self.sandbox_mode, "-c", 'approval_policy="never"']
+                for override in self.config_overrides:
+                    cmd += ["-c", override]
                 if self.json_mode:
                     cmd.append("--json")
             cmd.append(prompt)
@@ -197,6 +221,7 @@ class CodexWorker:
 
             latency_ms = (time.perf_counter() - started) * 1000.0
             usage, usage_source, usage_exact, response_id, observed_model = self._parse_telemetry(output_lines)
+            self.observed_model = observed_model
             metadata: dict[str, Any] = {
                 "worker": "codex",
                 "model": self.model,

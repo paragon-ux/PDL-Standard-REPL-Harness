@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -17,6 +18,7 @@ if str(ROOT) not in sys.path:
 
 from host.app import PDLtHost
 from providers.codex_worker import CodexWorker
+from providers.api_worker import ApiWorker
 from providers.fixtures import build_recorded_fixture, build_recorded_fixture_from_vendored
 
 
@@ -163,6 +165,7 @@ def open_session(
         restore_path=restore_path,
         run_id=args.run_id,
         observation_dir=observation_dir,
+        render_compact=bool(getattr(args, "render_compact", False)),
     ).start()
     if host.status().get("workspace_path"):
         pointer.write_text(
@@ -196,11 +199,48 @@ def switch_session(
     """Close the active host and open another session in one operation."""
     if log_mlflow:
         subprocess.run(
-            [sys.executable, str(ROOT / "scripts" / "log_live_session.py"), "--session-dir", str(runtime.session_dir)],
+            [sys.executable, str(ROOT / "scripts" / "log_live_session.py"), "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
             cwd=ROOT,
         )
     runtime.close()
     return open_session(args, session_base, worker, session_id)
+
+
+def _worker_profile(worker: Any) -> str:
+    """Worker identity for MLflow telemetry (best-effort; default codex)."""
+    profile = getattr(worker, "worker_profile", None)
+    return str(profile) if profile else "codex"
+
+
+def _parse_reasoning_operations(pairs: list[str] | None) -> dict[str, str]:
+    """Parse repeatable --api-reasoning-operation OP=EFFORT flags into a dict."""
+    mapping: dict[str, str] = {}
+    for pair in pairs or []:
+        if "=" not in pair:
+            raise SystemExit(f"invalid --api-reasoning-operation {pair!r}: expected OP=EFFORT")
+        key, _, value = pair.partition("=")
+        key = key.strip()
+        value = value.strip().lower()
+        if not key:
+            raise SystemExit(f"invalid --api-reasoning-operation {pair!r}: empty operation")
+        if value not in {"none", "low", "medium", "high"}:
+            raise SystemExit(
+                f"invalid --api-reasoning-operation {pair!r}: effort must be none/low/medium/high"
+            )
+        mapping[key] = value
+    return mapping
+
+
+def _resolve_render_compact(args) -> bool:
+    """Compact render default: on for the live api worker, opt-in otherwise.
+
+    Recorded-fixture replay hashes the full rendered prompt, so the recorded
+    worker always stays pretty; codex worker rendering is decided upstream by
+    the engine defaults (pretty).
+    """
+    if getattr(args, "render_compact", None) is not None:
+        return bool(args.render_compact)
+    return args.worker == "api"
 
 
 def main() -> int:
@@ -216,7 +256,7 @@ def main() -> int:
     parser.add_argument("--restore", type=Path, default=None)
     parser.add_argument("--run-id", default="repl")
     parser.add_argument("--observation-dir", type=Path, default=None)
-    parser.add_argument("--worker", choices=["recorded", "codex"], default="codex")
+    parser.add_argument("--worker", choices=["recorded", "codex", "api"], default="codex")
     parser.add_argument("--model", default="deepseek-v4-flash")
     parser.add_argument("--eval-root", type=Path, default=None)
     parser.add_argument("--evidence", type=Path, default=None)
@@ -226,8 +266,50 @@ def main() -> int:
     parser.add_argument("--transcript", type=Path, default=None, help="session-scoped transcript output file")
     parser.add_argument("--workdir", type=Path, default=None, help="writable session directory for the live worker")
     parser.add_argument("--mlflow", action="store_true", help="log the session to MLflow on exit")
-    parser.add_argument("--worker-timeout", type=float, default=600.0, help="Codex worker timeout in seconds")
+    parser.add_argument("--worker-timeout", type=float, default=600.0, help="worker timeout in seconds")
+    parser.add_argument(
+        "--config-override",
+        action="append",
+        default=None,
+        help="Codex CLI config override (key=value), repeatable; forwards to `codex exec -c`",
+    )
     parser.add_argument("--no-token-telemetry", action="store_true", help="disable worker token telemetry")
+    parser.add_argument(
+        "--api-base-url",
+        default="https://openrouter.ai/api/v1",
+        help="base URL for --worker api (an OpenAI-compatible Responses API host)",
+    )
+    parser.add_argument(
+        "--api-key-env",
+        default="OPENROUTER_API_KEY",
+        help="environment variable name holding the --worker api key",
+    )
+    parser.add_argument(
+        "--api-reasoning-effort",
+        default=None,
+        help="optional reasoning effort ('low'/'medium'/'high') for --worker api, if the model supports it",
+    )
+    parser.add_argument(
+        "--api-reasoning-operation",
+        action="append",
+        default=None,
+        metavar="OP=EFFORT",
+        help="per-operation reasoning override, repeatable (e.g. INTERPRET_PROMPT_REVIEW=none); "
+        "EFFORT is 'none' or low/medium/high; overrides --api-reasoning-effort for that operation",
+    )
+    parser.add_argument(
+        "--render-compact",
+        action="store_true",
+        help="serialize operation projections as compact JSON (~23% smaller; "
+        "identical semantics; recorded-fixture replay requires the default pretty render)",
+    )
+    parser.add_argument(
+        "--render-pretty",
+        dest="render_compact",
+        action="store_false",
+        help="force the default pretty-rendered projections",
+    )
+    parser.set_defaults(render_compact=None)
     parser.add_argument(
         "--worker-sandbox",
         choices=["read-only", "workspace-write"],
@@ -291,12 +373,31 @@ def main() -> int:
             on_progress=lambda line: print(f"[codex] {line}", flush=True) if line.strip() else None,
             capture_tokens=not args.no_token_telemetry,
             allowed_workdir_root=session_base,
+            config_overrides=args.config_override,
             sandbox_mode=args.worker_sandbox,
             allow_bypass=args.allow_bypass,
+        )
+    elif args.worker == "api":
+        worker = ApiWorker(
+            model=args.model,
+            repo_root=args.candidate_repo,
+            base_url=args.api_base_url,
+            api_key_env=args.api_key_env,
+            timeout=args.worker_timeout,
+            capture_tokens=not args.no_token_telemetry,
+            reasoning_effort=args.api_reasoning_effort,
+            reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
+            on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
         )
     else:
         raise SystemExit(f"unsupported worker: {args.worker}")
 
+    if args.worker == "recorded" and args.render_compact:
+        raise SystemExit(
+            "--render-compact is incompatible with --worker recorded: recorded-fixture "
+            "replay hashes the full pretty-rendered prompt"
+        )
+    args.render_compact = _resolve_render_compact(args)
     runtime = open_session(args, session_base, worker, session_id, restore_path=args.restore)
 
     def _write_transcript(text: str) -> None:
@@ -330,7 +431,9 @@ def main() -> int:
                     "/tokens [on|off] -> toggle token telemetry\n"
                     "/timeout [seconds] -> show/set worker timeout\n"
                     "/model [name] -> show/set worker model\n"
-                    "/worker [codex|recorded] -> switch worker\n"
+                    "/config -> show/set Codex config overrides\n"
+                    "/sessions [prune <days>] -> list sessions; prune older than N days\n"
+                    "/worker [codex|recorded|api] -> switch worker\n"
                     "/sandbox [read-only|workspace-write] -> show/set worker sandbox mode\n"
                     "/workdir [path] -> show/set worker workdir\n"
                     "/transcript [path] -> show/set transcript file\n"
@@ -366,13 +469,45 @@ def main() -> int:
                 elif cmd == "/model":
                     if not arg:
                         model = getattr(worker, "model", None)
-                        print(f"model: {model}" if model is not None else "model: n/a for this worker", flush=True)
+                        observed = getattr(worker, "effective_model", None) or getattr(worker, "observed_model", None)
+                        if model is not None:
+                            print(f"model: {model}", flush=True)
+                        elif observed:
+                            print(f"model: {model or '(from ~/.codex/config.toml)'} | observed: {observed}", flush=True)
+                        else:
+                            print("model: not resolved (no --model, no config.toml found)", flush=True)
                     else:
                         try:
                             worker.model = arg
                             print(f"model set to {worker.model}", flush=True)
                         except (AttributeError, ValueError) as exc:
                             print(f"cannot set model: {exc}", flush=True)
+                elif cmd == "/config":
+                    overrides = getattr(worker, "config_overrides", None)
+                    if not arg:
+                        if overrides:
+                            for item in overrides:
+                                print(f"config override: {item}", flush=True)
+                        else:
+                            print("config overrides: none (inherits ~/.codex/config.toml)", flush=True)
+                    elif arg == "clear":
+                        try:
+                            worker.config_overrides = []
+                            print("config overrides cleared", flush=True)
+                        except AttributeError:
+                            print("config overrides not supported for this worker", flush=True)
+                    elif "=" not in arg:
+                        print("usage: /config [key=value | clear]", flush=True)
+                    else:
+                        try:
+                            current = list(getattr(worker, "config_overrides", []) or [])
+                            key = arg.split("=", 1)[0]
+                            current = [item for item in current if not item.split("=", 1)[0] == key]
+                            current.append(arg)
+                            worker.config_overrides = current
+                            print(f"config override set: {arg}", flush=True)
+                        except AttributeError:
+                            print("config overrides not supported for this worker", flush=True)
                 elif cmd == "/sandbox":
                     if not arg:
                         sandbox = getattr(worker, "sandbox_mode", None)
@@ -464,6 +599,18 @@ def main() -> int:
                                 Path(evidence),
                                 case_ids=case_ids_list,
                             )
+                    elif target == "api":
+                        new_worker = ApiWorker(
+                            model=args.model,
+                            repo_root=args.candidate_repo,
+                            base_url=args.api_base_url,
+                            api_key_env=args.api_key_env,
+                            timeout=args.worker_timeout,
+                            capture_tokens=getattr(worker, "capture_tokens", True),
+                            reasoning_effort=args.api_reasoning_effort,
+                            reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
+                            on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
+                        )
                     else:
                         print(f"unknown worker: {target}", flush=True)
                         continue
@@ -488,6 +635,36 @@ def main() -> int:
                         continue
                     runtime = switch_session(runtime, args, session_base, worker, safe_id, log_mlflow=log_mlflow)
                     print(f"resumed session: {runtime.session_dir}", flush=True)
+                elif cmd == "/sessions":
+                    parts = arg.split() if arg else []
+                    if parts and parts[0] == "prune":
+                        if len(parts) != 2 or not parts[1].isdigit():
+                            print("usage: /sessions prune <days>", flush=True)
+                            continue
+                        days = int(parts[1])
+                        cutoff = datetime.now().timestamp() - days * 86400
+                        sessions = [p for p in session_base.iterdir() if p.is_dir()]
+                        removed = 0
+                        for path in sessions:
+                            if path.stat().st_mtime < cutoff:
+                                shutil.rmtree(path)
+                                removed += 1
+                        print(f"pruned {removed} session(s) older than {days} day(s)", flush=True)
+                    elif parts:
+                        print("usage: /sessions [prune <days>]", flush=True)
+                    else:
+                        sessions = sorted(
+                            (path for path in session_base.iterdir() if path.is_dir()),
+                            key=lambda path: path.stat().st_mtime,
+                            reverse=True,
+                        )
+                        if not sessions:
+                            print("no sessions", flush=True)
+                        else:
+                            print("Sessions (newest first):", flush=True)
+                            for path in sessions:
+                                age_days = (datetime.now().timestamp() - path.stat().st_mtime) / 86400
+                                print(f"  {path.name}  ({age_days:.1f}d ago)", flush=True)
                 else:
                     print(f"unknown command: {cmd}", flush=True)
                 continue
@@ -515,6 +692,8 @@ def main() -> int:
                     str(ROOT / "scripts" / "log_live_session.py"),
                     "--session-dir",
                     str(runtime.session_dir),
+                    "--worker-profile",
+                    _worker_profile(worker),
                 ],
                 cwd=ROOT,
             )

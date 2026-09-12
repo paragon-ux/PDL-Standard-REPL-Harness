@@ -5,6 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 import json
+import re
 
 from runtime.context_compiler import CompiledProjection, ContextCompiler
 from runtime.workspace import WorkspaceInvocation, WorkspaceRun
@@ -60,8 +61,9 @@ class ModelRequest:
 
 
 class OperationBridge:
-    def __init__(self, repo_root: str | Path):
+    def __init__(self, repo_root: str | Path, *, render_compact: bool = False):
         self.repo_root = Path(repo_root)
+        self.render_compact = render_compact
         self.compiler = ContextCompiler(self.repo_root)
         self.bootstrap = (self.repo_root / "runtime" / "worker-bootstrap.txt").read_text(encoding="utf-8")
 
@@ -83,12 +85,16 @@ class OperationBridge:
             higher_priority_constraints=materialized_higher_priority,
         )
         workspace.record_projection(invocation, projection.manifest, projection.document)
-        return ModelRequest(projection, projection.render(self.bootstrap), invocation)
+        return ModelRequest(projection, projection.render(self.bootstrap, compact=self.render_compact), invocation)
 
     @staticmethod
     def _object(model_text: str) -> dict[str, Any]:
+        stripped = model_text.strip()
+        if stripped.startswith("```"):
+            stripped = re.sub(r"^```(?:json)?\s*\n?", "", stripped)
+            stripped = re.sub(r"\n?```\s*$", "", stripped)
         try:
-            value = json.loads(model_text)
+            value = json.loads(stripped)
         except json.JSONDecodeError as exc:
             raise WireError("invalid_json") from exc
         if not isinstance(value, dict):

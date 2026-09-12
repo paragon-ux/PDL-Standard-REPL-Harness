@@ -17,3 +17,5 @@ Normative scope: Response Plan Pseudocode coverage, abstraction, neutrality, and
 **PLAN-07 — Revision semantics.** A Plan revision MUST keep the confirmed Prompt fixed, apply only changed `TASK-02` semantics, and preserve `PLAN-01` through `PLAN-03`.
 
 **PLAN-08 — Carried approach constraints.** When ordered `TASK-02` projections are supplied to a Plan operation, the Response Plan MUST incorporate their operative approach constraints while remaining consistent with the confirmed Prompt and the other Plan requirements.
+
+**PLAN-09 — Message-act response coverage.** When Prompt Pseudocode represents a user message-act with no requested material action or deliverable (`SEM-05`), the Response Plan MUST represent the agent's responsive action to that act.

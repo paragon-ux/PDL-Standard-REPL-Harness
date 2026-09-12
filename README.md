@@ -151,6 +151,53 @@ the same convention as a Codex CLI custom `model_providers.*.auth` block —
 so a key rotated after the REPL started is still picked up on the next call.
 Pass `--api-key-env` to change which variable name it looks up.
 
+### Efficiency flags (`--worker api`)
+
+Cost/latency levers live-verified on GLM 4.7 via OpenRouter (see
+`RELEASE_NOTES.md` for the full report):
+
+- `--api-reasoning-effort low|medium|high` — global reasoning-effort override
+  for backends that accept OpenRouter `reasoning` controls. GLM 4.7 emits
+  native reasoning even with no `reasoning` field, so an explicit setting is
+  meaningful there.
+- `--api-reasoning-operation OP=EFFORT` (repeatable) — per-operation override;
+  `EFFORT` is `none` (disables reasoning entirely) or `low/medium/high`, and
+  wins over `--api-reasoning-effort` for that operation. The two
+  `INTERPRET_*_REVIEW` calls only classify the user's confirmation —
+  `=none` halves wall-clock with identical review intents.
+- `--render-compact` / `--render-pretty` — projection JSON serialization.
+  **Compact is the default for `--worker api`** (~20% fewer input tokens,
+  byte-identical parsed documents). `--render-pretty` restores the
+  pretty-printed wire format. Recorded-fixture replay requires the pretty
+  render (replay hashes the full prompt); `--worker recorded` therefore
+  rejects `--render-compact`.
+- `--cache-order-render` — opt-in api-worker wire reordering (schema and
+  clauses first, volatile binds and operation id last) so same-shape calls
+  (e.g. the two REVIEW calls) share a byte-identical prompt prefix for
+  provider prefix caching. Parsed content is identical. Note: measured cache
+  hits on OpenRouter are routing-dependent and not guaranteed; this flag is
+  free but pays only when the provider's cache affinity cooperates.
+
+### Fast profile example
+
+The measured optimum is compact render (default) plus reasoning-free review
+calls. Draft-stage reasoning (`DRAFT_PROMPT`/`DRAFT_PLAN`) should stay at the
+provider default — lowering it was measured to *increase* wall-clock (draft
+quality is the actual semantic work; GLM 4.7 produces longer outputs at `low`).
+
+```powershell
+python -m host.repl --candidate-repo . --worker api --model z-ai/glm-4.7 `
+  --api-reasoning-operation INTERPRET_PROMPT_REVIEW=none `
+  --api-reasoning-operation INTERPRET_PLAN_REVIEW=none `
+  --new-session --mlflow
+```
+
+Measured on the `hi` greeting case (GLM 4.7, single paired runs): ~−23% total
+tokens vs the un-tuned baseline with identical protocol outcomes and review
+intents; wall-clock varies with provider routing (−50% on the paired run,
+noise-dominated across runs). See `docs/EFFICIENCY_REPORT.md` for per-call
+data, the drafts=low NO-GO, and the aggressive cache strategy verdict.
+
 ## Layout
 
 - `host/`, `observation/`, `providers/`, `tracking/` — REPL, host, observation,

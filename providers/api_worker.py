@@ -48,6 +48,7 @@ class ApiWorker:
         capture_tokens: bool = True,
         reasoning_effort: str | None = None,
         reasoning_by_operation: dict[str, str] | None = None,
+        reorder_keys_for_cache: bool = False,
         on_progress: Any = None,
     ):
         self.model = model
@@ -57,6 +58,7 @@ class ApiWorker:
         self.capture_tokens = capture_tokens
         self.reasoning_effort = reasoning_effort
         self.reasoning_by_operation = dict(reasoning_by_operation or {})
+        self.reorder_keys_for_cache = reorder_keys_for_cache
         self.on_progress = on_progress
         self.worker_profile = "api"
         self.api_key_command = api_key_command or self._default_api_key_command(api_key_env)
@@ -114,8 +116,45 @@ class ApiWorker:
             return self._bootstrap.rstrip(), prompt[len(self._bootstrap_prefix):]
         return "", prompt
 
+    @staticmethod
+    def _reorder_for_cache(document_json: str) -> str:
+        """Reorder the projection document for provider prefix caching.
+
+        Stable/shared content first (output_schema, clause list), volatile
+        content last (bound values, operation id). Parsed content is identical;
+        only key order changes. Same-shape operations (e.g. the two REVIEW
+        calls) then hold a byte-identical prompt prefix, which is what
+        provider prefix caches key on. No-op on non-JSON input.
+        """
+        try:
+            doc = json.loads(document_json)
+        except json.JSONDecodeError:
+            return document_json
+        if not isinstance(doc, dict) or not isinstance(doc.get("operation_inputs"), dict):
+            return document_json
+        inputs = doc["operation_inputs"]
+        ordered: dict[str, Any] = {}
+        for key in ("output_schema", "artifact_kind", "output_kind"):
+            if key in doc:
+                ordered[key] = doc[key]
+        new_inputs: dict[str, Any] = {}
+        for key in ("APPLICABLE_STANDARD_CLAUSES", "HIGHER_PRIORITY_CONSTRAINTS"):
+            if key in inputs:
+                new_inputs[key] = inputs[key]
+        for key, value in inputs.items():
+            if key not in new_inputs:
+                new_inputs[key] = value
+        ordered["operation_inputs"] = new_inputs
+        for key, value in doc.items():
+            if key not in ordered and key != "operation":
+                ordered[key] = value
+        ordered["operation"] = doc["operation"]
+        return json.dumps(ordered, ensure_ascii=False, separators=(",", ":"))
+
     def call(self, request: Any) -> WorkerResult:
         instructions, input_text = self._split_prompt(request.prompt)
+        if self.reorder_keys_for_cache:
+            input_text = self._reorder_for_cache(input_text.lstrip())
         input_text = input_text.rstrip() + _JSON_ONLY_SUFFIX
 
         body: dict[str, Any] = {"model": self.model, "input": input_text}

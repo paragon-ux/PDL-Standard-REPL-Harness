@@ -311,6 +311,14 @@ def main() -> int:
     )
     parser.set_defaults(render_compact=None)
     parser.add_argument(
+        "--cache-order-render",
+        action="store_true",
+        help="api worker only: reorder projection keys on the wire (schema/clauses "
+        "first, volatile binds and operation id last) so same-shape calls share a "
+        "byte-identical prompt prefix for provider prefix caching; parsed content "
+        "is identical",
+    )
+    parser.add_argument(
         "--worker-sandbox",
         choices=["read-only", "workspace-write"],
         default="read-only",
@@ -387,6 +395,7 @@ def main() -> int:
             capture_tokens=not args.no_token_telemetry,
             reasoning_effort=args.api_reasoning_effort,
             reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
+            reorder_keys_for_cache=bool(getattr(args, "cache_order_render", False)),
             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
         )
     else:

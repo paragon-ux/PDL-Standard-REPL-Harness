@@ -72,6 +72,10 @@ Supported commands: `/help`, `/status`, `/session`, `/new`, `/resume`,
 `/worker [codex|recorded|api]`, `/sandbox [read-only|workspace-write]`,
 `/workdir [path]`, `/transcript [path]`, `/quit`.
 
+Use `--non-interactive` to suppress all interactive prompts (session selection,
+MLflow prompts, recorded-mode prompts), making the REPL pipe-safe and compatible
+with SSH relays (e.g. Paseo, RemoteCode) and headless runners.
+
 ## Sessions and persistence
 
 `/new` creates a session directory immediately, but `session.json` is written
@@ -153,12 +157,12 @@ lower-overhead alternative to `--worker codex` for backends where the model
 is reachable as a plain HTTP endpoint; `codex exec` remains available for
 providers only wired through the Codex CLI.
 
-The API key is never read from the current process environment. By default
-`providers/api_worker.py` shells out to a short-lived `powershell.exe`
-command that reads the named variable from Machine scope, then User scope —
-the same convention as a Codex CLI custom `model_providers.*.auth` block —
-so a key rotated after the REPL started is still picked up on the next call.
-Pass `--api-key-env` to change which variable name it looks up.
+The API key is read from `os.environ` first. On Windows, if missing from the
+process environment, `providers/api_worker.py` falls back to a short-lived
+PowerShell command that reads Machine then User scope — the same convention as a
+Codex CLI custom `model_providers.*.auth` block — so a key rotated after the
+REPL started is still picked up on the next call. Pass `--api-key-env` to change
+which variable name it looks up.
 
 ### Efficiency flags (`--worker api`)
 

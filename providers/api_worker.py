@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -28,12 +30,10 @@ class ApiWorker:
     Label: DEVELOPMENT / LIVE DEMONSTRATION WORKER
     NOT A QUALIFIED R2S MEASUREMENT CONDITION.
 
-    Auth mirrors the Codex CLI custom-provider convention: rather than
-    reading os.environ directly (which can miss a Machine/User-scoped
-    variable set after the current process started), it shells out to a
-    short-lived command each call to fetch the key fresh. On Windows this
-    defaults to the same PowerShell Environment-scope lookup Codex itself
-    uses. Override `api_key_command` if your key lives somewhere else.
+    Auth checks `os.environ` first. If missing on Windows, it falls back to
+    shelling out to a short-lived PowerShell command each call to read Machine
+    then User scope (mirroring the Codex CLI custom-provider convention).
+    Override `api_key_command` if your key lives somewhere else.
     """
 
     def __init__(
@@ -67,10 +67,13 @@ class ApiWorker:
         self._bootstrap_prefix = self._bootstrap.rstrip() + "\n\n"
 
     @staticmethod
-    def _default_api_key_command(env_name: str) -> list[str]:
-        # Mirrors the Codex CLI custom-provider auth block: read the named
-        # variable from Machine scope, then User scope, via a fresh
-        # PowerShell process rather than the current process environment.
+    def _default_api_key_command(env_name: str) -> list[str] | None:
+        if os.environ.get(env_name):
+            return None
+        if sys.platform != "win32":
+            return None
+        # On Windows, fall back to reading Machine then User scope via PowerShell
+        # to pick up variables defined outside the current process environment.
         script = (
             f"$v=[Environment]::GetEnvironmentVariable('{env_name}','Machine'); "
             f"if ([string]::IsNullOrWhiteSpace($v)) {{ $v=[Environment]::GetEnvironmentVariable('{env_name}','User') }}; "
@@ -80,6 +83,11 @@ class ApiWorker:
         return ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script]
 
     def _resolve_api_key(self) -> str:
+        if self.api_key_command is None:
+            key = (os.environ.get(self.api_key_env) or "").strip()
+            if not key:
+                raise TransportError(f"could not resolve {self.api_key_env}: variable is unset or empty")
+            return key
         try:
             proc = subprocess.run(
                 self.api_key_command,

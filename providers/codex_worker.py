@@ -4,6 +4,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -170,6 +171,9 @@ class CodexWorker:
                 if self.json_mode:
                     cmd.append("--json")
             cmd.append(prompt)
+            popen_kwargs: dict[str, Any] = {}
+            if sys.platform != "win32":
+                popen_kwargs["start_new_session"] = True
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -177,6 +181,7 @@ class CodexWorker:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
+                **popen_kwargs,
             )
 
             def _stream() -> None:
@@ -201,13 +206,20 @@ class CodexWorker:
             try:
                 proc.wait(timeout=self.timeout)
             except subprocess.TimeoutExpired as exc:
-                subprocess.run(
-                    ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                )
+                if sys.platform == "win32":
+                    subprocess.run(
+                        ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                    )
+                else:
+                    import signal
+                    try:
+                        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+                    except OSError:
+                        proc.kill()
                 thread.join(timeout=5)
                 raise TransportError(f"Codex worker timed out after {self.timeout}s") from exc
             thread.join(timeout=5)

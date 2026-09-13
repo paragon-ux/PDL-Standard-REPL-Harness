@@ -111,10 +111,16 @@ class SessionRuntime:
         return result
 
 
+def _is_interactive(args) -> bool:
+    if getattr(args, "non_interactive", False):
+        return False
+    return sys.stdin.isatty()
+
+
 def _select_session(session_base: Path, args) -> str:
     if args.session_id:
         return sanitize_session_name(args.session_id)
-    if args.new_session or not sys.stdin.isatty():
+    if args.new_session or not _is_interactive(args):
         return _new_session_name()
     sessions = sorted(
         (path for path in session_base.iterdir() if path.is_dir()),
@@ -263,6 +269,12 @@ def main() -> int:
     parser.add_argument("--case-ids", default=None)
     parser.add_argument("--session-id", default=None, help="reuse a named session workspace across invocations")
     parser.add_argument("--new-session", action="store_true", help="skip the session selector and start a new session")
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="suppress all interactive prompts (session selection, MLflow, etc.); "
+             "suitable for SSH relays and piped input",
+    )
     parser.add_argument("--transcript", type=Path, default=None, help="session-scoped transcript output file")
     parser.add_argument("--workdir", type=Path, default=None, help="writable session directory for the live worker")
     parser.add_argument("--mlflow", action="store_true", help="log the session to MLflow on exit")
@@ -339,7 +351,7 @@ def main() -> int:
         session_id = _new_session_name()
     session_dir = resolve_session_dir(session_base, session_id)
     log_mlflow = args.mlflow
-    if not log_mlflow and sys.stdin.isatty():
+    if not log_mlflow and _is_interactive(args):
         try:
             choice = input("Log this session to MLflow on exit? [y/N]: ").strip().lower()
         except EOFError:
@@ -348,11 +360,11 @@ def main() -> int:
     print(f"MLflow logging: {'on' if log_mlflow else 'off'}", flush=True)
 
     if args.worker == "recorded":
-        if not args.eval_root and sys.stdin.isatty():
+        if not args.eval_root and _is_interactive(args):
             args.eval_root = Path(input("eval-root: ").strip())
-        if not args.evidence and sys.stdin.isatty():
+        if not args.evidence and _is_interactive(args):
             args.evidence = Path(input("evidence: ").strip())
-        if not args.case_ids and sys.stdin.isatty():
+        if not args.case_ids and _is_interactive(args):
             args.case_ids = input("case-ids (comma separated, optional): ").strip() or None
         if not args.evidence:
             raise SystemExit("--evidence is required for recorded worker")
@@ -578,14 +590,14 @@ def main() -> int:
                         )
                     elif target == "recorded":
                         if not args.evidence:
-                            if not sys.stdin.isatty():
+                            if not _is_interactive(args):
                                 print("recorded worker requires --evidence in non-interactive mode", flush=True)
                                 continue
                             evidence = input("evidence: ").strip()
                         else:
                             evidence = str(args.evidence)
                         case_ids = args.case_ids
-                        if not case_ids and sys.stdin.isatty():
+                        if not case_ids and _is_interactive(args):
                             case_ids = input("case-ids (comma separated, optional): ").strip() or None
                         case_ids_list = [item.strip() for item in case_ids.split(",") if item.strip()] if case_ids else None
                         if Path(evidence).name == "recorded-cases.json":
@@ -596,7 +608,7 @@ def main() -> int:
                             )
                         else:
                             if not args.eval_root:
-                                if not sys.stdin.isatty():
+                                if not _is_interactive(args):
                                     print("recorded worker requires --eval-root for non-vendored evidence in non-interactive mode", flush=True)
                                     continue
                                 eval_root = input("eval-root: ").strip()

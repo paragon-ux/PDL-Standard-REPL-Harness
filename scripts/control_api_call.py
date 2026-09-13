@@ -5,12 +5,14 @@ endpoint with no protocol bootstrap, no standards, no tooling -- the same
 model and endpoint the REPL api worker uses, minus everything the PDL
 harness adds. Writes the response text, usage, and latency to a JSON file.
 
-Auth mirrors providers/api_worker.py: PowerShell Machine->User scope lookup.
+Auth mirrors providers/api_worker.py: environment variable first, with
+PowerShell Machine->User scope lookup fallback on Windows.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -19,6 +21,11 @@ import urllib.request
 
 
 def resolve_api_key(env_name: str) -> str:
+    key = (os.environ.get(env_name) or "").strip()
+    if key:
+        return key
+    if sys.platform != "win32":
+        raise SystemExit(f"could not resolve {env_name}: variable is not set in the environment")
     script = (
         f"$v=[Environment]::GetEnvironmentVariable('{env_name}','Machine'); "
         f"if ([string]::IsNullOrWhiteSpace($v)) {{ $v=[Environment]::GetEnvironmentVariable('{env_name}','User') }}; "

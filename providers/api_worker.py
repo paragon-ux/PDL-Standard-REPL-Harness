@@ -169,6 +169,19 @@ class ApiWorker:
         ordered["operation"] = doc["operation"]
         return json.dumps(ordered, ensure_ascii=False, separators=(",", ":"))
 
+    @staticmethod
+    def _sanitize_schema_for_grammar(schema: Any) -> Any:
+        """Strip keywords that grammar engines (Venice, Outlines, vLLM) reject."""
+        if isinstance(schema, dict):
+            return {
+                k: ApiWorker._sanitize_schema_for_grammar(v)
+                for k, v in schema.items()
+                if k not in {"uniqueItems"}
+            }
+        elif isinstance(schema, list):
+            return [ApiWorker._sanitize_schema_for_grammar(item) for item in schema]
+        return schema
+
     def call(self, request: Any) -> WorkerResult:
         instructions, input_text = self._split_prompt(request.prompt)
         if self.reorder_keys_for_cache:
@@ -186,14 +199,26 @@ class ApiWorker:
 
         if self.structured_output:
             manifest = getattr(request, "manifest", None) or {}
-            schema = manifest.get("output_schema")
             output_kind = manifest.get("output_kind", "json_object")
+            schema = None
+            projection = getattr(request, "projection", None)
+            if projection is not None and isinstance(getattr(projection, "document", None), dict):
+                schema = projection.document.get("output_schema")
+            if not isinstance(schema, dict) and isinstance(manifest.get("output_schema"), dict):
+                schema = manifest["output_schema"]
+            elif not isinstance(schema, dict) and isinstance(manifest.get("output_schema"), str):
+                schema_path = self.repo_root / manifest["output_schema"]
+                if schema_path.is_file():
+                    try:
+                        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+                    except Exception:
+                        schema = None
             if schema and isinstance(schema, dict):
                 body["text"] = {
                     "format": {
                         "type": "json_schema",
                         "name": output_kind,
-                        "schema": schema,
+                        "schema": self._sanitize_schema_for_grammar(schema),
                     }
                 }
 

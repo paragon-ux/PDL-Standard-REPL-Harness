@@ -113,10 +113,14 @@ def _run_protocol_trial(
         for line in obs.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
-            row = json.loads(line)
-            tokens = (row.get("observed_tokens") or {})
-            input_tokens += tokens.get("input_tokens", 0)
-            output_tokens += tokens.get("output_tokens", 0)
+            try:
+                row = json.loads(line)
+            except Exception:
+                continue
+            for call in row.get("calls") or []:
+                tokens = call.get("usage") or {}
+                input_tokens += tokens.get("input_tokens", 0)
+                output_tokens += tokens.get("output_tokens", 0)
 
     final_stage = None
     if status_history:

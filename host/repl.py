@@ -237,6 +237,23 @@ def _parse_reasoning_operations(pairs: list[str] | None) -> dict[str, str]:
     return mapping
 
 
+def _parse_model_operations(pairs: list[str] | None) -> dict[str, str]:
+    """Parse repeatable --api-model-operation OP=MODEL flags into a dict."""
+    mapping: dict[str, str] = {}
+    for pair in pairs or []:
+        if "=" not in pair:
+            raise SystemExit(f"invalid --api-model-operation {pair!r}: expected OP=MODEL")
+        key, _, value = pair.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            raise SystemExit(f"invalid --api-model-operation {pair!r}: empty operation")
+        if not value:
+            raise SystemExit(f"invalid --api-model-operation {pair!r}: empty model")
+        mapping[key] = value
+    return mapping
+
+
 def _resolve_render_compact(args) -> bool:
     """Compact render default: on for the live api worker, opt-in otherwise.
 
@@ -310,6 +327,14 @@ def main() -> int:
         "EFFORT is 'none' or low/medium/high; overrides --api-reasoning-effort for that operation",
     )
     parser.add_argument(
+        "--api-model-operation",
+        action="append",
+        default=None,
+        metavar="OP=MODEL",
+        help="per-operation model override, repeatable (e.g. INTERPRET_PROMPT_REVIEW=gpt-4o-mini); "
+             "overrides --model for that operation",
+    )
+    parser.add_argument(
         "--render-compact",
         action="store_true",
         help="serialize operation projections as compact JSON (~23% smaller; "
@@ -329,6 +354,12 @@ def main() -> int:
         "first, volatile binds and operation id last) so same-shape calls share a "
         "byte-identical prompt prefix for provider prefix caching; parsed content "
         "is identical",
+    )
+    parser.add_argument(
+        "--api-structured-output",
+        action="store_true",
+        help="api worker only: pass the compiled output schema as a real JSON-schema "
+             "decoding constraint (opt-in; backend must support structured output)",
     )
     parser.add_argument(
         "--worker-sandbox",
@@ -407,7 +438,9 @@ def main() -> int:
             capture_tokens=not args.no_token_telemetry,
             reasoning_effort=args.api_reasoning_effort,
             reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
+            model_by_operation=_parse_model_operations(args.api_model_operation),
             reorder_keys_for_cache=bool(getattr(args, "cache_order_render", False)),
+            structured_output=bool(getattr(args, "api_structured_output", False)),
             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
         )
     else:
@@ -630,6 +663,8 @@ def main() -> int:
                             capture_tokens=getattr(worker, "capture_tokens", True),
                             reasoning_effort=args.api_reasoning_effort,
                             reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
+                            model_by_operation=_parse_model_operations(args.api_model_operation),
+                            structured_output=bool(getattr(args, "api_structured_output", False)),
                             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
                         )
                     else:

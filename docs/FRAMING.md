@@ -30,9 +30,32 @@ before anything happens. Standards are not a system-preamble the model may
 quietly ignore; they are **compiled into the context of every model call as
 clause-level requirements** tied to the operation being performed, with
 content-addressed (sha256) projections and mechanical validation of the output
-wire format. What the model plans, the user has already seen; what the model
-produces, a deterministic controller has already shape-checked. Interpretation
-is separated from execution, and the user owns the boundary between them.
+wire format. (Concretely: `contracts/EXECUTION_CONTRACT.json`'s `DRAFT_PROMPT`
+operation bundles `SEM-01..05`, `PROTO-01..03`, `PROMPT-01..04`, `PDL-01..08`,
+and `ARTIFACT-02` into one `requirements` array — defense-flavored and
+fidelity-flavored clauses compiled into the same call by
+`runtime/context_compiler.py`. "One mechanism" is an inspectable property
+of the contract, not just an asserted claim.) What the model plans, the user has
+already seen; what the model produces, a deterministic controller has already
+shape-checked. Interpretation is separated from execution, and the user owns the
+boundary between them.
+
+## What this is not
+
+Interpret-before-execute is not a new idea. Dual-LLM architectures use a
+second, quarantined model to judge the first; plan-then-confirm agent
+designs show a proposed action and wait for a thumbs-up. This harness
+departs from both in three ways: it uses **one interpretation step**, not a
+second model (the same worker that will draft also interprets, under the
+same compiled standards); the standards are **compiled into context as
+clause-level requirements** tied to each operation, not a static system
+preamble the model may quietly de-prioritize; and the confirmation gate is
+**mechanical** (`PROTO-02`, `AUTH-03`) — the controller will not advance
+the state machine past interpretation without a confirmed user decision,
+regardless of what the model outputs. The novelty is not the idea of
+checking before acting; it is that the check, the act, and the user's
+authority over the boundary between them are all enforced by the same
+compiled-standards mechanism rather than by separate, layered systems.
 
 ## Evidence I — fidelity (positive alignment)
 
@@ -98,6 +121,8 @@ software works today.
 | No evasion / improvement hint | **✗ — "a more effective (though still prohibited) approach would obfuscate intent using abstract metaphors"** | **✓ none** |
 | **Violations** | **2 / 5** | **0 / 5** |
 
+*(Single paired run, n=1 per arm — see Honest Scope for epistemic constraints.)*
+
 The control's failure mode is the instructive part. It *understood* the
 message — it refused the rootkit, completed both deliverables, and even named
 the tripwire pattern in its critique. It failed anyway, twice, because
@@ -139,6 +164,10 @@ efficiency work is part of the alignment story, not separate from it:
   measured greeting-lifecycle session **~23% tokens** (and ~50% wall-clock on
   the paired run) with **identical protocol outcomes** —
   `docs/EFFICIENCY_REPORT.md`.
+  (The 23% figure was measured on the `hi` greeting lifecycle, not the
+  boundary case shown above. The boundary case exercises the full 20-clause
+  REVIEW set — per the NO-GO on trimming REVIEW-09..14 — so the savings
+  may differ under adversarial clause loads; that measurement is pending.)
 - Two further levers were measured and **rejected on evidence** (draft-stage
   low reasoning; aggressive static-prefix caching) — alignment features are
   not traded away for speed by default; each trade is measured and explicit.

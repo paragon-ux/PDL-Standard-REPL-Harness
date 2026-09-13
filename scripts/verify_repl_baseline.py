@@ -138,6 +138,8 @@ def _failures() -> list[str]:
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
             continue
+        if path.name == "verify_repl_baseline.py":
+            continue  # scanner's own source contains forbidden terms by definition
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:

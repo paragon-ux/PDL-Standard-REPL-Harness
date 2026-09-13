@@ -48,7 +48,9 @@ class ApiWorker:
         capture_tokens: bool = True,
         reasoning_effort: str | None = None,
         reasoning_by_operation: dict[str, str] | None = None,
+        model_by_operation: dict[str, str] | None = None,
         reorder_keys_for_cache: bool = False,
+        structured_output: bool = False,
         on_progress: Any = None,
     ):
         self.model = model
@@ -58,7 +60,9 @@ class ApiWorker:
         self.capture_tokens = capture_tokens
         self.reasoning_effort = reasoning_effort
         self.reasoning_by_operation = dict(reasoning_by_operation or {})
+        self.model_by_operation = dict(model_by_operation or {})
         self.reorder_keys_for_cache = reorder_keys_for_cache
+        self.structured_output = structured_output
         self.on_progress = on_progress
         self.worker_profile = "api"
         self.api_key_command = api_key_command or self._default_api_key_command(api_key_env)
@@ -110,6 +114,12 @@ class ApiWorker:
         if operation is not None and operation in self.reasoning_by_operation:
             return self.reasoning_by_operation[operation]
         return self.reasoning_effort
+
+    def _model_for(self, operation: str | None) -> str:
+        """Per-operation model wins over the global default."""
+        if operation is not None and operation in self.model_by_operation:
+            return self.model_by_operation[operation]
+        return self.model
 
     def _split_prompt(self, prompt: str) -> tuple[str, str]:
         """Split a rendered request.prompt back into (instructions, input).
@@ -165,7 +175,7 @@ class ApiWorker:
             input_text = self._reorder_for_cache(input_text.lstrip())
         input_text = input_text.rstrip() + _JSON_ONLY_SUFFIX
 
-        body: dict[str, Any] = {"model": self.model, "input": input_text}
+        body: dict[str, Any] = {"model": self._model_for(getattr(request, "operation", None)), "input": input_text}
         if instructions:
             body["instructions"] = instructions
         effort = self._reasoning_for(getattr(request, "operation", None))
@@ -173,6 +183,19 @@ class ApiWorker:
             body["reasoning"] = {"enabled": False}
         elif effort:
             body["reasoning"] = {"effort": effort}
+
+        if self.structured_output:
+            manifest = getattr(request, "manifest", None) or {}
+            schema = manifest.get("output_schema")
+            output_kind = manifest.get("output_kind", "json_object")
+            if schema and isinstance(schema, dict):
+                body["text"] = {
+                    "format": {
+                        "type": "json_schema",
+                        "name": output_kind,
+                        "schema": schema,
+                    }
+                }
 
         api_key = self._resolve_api_key()
         req = urllib.request.Request(

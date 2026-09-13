@@ -112,3 +112,12 @@ outcomes**, with the aggressive cache strategy and draft-low both measured and
 rejected. Remaining unshipped ideas: none with positive expected value at
 current provider behavior; revisit if OpenRouter stabilizes cache affinity or
 GLM changes default reasoning behavior.
+
+**Structural floor:** the 5-call lifecycle shape (DRAFT_PROMPT →
+INTERPRET_PROMPT_REVIEW → DRAFT_PLAN → INTERPRET_PLAN_REVIEW → EXECUTE) is
+not incidental overhead — it is the cost of `PROTO-02`'s two independently
+confirmable gates (`AUTH-03`). The Prompt must be confirmed before the Plan
+is drafted; the Plan must be confirmed before execution. Efficiency work
+here shrinks each call's per-token and per-second cost; it cannot and
+should not shrink the call count below what the confirmation guarantee
+requires.

@@ -17,9 +17,39 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from host.app import PDLtHost
-from providers.codex_worker import CodexWorker
 from providers.api_worker import ApiWorker
 from providers.fixtures import build_recorded_fixture, build_recorded_fixture_from_vendored
+
+
+def _create_codex_worker(
+    args,
+    session_dir: Path,
+    session_base: Path,
+    existing_worker: Any = None,
+) -> Any:
+    """Instantiate CodexWorker on demand with CLI preflight check."""
+    if not shutil.which("codex"):
+        raise RuntimeError("codex CLI not found on PATH. Install codex or use default --worker api.")
+    from providers.codex_worker import CodexWorker
+
+    workdir = getattr(args, "workdir", None) or session_dir
+    config_overrides = getattr(existing_worker, "config_overrides", getattr(args, "config_override", None))
+    sandbox_mode = getattr(existing_worker, "sandbox_mode", getattr(args, "worker_sandbox", "read-only"))
+    allow_bypass = getattr(existing_worker, "allow_bypass", getattr(args, "allow_bypass", False))
+    capture_tokens = getattr(existing_worker, "capture_tokens", not getattr(args, "no_token_telemetry", False))
+
+    return CodexWorker(
+        model=args.model,
+        workdir=workdir,
+        timeout=args.worker_timeout,
+        progress_path=session_dir / "worker-progress.log",
+        on_progress=lambda line: print(f"[codex] {line}", flush=True) if line.strip() else None,
+        capture_tokens=capture_tokens,
+        allowed_workdir_root=session_base,
+        config_overrides=config_overrides,
+        sandbox_mode=sandbox_mode,
+        allow_bypass=allow_bypass,
+    )
 
 
 def _new_session_name() -> str:
@@ -94,8 +124,19 @@ class SessionRuntime:
     def _refresh_pointer(self) -> None:
         workspace_path = self.host.status().get("workspace_path")
         if workspace_path:
+            relpath = None
+            try:
+                relpath = Path(workspace_path).relative_to(self.session_dir).as_posix()
+            except ValueError:
+                relpath = None
+            payload: dict[str, Any] = {
+                "session_id": self.session_id,
+                "workspace_path": str(workspace_path),
+            }
+            if relpath:
+                payload["workspace_relpath"] = relpath
             self.session_pointer.write_text(
-                json.dumps({"workspace_path": workspace_path}, indent=2) + "\n",
+                json.dumps(payload, indent=2) + "\n",
                 encoding="utf-8",
             )
 
@@ -164,6 +205,14 @@ def open_session(
         stored = data.get("workspace_path")
         if stored and Path(stored).is_dir():
             restore_path = Path(stored)
+        elif data.get("workspace_relpath"):
+            cand = (session_dir / data["workspace_relpath"]).resolve()
+            if cand.is_dir():
+                restore_path = cand
+        elif stored:
+            cand = (session_dir / "workspaces" / Path(stored).name).resolve()
+            if cand.is_dir():
+                restore_path = cand
     host = PDLtHost(
         args.candidate_repo,
         worker=worker,
@@ -174,8 +223,20 @@ def open_session(
         render_compact=bool(getattr(args, "render_compact", False)),
     ).start()
     if host.status().get("workspace_path"):
+        wp = host.status()["workspace_path"]
+        relpath = None
+        try:
+            relpath = Path(wp).relative_to(session_dir).as_posix()
+        except ValueError:
+            relpath = None
+        payload: dict[str, Any] = {
+            "session_id": session_id,
+            "workspace_path": str(wp),
+        }
+        if relpath:
+            payload["workspace_relpath"] = relpath
         pointer.write_text(
-            json.dumps({"workspace_path": host.status()["workspace_path"]}, indent=2) + "\n",
+            json.dumps(payload, indent=2) + "\n",
             encoding="utf-8",
         )
     transcript_path = args.transcript or session_dir / "transcript.log"
@@ -213,9 +274,9 @@ def switch_session(
 
 
 def _worker_profile(worker: Any) -> str:
-    """Worker identity for MLflow telemetry (best-effort; default codex)."""
+    """Worker identity for MLflow telemetry (best-effort; default api)."""
     profile = getattr(worker, "worker_profile", None)
-    return str(profile) if profile else "codex"
+    return str(profile) if profile else "api"
 
 
 def _parse_reasoning_operations(pairs: list[str] | None) -> dict[str, str]:
@@ -279,8 +340,17 @@ def main() -> int:
     parser.add_argument("--restore", type=Path, default=None)
     parser.add_argument("--run-id", default="repl")
     parser.add_argument("--observation-dir", type=Path, default=None)
-    parser.add_argument("--worker", choices=["recorded", "codex", "api"], default="codex")
-    parser.add_argument("--model", default="deepseek-v4-flash")
+    parser.add_argument(
+        "--worker",
+        choices=["recorded", "codex", "api"],
+        default="api",
+        help="semantic worker to execute protocol operations (default: api)",
+    )
+    parser.add_argument(
+        "--model",
+        default="z-ai/glm-4.7",
+        help="model name to request from the worker (default: z-ai/glm-4.7)",
+    )
     parser.add_argument("--eval-root", type=Path, default=None)
     parser.add_argument("--evidence", type=Path, default=None)
     parser.add_argument("--case-ids", default=None)
@@ -300,7 +370,7 @@ def main() -> int:
         "--config-override",
         action="append",
         default=None,
-        help="Codex CLI config override (key=value), repeatable; forwards to `codex exec -c`",
+        help="Codex CLI config override (key=value), repeatable; forwards to `codex exec -c` (codex worker only)",
     )
     parser.add_argument("--no-token-telemetry", action="store_true", help="disable worker token telemetry")
     parser.add_argument(
@@ -365,14 +435,22 @@ def main() -> int:
         "--worker-sandbox",
         choices=["read-only", "workspace-write"],
         default="read-only",
-        help="Codex worker sandbox mode (default read-only for the semantic worker)",
+        help="Codex worker sandbox mode (default read-only; codex worker only)",
     )
     parser.add_argument(
         "--allow-bypass",
         action="store_true",
-        help="OPT-IN ONLY: use --dangerously-bypass-approvals-and-sandbox. Requires a hardened/disposable execution environment; not part of the Phase 0-5 seal.",
+        help="OPT-IN ONLY: use --dangerously-bypass-approvals-and-sandbox (codex worker only). Requires a hardened/disposable execution environment; not part of the Phase 0-5 seal.",
     )
     args = parser.parse_args()
+
+    if args.worker != "codex":
+        if args.config_override:
+            print(f"[note: --config-override is specific to the codex worker and is ignored for worker '{args.worker}']", flush=True)
+        if args.worker_sandbox != "read-only":
+            print(f"[note: --worker-sandbox is specific to the codex worker and is ignored for worker '{args.worker}']", flush=True)
+        if args.allow_bypass:
+            print(f"[note: --allow-bypass is specific to the codex worker and is ignored for worker '{args.worker}']", flush=True)
 
     session_base = args.workspace_root or ROOT / "runs" / "live-sessions"
     try:
@@ -416,18 +494,10 @@ def main() -> int:
                 case_ids=case_ids,
             )
     elif args.worker == "codex":
-        worker = CodexWorker(
-            model=args.model,
-            workdir=args.workdir or session_dir,
-            timeout=args.worker_timeout,
-            progress_path=session_dir / "worker-progress.log",
-            on_progress=lambda line: print(f"[codex] {line}", flush=True) if line.strip() else None,
-            capture_tokens=not args.no_token_telemetry,
-            allowed_workdir_root=session_base,
-            config_overrides=args.config_override,
-            sandbox_mode=args.worker_sandbox,
-            allow_bypass=args.allow_bypass,
-        )
+        try:
+            worker = _create_codex_worker(args, session_dir, session_base)
+        except RuntimeError as exc:
+            raise SystemExit(str(exc))
     elif args.worker == "api":
         worker = ApiWorker(
             model=args.model,
@@ -472,7 +542,12 @@ def main() -> int:
     try:
         while True:
             sys.stdout.flush()
-            line = input("> ").strip()
+            try:
+                line = input("> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("", flush=True)
+                _write_transcript("=== session closed (EOF/interrupted) ===")
+                break
             _write_transcript("USER> " + line)
             if line == "/quit":
                 break
@@ -485,10 +560,10 @@ def main() -> int:
                     "/tokens [on|off] -> toggle token telemetry\n"
                     "/timeout [seconds] -> show/set worker timeout\n"
                     "/model [name] -> show/set worker model\n"
-                    "/config -> show/set Codex config overrides\n"
+                    "/config -> show/set Codex config overrides (codex worker only)\n"
                     "/sessions [prune <days>] -> list sessions; prune older than N days\n"
                     "/worker [codex|recorded|api] -> switch worker\n"
-                    "/sandbox [read-only|workspace-write] -> show/set worker sandbox mode\n"
+                    "/sandbox [read-only|workspace-write] -> show/set worker sandbox mode (codex worker only)\n"
                     "/workdir [path] -> show/set worker workdir\n"
                     "/transcript [path] -> show/set transcript file\n"
                     "/new -> start a new session\n"
@@ -527,7 +602,8 @@ def main() -> int:
                         if model is not None:
                             print(f"model: {model}", flush=True)
                         elif observed:
-                            print(f"model: {model or '(from ~/.codex/config.toml)'} | observed: {observed}", flush=True)
+                            from_src = "(from ~/.codex/config.toml)" if getattr(worker, "worker_profile", None) == "codex" else "(unconfigured)"
+                            print(f"model: {model or from_src} | observed: {observed}", flush=True)
                         else:
                             print("model: not resolved (no --model, no config.toml found)", flush=True)
                     else:
@@ -537,6 +613,9 @@ def main() -> int:
                         except (AttributeError, ValueError) as exc:
                             print(f"cannot set model: {exc}", flush=True)
                 elif cmd == "/config":
+                    if getattr(worker, "worker_profile", None) != "codex":
+                        print(f"command /config is only available when using the codex worker (current worker: {getattr(worker, 'worker_profile', 'unknown')})", flush=True)
+                        continue
                     overrides = getattr(worker, "config_overrides", None)
                     if not arg:
                         if overrides:
@@ -563,6 +642,9 @@ def main() -> int:
                         except AttributeError:
                             print("config overrides not supported for this worker", flush=True)
                 elif cmd == "/sandbox":
+                    if getattr(worker, "worker_profile", None) != "codex":
+                        print(f"command /sandbox is only available when using the codex worker (current worker: {getattr(worker, 'worker_profile', 'unknown')})", flush=True)
+                        continue
                     if not arg:
                         sandbox = getattr(worker, "sandbox_mode", None)
                         print(f"sandbox mode: {sandbox}" if sandbox is not None else "sandbox mode: n/a for this worker", flush=True)
@@ -608,19 +690,18 @@ def main() -> int:
                         worker.capture_tokens = not getattr(worker, "capture_tokens", False)
                     print(f"token telemetry: {'on' if getattr(worker, 'capture_tokens', False) else 'off'}", flush=True)
                 elif cmd == "/worker":
-                    target = arg or "codex"
+                    target = arg or "api"
                     if target == "codex":
-                        new_worker = CodexWorker(
-                            model=args.model,
-                            workdir=runtime.session_dir,
-                            timeout=args.worker_timeout,
-                            progress_path=runtime.session_dir / "worker-progress.log",
-                            on_progress=lambda line: print(f"[codex] {line}", flush=True) if line.strip() else None,
-                            capture_tokens=getattr(worker, "capture_tokens", True),
-                            allowed_workdir_root=session_base,
-                            sandbox_mode=getattr(worker, "sandbox_mode", args.worker_sandbox),
-                            allow_bypass=getattr(worker, "allow_bypass", args.allow_bypass),
-                        )
+                        try:
+                            new_worker = _create_codex_worker(
+                                args,
+                                runtime.session_dir,
+                                session_base,
+                                existing_worker=worker,
+                            )
+                        except RuntimeError as exc:
+                            print(f"[worker error] {exc}", flush=True)
+                            continue
                     elif target == "recorded":
                         if not args.evidence:
                             if not _is_interactive(args):

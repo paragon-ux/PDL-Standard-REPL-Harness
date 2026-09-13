@@ -63,13 +63,13 @@ interaction sequences captured in the vendored fixture (G06: full lifecycle;
 A02: prompt revision). Arbitrary input such as `hi` is expected to raise
 `ReplayMissError`, because the worker is keyed to exact operation + prompt
 hash. Use the fixture's exact turns for deterministic testing; use the live
-Codex worker for generative interaction.
+API worker (default) for generative interaction.
 
 Use `/quit` to exit (there is no `/exit` command).
 
 Supported commands: `/help`, `/status`, `/session`, `/new`, `/resume`,
 `/mlflow [on|off]`, `/tokens [on|off]`, `/timeout [seconds]`, `/model [name]`,
-`/worker [codex|recorded|api]`, `/sandbox [read-only|workspace-write]`,
+`/worker [api|codex|recorded]`, `/config (codex only)`, `/sandbox [read-only|workspace-write] (codex only)`,
 `/workdir [path]`, `/transcript [path]`, `/quit`.
 
 Use `--non-interactive` to suppress all interactive prompts (session selection,
@@ -85,6 +85,9 @@ workspace — this matches the source REPL and is intentional.
 
 Use `/new` or `--new-session` for a fresh workspace; use
 `/resume <session-id>` or `--session-id <id>` to resume a completed session.
+Sessions record `workspace_relpath` (relative to the session directory) so sessions
+can be resumed across operating systems (e.g. transferred between Windows and a
+remote Linux runner over SSH) even when absolute paths differ.
 
 ## MLflow (optional)
 
@@ -132,30 +135,25 @@ mlflow ui --backend-store-uri "sqlite:///$((Get-Location).Path.Replace('\','/'))
 
 Then open http://localhost:5000 to browse the `PDL-R2S` experiment.
 
-## Live worker path (optional)
+## Live API worker path (default)
 
 ```powershell
-python -m host.repl --candidate-repo . --worker codex --model deepseek-v4-flash --new-session
+# Default worker is 'api' with model 'z-ai/glm-4.7'
+python -m host.repl --candidate-repo . --new-session
 ```
 
-The live path uses the Codex CLI (`codex exec`) with read-only sandbox and
-approval `never` by default. Provider/model selection and credentials are
-external harness options; no credentials are stored in this repository.
-
-## Live API worker path (optional)
+Or specify an explicit model:
 
 ```powershell
-python -m host.repl --candidate-repo . --worker api --model z-ai/glm-5.3-flash `
+python -m host.repl --candidate-repo . --worker api --model z-ai/glm-4.7 `
   --api-base-url https://openrouter.ai/api/v1 --api-key-env OPENROUTER_API_KEY --new-session
 ```
 
 `--worker api` sends the same `request.prompt` every other worker receives
 directly to an OpenAI-compatible `/responses` endpoint (`instructions` =
 `runtime/worker-bootstrap.txt`, `input` = the compiled projection) with no
-tool definitions, sandbox, or agentic system prompt attached. It is a
-lower-overhead alternative to `--worker codex` for backends where the model
-is reachable as a plain HTTP endpoint; `codex exec` remains available for
-providers only wired through the Codex CLI.
+tool definitions, sandbox, or agentic system prompt attached. It avoids the
+process-spawn overhead and competing agent framing of `codex exec`.
 
 The API key is read from `os.environ` first. On Windows, if missing from the
 process environment, `providers/api_worker.py` falls back to a short-lived
@@ -163,6 +161,17 @@ PowerShell command that reads Machine then User scope — the same convention as
 Codex CLI custom `model_providers.*.auth` block — so a key rotated after the
 REPL started is still picked up on the next call. Pass `--api-key-env` to change
 which variable name it looks up.
+
+## Legacy Codex CLI worker (optional)
+
+```powershell
+python -m host.repl --candidate-repo . --worker codex --model deepseek-v4-flash --new-session
+```
+
+The legacy path shells out to the Codex CLI (`codex exec`) with read-only
+sandbox and approval `never` by default. Codex is lazy-loaded on demand and is
+never invoked when using `--worker api`. Provider/model selection and credentials
+are external harness options; no credentials are stored in this repository.
 
 ### Efficiency flags (`--worker api`)
 

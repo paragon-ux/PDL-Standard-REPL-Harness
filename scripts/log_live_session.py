@@ -18,7 +18,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Log one live PDLt session to MLflow")
     parser.add_argument("--session-dir", type=Path, required=True)
     parser.add_argument("--run-name", default=None)
-    parser.add_argument("--worker-profile", default="codex", help="worker identity to record (codex|api|recorded)")
+    parser.add_argument("--worker-profile", default="api", help="worker identity to record (api|codex|recorded)")
     args = parser.parse_args()
 
     session_dir = args.session_dir.resolve()

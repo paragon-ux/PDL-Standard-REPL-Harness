@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -234,16 +235,30 @@ class ApiWorker:
         )
 
         started = time.perf_counter()
-        try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                raw = resp.read().decode("utf-8", errors="replace")
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:2000]
-            raise TransportError(f"api worker HTTP {exc.code}: {detail}") from exc
-        except urllib.error.URLError as exc:
-            raise TransportError(f"api worker transport error: {exc.reason}") from exc
-        except TimeoutError as exc:
-            raise TransportError(f"api worker timed out after {self.timeout}s") from exc
+        raw = None
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    raw = resp.read().decode("utf-8", errors="replace")
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code in (429, 502, 503, 504) and attempt < 2:
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                detail = exc.read().decode("utf-8", errors="replace")[:2000]
+                raise TransportError(f"api worker HTTP {exc.code}: {detail}") from exc
+            except urllib.error.URLError as exc:
+                if attempt < 2:
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                raise TransportError(f"api worker transport error: {exc.reason}") from exc
+            except (TimeoutError, socket.timeout) as exc:
+                if attempt < 2:
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                raise TransportError(f"api worker timed out after {self.timeout}s") from exc
+        if raw is None:
+            raise TransportError("api worker failed after retries")
         latency_ms = (time.perf_counter() - started) * 1000.0
 
         if self.on_progress is not None:

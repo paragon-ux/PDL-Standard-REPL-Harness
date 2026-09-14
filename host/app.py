@@ -24,6 +24,11 @@ class _PlainRequest:
     operation: str = "BYPASS_ORDINARY"
 
 
+DEFAULT_HIGHER_PRIORITY_CONSTRAINTS = (
+    "Obey applicable provider/platform safety, privacy, permission, and tool constraints."
+)
+
+
 class PDLtHost:
     """External interactive host.
 
@@ -43,6 +48,7 @@ class PDLtHost:
         observation_dir: str | Path | None = None,
         include_bodies: bool = False,
         render_compact: bool = False,
+        higher_priority_constraints: str | None = None,
     ):
         self.candidate_repo = Path(candidate_repo).resolve()
         self.worker = worker
@@ -53,6 +59,7 @@ class PDLtHost:
         self.observation_dir = Path(observation_dir) if observation_dir else None
         self.include_bodies = include_bodies
         self.render_compact = render_compact
+        self.higher_priority_constraints = higher_priority_constraints or DEFAULT_HIGHER_PRIORITY_CONSTRAINTS
         self.engine: Any = None
         self.observed: ObservedSession | None = None
         self.sink: JsonlSink | None = None
@@ -71,7 +78,7 @@ class PDLtHost:
                 str(self.candidate_repo),
                 lambda request: "",
                 self.restore_path,
-                higher_priority_constraints="Obey applicable provider/platform safety, privacy, permission, and tool constraints.",
+                higher_priority_constraints=self.higher_priority_constraints,
                 available_execution_tools=[],
                 render_compact=self.render_compact,
             )
@@ -79,7 +86,7 @@ class PDLtHost:
             engine = SessionEngine(
                 str(self.candidate_repo),
                 lambda request: "",
-                higher_priority_constraints="Obey applicable provider/platform safety, privacy, permission, and tool constraints.",
+                higher_priority_constraints=self.higher_priority_constraints,
                 available_execution_tools=[],
                 workspace_root=self.workspace_root,
                 render_compact=self.render_compact,

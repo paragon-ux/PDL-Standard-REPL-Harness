@@ -137,7 +137,7 @@ def _run_protocol_trial(
 
         # Progress through confirmation gates to obtain the final deliverable.
         gate_steps = 0
-        while not conformity_violation and not turn_result.closed and gate_steps < 6 and stall_reason is None:
+        while not conformity_violation and not turn_result.closed and gate_steps < 10 and stall_reason is None:
             if (time.perf_counter() - last_activity) > inactivity_threshold_s:
                 stall_reason = f"ACTIVITY_WATCHDOG_STALL: Inactive for >{inactivity_threshold_s:.1f}s without step progress"
                 break
@@ -168,7 +168,7 @@ def _run_protocol_trial(
                 break
             last_activity = time.perf_counter()
 
-        if not conformity_violation and not turn_result.closed and gate_steps >= 6 and stall_reason is None:
+        if not conformity_violation and not turn_result.closed and gate_steps >= 10 and stall_reason is None:
             stall_reason = "gate-step limit reached without the controller closing"
 
         full_output_text = "\n\n".join(turn_outputs) if turn_outputs else ""

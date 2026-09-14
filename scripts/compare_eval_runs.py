@@ -38,8 +38,8 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
 
     vector_stats: dict[str, dict[str, Any]] = defaultdict(lambda: {
         "cases": set(),
-        "ctrl_scored": 0, "ctrl_leaks": 0, "ctrl_refusal_scored": 0, "ctrl_refusals": 0,
-        "prot_scored": 0, "prot_leaks": 0, "prot_refusal_scored": 0, "prot_refusals": 0,
+        "ctrl_scored": 0, "ctrl_leaks": 0, "ctrl_hijacks": 0, "ctrl_refusal_scored": 0, "ctrl_refusals": 0,
+        "prot_scored": 0, "prot_leaks": 0, "prot_hijacks": 0, "prot_refusal_scored": 0, "prot_refusals": 0,
         "prot_latency_sum": 0.0, "prot_latency_count": 0,
         "prot_trial_counts": [], "ctrl_trial_counts": [],
         "stalled_total": 0, "unqualified_cases": [],
@@ -57,6 +57,7 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
         # stalled). Fall back gracefully for older summary files.
         scored = item.get("scored_trials_count", item.get("trials_count", 0))
         leaks = item.get("leak_count", 0)
+        hijacks = item.get("hijack_count", 0)
         refusal_rate = item.get("refusal_rate")  # may be None -- do not default
         refusal_scored_n = scored if refusal_rate is not None else 0
         refusals = round(refusal_rate * refusal_scored_n) if refusal_rate is not None else None
@@ -69,6 +70,7 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
         if arm == "control":
             st["ctrl_scored"] += scored
             st["ctrl_leaks"] += leaks
+            st["ctrl_hijacks"] += hijacks
             st["ctrl_trial_counts"].append(item.get("trials_count", scored))
             if refusals is not None:
                 st["ctrl_refusal_scored"] += refusal_scored_n
@@ -76,6 +78,7 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
         else:
             st["prot_scored"] += scored
             st["prot_leaks"] += leaks
+            st["prot_hijacks"] += hijacks
             st["prot_trial_counts"].append(item.get("trials_count", scored))
             if refusals is not None:
                 st["prot_refusal_scored"] += refusal_scored_n
@@ -88,15 +91,17 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
         f"**Manifest:** `{summary.get('manifest_version', 'unknown')}` | **Platform:** `{summary.get('platform')}` | "
         f"**Model:** `{summary.get('model')}` | **Condition requested:** `{summary.get('measurement_condition_requested', summary.get('measurement_condition'))}`",
         "",
-        "| Vector | Cases | Trials/Arm (range) | Control Leak Rate | Protocol Leak Rate | Control Refusal | Protocol Refusal | Protocol Mean Latency | Stalled |",
-        "|---|---|---|---|---|---|---|---|---|",
+        "| Vector | Cases | Trials/Arm (range) | Control Leak Rate | Protocol Leak Rate | Control Hijack Rate | Protocol Hijack Rate | Control Refusal | Protocol Refusal | Protocol Mean Latency | Stalled |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
 
     tot_cases = 0
     tot_ctrl_scored = 0
     tot_ctrl_leaks = 0
+    tot_ctrl_hijacks = 0
     tot_prot_scored = 0
     tot_prot_leaks = 0
+    tot_prot_hijacks = 0
     all_unqualified: list[str] = []
 
     for vec, st in sorted(vector_stats.items()):
@@ -104,12 +109,16 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
         tot_cases += num_cases
         tot_ctrl_scored += st["ctrl_scored"]
         tot_ctrl_leaks += st["ctrl_leaks"]
+        tot_ctrl_hijacks += st["ctrl_hijacks"]
         tot_prot_scored += st["prot_scored"]
         tot_prot_leaks += st["prot_leaks"]
+        tot_prot_hijacks += st["prot_hijacks"]
         all_unqualified.extend(st["unqualified_cases"])
 
         ctrl_leak_str = format_rate(st["ctrl_leaks"], st["ctrl_scored"])
         prot_leak_str = format_rate(st["prot_leaks"], st["prot_scored"])
+        ctrl_hijack_str = format_rate(st["ctrl_hijacks"], st["ctrl_scored"])
+        prot_hijack_str = format_rate(st["prot_hijacks"], st["prot_scored"])
         ctrl_ref_str = format_rate(st["ctrl_refusals"], st["ctrl_refusal_scored"]) if st["ctrl_refusal_scored"] else "N/A (unmeasured)"
         prot_ref_str = format_rate(st["prot_refusals"], st["prot_refusal_scored"]) if st["prot_refusal_scored"] else "N/A (unmeasured)"
         prot_lat = f"{st['prot_latency_sum'] / st['prot_latency_count']:.1f}ms" if st["prot_latency_count"] else "N/A"
@@ -120,12 +129,17 @@ def generate_arm_ab_table(summary: dict[str, Any]) -> str:
 
         lines.append(
             f"| **{vec}** | {num_cases} | {trials_range} | {ctrl_leak_str} | **{prot_leak_str}** | "
-            f"{ctrl_ref_str} | {prot_ref_str} | {prot_lat} | {stalled_note} |"
+            f"{ctrl_hijack_str} | **{prot_hijack_str}** | {ctrl_ref_str} | {prot_ref_str} | {prot_lat} | {stalled_note} |"
         )
 
     overall_ctrl = format_rate(tot_ctrl_leaks, tot_ctrl_scored)
     overall_prot = format_rate(tot_prot_leaks, tot_prot_scored)
-    lines.append(f"| **TOTAL / OVERALL** | **{tot_cases}** | - | {overall_ctrl} | **{overall_prot}** | - | - | - | - |")
+    overall_ctrl_hijack = format_rate(tot_ctrl_hijacks, tot_ctrl_scored)
+    overall_prot_hijack = format_rate(tot_prot_hijacks, tot_prot_scored)
+    lines.append(
+        f"| **TOTAL / OVERALL** | **{tot_cases}** | - | {overall_ctrl} | **{overall_prot}** | "
+        f"{overall_ctrl_hijack} | **{overall_prot_hijack}** | - | - | - | - |"
+    )
 
     if summary.get("escalated_cases"):
         lines.append("")

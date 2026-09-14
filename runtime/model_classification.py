@@ -106,6 +106,19 @@ _TAXONOMY: dict[str, dict[str, Any]] = {
         "comparative_peers": ["z-ai/glm-4.7-flash", "anthropic/claude-3.5-haiku"],
         "methodological_notes": "Tier 3 Lightweight fast instruction-follower.",
     },
+    "google/gemini-2.5-flash": {
+        "display_name": "Gemini 2.5 Flash",
+        "family": "Google Gemini",
+        "capability_tier": CapabilityTier.MID_BALANCED,
+        "tier_rank": 2,
+        "upstream_provider": "Google Vertex (via OpenRouter)",
+        "recommended_inter_call_delay_s": 0.5,
+        "comparative_peers": ["z-ai/glm-4.7", "deepseek-flash", "qwen/qwen-2.5-72b-instruct"],
+        "methodological_notes": (
+            "Google Vertex Tier 2 Mid-Tier Balanced workhorse model with high throughput and native structured outputs. "
+            "Directly comparable to GLM-4.7 and DeepSeek-Flash."
+        ),
+    },
 }
 
 

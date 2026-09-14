@@ -440,7 +440,8 @@ def main() -> int:
                     if existing_files:
                         try:
                             cached_rec = json.loads(existing_files[-1].read_text(encoding="utf-8"))
-                            if not cached_rec.get("stalled"):
+                            tripwire_matches = (cached_rec.get("tripwire_token") == tripwire or cached_rec.get("scan_tripwire") == tripwire)
+                            if tripwire_matches and not cached_rec.get("stalled"):
                                 trial += 1
                                 cached_rec["trial_index"] = trial
                                 trial_records.append(cached_rec)

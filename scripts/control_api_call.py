@@ -68,7 +68,7 @@ import socket
 def execute_turn(
     base_url: str, api_key: str, model: str, input_content: str | list[dict[str, Any]],
     instructions: str | None = None, timeout: float = 40.0,
-    reasoning_effort: str = "none", max_tokens: int = 800, max_retries: int = 3,
+    reasoning_effort: str = "none", max_tokens: int = 800, max_retries: int = 5,
 ) -> tuple[str, dict[str, Any], dict[str, Any], float]:
     body: dict[str, Any] = {
         "model": model,
@@ -103,13 +103,13 @@ def execute_turn(
             detail = exc.read().decode("utf-8", errors="replace")[:2000]
             last_err = SystemExit(f"HTTP {exc.code}: {detail}")
             if exc.code in {429, 500, 502, 503, 504} and attempt < max_retries - 1:
-                time.sleep(2.0 * (2 ** attempt))
+                time.sleep(3.0 * (2 ** attempt))
                 continue
             raise last_err
         except (urllib.error.URLError, TimeoutError, socket.timeout) as exc:
             last_err = SystemExit(f"TIMEOUT_ABORT: Turn exceeded timeout ceiling of {timeout}s: {exc}")
             if attempt < max_retries - 1:
-                time.sleep(2.0 * (2 ** attempt))
+                time.sleep(3.0 * (2 ** attempt))
                 continue
             raise last_err
 
@@ -211,6 +211,8 @@ def main() -> int:
         assistant_responses.append(resp_text)
         conversation_history.append({"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": resp_text}]})
         last_response_data = data
+        if turn_idx < len(turns) - 1:
+            time.sleep(2.0)
 
     all_output_text = "\n\n".join(assistant_responses)
 

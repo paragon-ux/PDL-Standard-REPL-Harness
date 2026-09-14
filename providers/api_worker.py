@@ -236,25 +236,25 @@ class ApiWorker:
 
         started = time.perf_counter()
         raw = None
-        for attempt in range(3):
+        for attempt in range(5):
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     raw = resp.read().decode("utf-8", errors="replace")
                 break
             except urllib.error.HTTPError as exc:
-                if exc.code in (429, 502, 503, 504) and attempt < 2:
-                    time.sleep(2.0 * (attempt + 1))
+                if exc.code in (429, 502, 503, 504) and attempt < 4:
+                    time.sleep(3.0 * (2 ** attempt))
                     continue
                 detail = exc.read().decode("utf-8", errors="replace")[:2000]
                 raise TransportError(f"api worker HTTP {exc.code}: {detail}") from exc
             except urllib.error.URLError as exc:
-                if attempt < 2:
-                    time.sleep(2.0 * (attempt + 1))
+                if attempt < 4:
+                    time.sleep(3.0 * (2 ** attempt))
                     continue
                 raise TransportError(f"api worker transport error: {exc.reason}") from exc
             except (TimeoutError, socket.timeout) as exc:
-                if attempt < 2:
-                    time.sleep(2.0 * (attempt + 1))
+                if attempt < 4:
+                    time.sleep(3.0 * (2 ** attempt))
                     continue
                 raise TransportError(f"api worker timed out after {self.timeout}s") from exc
         if raw is None:

@@ -52,6 +52,7 @@ from providers.api_worker import ApiWorker  # noqa: E402
 from control_api_call import resolve_api_key  # noqa: E402
 from providers.live_stub import LiveStubWorker  # noqa: E402
 from tracking.mlflow_sink import log_experiment_run  # noqa: E402
+from runtime.model_classification import classify_model  # noqa: E402
 
 
 ADVERSARIAL_HIGHER_PRIORITY_CONSTRAINTS = (
@@ -383,6 +384,10 @@ def main() -> int:
     parser.add_argument("--stub", action="store_true")
     parser.add_argument("--api-structured-output", action="store_true", default=False)
     parser.add_argument("--max-consecutive-errors", type=int, default=5, help="abort a case/arm after this many consecutive exceptions")
+    parser.add_argument("--call-delay", type=float, default=3.0, help="cooldown delay in seconds between trials to respect rate limits")
+    parser.add_argument("--resume", action="store_true", help="skip cases/trials that have already produced valid results in out-dir")
+    parser.add_argument("--base-url", default="https://openrouter.ai/api/v1")
+    parser.add_argument("--reasoning-effort", default="none")
     args = parser.parse_args()
 
     if not args.manifest.is_file():
@@ -430,6 +435,22 @@ def main() -> int:
             trial = 0
             consecutive_errors = 0
             while trial < target_trials:
+                if args.resume:
+                    existing_files = sorted(args.out_dir.glob(f"{cid}_{arm}_t{trial + 1}*.json"))
+                    if existing_files:
+                        try:
+                            cached_rec = json.loads(existing_files[-1].read_text(encoding="utf-8"))
+                            if not cached_rec.get("stalled"):
+                                trial += 1
+                                cached_rec["trial_index"] = trial
+                                trial_records.append(cached_rec)
+                                leak_str = "?" if cached_rec["leak_detected"] is None else str(cached_rec["leak_detected"])
+                                hijack_str = "?" if cached_rec.get("decision_hijacked") is None else str(cached_rec.get("decision_hijacked"))
+                                print(f"  {arm.upper()} T{trial} [RESUMED]: leak={leak_str} hijack={hijack_str} lat={cached_rec.get('latency_ms')}ms", flush=True)
+                                continue
+                        except Exception:
+                            pass
+
                 trial_work_dir = args.out_dir / "sessions" / f"{cid}_{arm}_t{trial + 1}_{timestamp}"
                 trial_out_file = args.out_dir / f"{cid}_{arm}_t{trial + 1}_{timestamp}.json"
                 try:
@@ -458,6 +479,9 @@ def main() -> int:
                 hijack_str = "?" if rec.get("decision_hijacked") is None else str(rec.get("decision_hijacked"))
                 stall_note = " [STALLED]" if rec.get("stalled") else ""
                 print(f"  {arm.upper()} T{trial}: leak={leak_str} hijack={hijack_str} lat={rec['latency_ms']}ms{stall_note}", flush=True)
+
+                if args.call_delay > 0 and trial < target_trials:
+                    time.sleep(args.call_delay)
 
                 # Finding G: escalate based on whether the leak-rate-vs-
                 # threshold decision is already resolved (CI no longer
@@ -528,6 +552,7 @@ def main() -> int:
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "platform": sys.platform,
         "model": args.model,
+        "model_classification": classify_model(args.model, base_url=args.base_url, reasoning_effort=args.reasoning_effort).as_dict(),
         "measurement_condition_requested": "qualified" if args.qualified else "development",
         "all_cases_met_qualified_floor": (not under_floor_cases) if args.qualified else None,
         "under_floor_cases": sorted(under_floor_cases),

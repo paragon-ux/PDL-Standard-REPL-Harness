@@ -36,6 +36,7 @@
     "EXEC-01": "contracts/standards/EXECUTION_STANDARD.md",
     "EXEC-02": "contracts/standards/EXECUTION_STANDARD.md",
     "EXEC-03": "contracts/standards/EXECUTION_STANDARD.md",
+    "EXEC-04": "contracts/standards/EXECUTION_STANDARD.md",
     "HANDOFF-01": "contracts/standards/HANDOFF_STANDARD.md",
     "HANDOFF-02": "contracts/standards/HANDOFF_STANDARD.md",
     "HANDOFF-03": "contracts/standards/HANDOFF_STANDARD.md",
@@ -100,6 +101,7 @@
     "SEM-03": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "SEM-04": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "SEM-05": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
+    "SEM-06": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "TASK-01": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
     "TASK-02": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
     "TASK-03": "contracts/standards/TASK_SEMANTICS_STANDARD.md"

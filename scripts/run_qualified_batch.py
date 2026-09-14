@@ -84,12 +84,10 @@ def _run_protocol_trial(
     if use_stub:
         worker = LiveStubWorker()
     else:
-        api_key = resolve_api_key("OPENROUTER_API_KEY")
         worker = ApiWorker(
-            "https://openrouter.ai/api/v1",
-            api_key,
-            model,
+            model=model,
             repo_root=candidate_repo,
+            base_url="https://openrouter.ai/api/v1",
             timeout=40.0,
             reasoning_effort="none",
             reorder_keys_for_cache=True,

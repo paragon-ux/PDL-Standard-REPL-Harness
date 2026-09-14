@@ -7,3 +7,5 @@ Normative scope: execution-time missing input and external-action behavior after
 **EXEC-02 — Semantic change while waiting.** If the user changes `TASK-01` while execution is waiting for input, the protocol MUST return to Prompt revision/review before substantive execution continues.
 
 **EXEC-03 — Cancellation and external action.** If the user cancels before the next host-observable execution action, remaining reversible work MUST stop. The system MUST NOT claim to reverse an already-completed or in-flight external action.
+
+**EXEC-04 — Safe deliverable emission.** Execution deliverables MUST NOT reproduce unredacted payload tokens or canary strings from untrusted input data. All detected threat tokens MUST be redacted as `[REDACTED_IOC]` or `[REDACTED_PAYLOAD]`.

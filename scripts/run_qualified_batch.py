@@ -455,8 +455,9 @@ def main() -> int:
                 rec["trial_index"] = trial
                 trial_records.append(rec)
                 leak_str = "?" if rec["leak_detected"] is None else str(rec["leak_detected"])
+                hijack_str = "?" if rec.get("decision_hijacked") is None else str(rec.get("decision_hijacked"))
                 stall_note = " [STALLED]" if rec.get("stalled") else ""
-                print(f"  {arm.upper()} T{trial}: leak={leak_str} lat={rec['latency_ms']}ms{stall_note}", flush=True)
+                print(f"  {arm.upper()} T{trial}: leak={leak_str} hijack={hijack_str} lat={rec['latency_ms']}ms{stall_note}", flush=True)
 
                 # Finding G: escalate based on whether the leak-rate-vs-
                 # threshold decision is already resolved (CI no longer
@@ -490,6 +491,7 @@ def main() -> int:
                 total_trials = len(trial_records)
                 leak_count = sum(1 for r in scored if r["leak_detected"])
                 refusal_count = sum(1 for r in refusal_scored if r["refusal_detected"])
+                hijack_count = sum(1 for r in completed if r.get("decision_hijacked"))
                 mean_lat = sum(r["latency_ms"] for r in trial_records) / total_trials
                 mean_tokens = sum(r["usage"].get("total_tokens", 0) for r in trial_records) / total_trials
 
@@ -507,6 +509,8 @@ def main() -> int:
                     "leak_rate": round(leak_count / len(scored), 4) if scored else None,
                     "leak_rate_wilson_lower": round(leak_scan.wilson_lower_bound(leak_count, len(scored)), 4) if scored else None,
                     "leak_rate_wilson_upper": round(leak_scan.wilson_upper_bound(leak_count, len(scored)), 4) if scored else None,
+                    "hijack_count": hijack_count,
+                    "hijack_rate": round(hijack_count / len(completed), 4) if completed else None,
                     "refusal_count": refusal_count,
                     "refusal_rate": round(refusal_count / len(refusal_scored), 4) if refusal_scored else None,
                     "mean_latency_ms": round(mean_lat, 2),

@@ -19,7 +19,7 @@ _JSON_ONLY_SUFFIX = (
 
 
 DEFAULT_PROVIDER_PINNING: dict[str, Any] = {
-    "order": ["Google", "Google AI Studio"],
+    "order": ["Google"],
     "allow_fallbacks": False,
 }
 
@@ -45,7 +45,7 @@ class ApiWorker:
     def __init__(
         self,
         *,
-        model: str = "google/gemini-2.5-flash",
+        model: str = "z-ai/glm-4.7",
         repo_root: str | Path,
         base_url: str = "https://openrouter.ai/api/v1",
         api_key_env: str = "OPENROUTER_API_KEY",
@@ -56,7 +56,7 @@ class ApiWorker:
         reasoning_by_operation: dict[str, str] | None = None,
         model_by_operation: dict[str, str] | None = None,
         reorder_keys_for_cache: bool = False,
-        structured_output: bool = True,
+        structured_output: bool = False,
         provider_pinning: dict[str, Any] | None = None,
         safety_settings: list[dict[str, str]] | None = None,
         on_progress: Any = None,
@@ -181,87 +181,41 @@ class ApiWorker:
 
     @staticmethod
     def _sanitize_schema_for_grammar(schema: Any) -> Any:
-        """Sanitize and flatten schema for grammar engines (Vertex, Venice, Outlines, vLLM).
+        """Sanitize schema for grammar engines (Vertex, Venice, Outlines, vLLM).
 
-        Flattens top-level oneOf unions into a single object schema with enum discriminators,
-        converts 'const' to 'enum', and strips unsupported keywords like uniqueItems, minItems,
-        minLength, anyOf, allOf, and $schema.
+        Cleans unsupported keywords like $schema, minLength, etc., converts 'const'
+        to single-item 'enum', while strictly preserving oneOf branch structures
+        and required field invariants.
         """
         if not isinstance(schema, dict):
             return schema
 
-        if "oneOf" in schema:
-            merged_props: dict[str, Any] = {}
-            required_discriminators: set[str] = set()
-            for branch in schema["oneOf"]:
-                if not isinstance(branch, dict):
-                    continue
-                props = branch.get("properties", {})
-                for k, v in props.items():
-                    if k not in merged_props:
-                        merged_props[k] = dict(v) if isinstance(v, dict) else v
-                    else:
-                        existing = merged_props[k]
-                        if isinstance(existing, dict) and isinstance(v, dict):
-                            vals = set()
-                            for item in (existing, v):
-                                if "const" in item:
-                                    vals.add(item["const"])
-                                elif "enum" in item:
-                                    vals.update(item["enum"])
-                            if vals:
-                                merged_props[k] = {"type": "string", "enum": sorted(list(vals))}
-                reqs = branch.get("required", [])
-                if not required_discriminators:
-                    required_discriminators = set(reqs)
-                else:
-                    required_discriminators = required_discriminators.intersection(reqs)
-
-            for k, v in list(merged_props.items()):
-                if isinstance(v, dict):
-                    cv = dict(v)
-                    if "const" in cv:
-                        cv["enum"] = [cv.pop("const")]
-                        cv["type"] = "string"
-                    for key_to_drop in ("anyOf", "allOf", "minItems", "maxItems", "uniqueItems", "minLength", "$schema"):
-                        cv.pop(key_to_drop, None)
-                    if "items" in cv and isinstance(cv["items"], dict):
-                        cv_items = dict(cv["items"])
-                        for key_to_drop in ("anyOf", "allOf", "minItems", "maxItems", "uniqueItems", "minLength", "$schema"):
-                            cv_items.pop(key_to_drop, None)
-                        cv["items"] = cv_items
-                    merged_props[k] = cv
-
-            res: dict[str, Any] = {
-                "type": "object",
-                "properties": merged_props,
-                "additionalProperties": False,
-            }
-            if required_discriminators:
-                res["required"] = sorted(list(required_discriminators))
+        def _clean_node(node: Any) -> Any:
+            if not isinstance(node, dict):
+                return node
+            res = dict(node)
+            for key_to_drop in ("$schema", "minLength", "maxLength", "minItems", "maxItems", "uniqueItems"):
+                res.pop(key_to_drop, None)
+            if "const" in res:
+                res["enum"] = [res.pop("const")]
+                if "type" not in res:
+                    res["type"] = "string"
+            if "properties" in res and isinstance(res["properties"], dict):
+                clean_props: dict[str, Any] = {}
+                for k, v in res["properties"].items():
+                    clean_props[k] = _clean_node(v)
+                res["properties"] = clean_props
+            if "items" in res:
+                res["items"] = _clean_node(res["items"])
+            if "oneOf" in res and isinstance(res["oneOf"], list):
+                res["oneOf"] = [_clean_node(b) for b in res["oneOf"]]
+            if "anyOf" in res and isinstance(res["anyOf"], list):
+                res["anyOf"] = [_clean_node(b) for b in res["anyOf"]]
+            if "allOf" in res and isinstance(res["allOf"], list):
+                res["allOf"] = [_clean_node(b) for b in res["allOf"]]
             return res
 
-        res = dict(schema)
-        for key_to_drop in ("anyOf", "allOf", "minItems", "maxItems", "uniqueItems", "minLength", "$schema"):
-            res.pop(key_to_drop, None)
-        if "properties" in res and isinstance(res["properties"], dict):
-            clean_props: dict[str, Any] = {}
-            for k, v in res["properties"].items():
-                cv = dict(v) if isinstance(v, dict) else v
-                if isinstance(cv, dict):
-                    if "const" in cv:
-                        cv["enum"] = [cv.pop("const")]
-                        cv["type"] = "string"
-                    for key_to_drop in ("anyOf", "allOf", "minItems", "maxItems", "uniqueItems", "minLength", "$schema"):
-                        cv.pop(key_to_drop, None)
-                    if "items" in cv and isinstance(cv["items"], dict):
-                        cv_items = dict(cv["items"])
-                        for key_to_drop in ("anyOf", "allOf", "minItems", "maxItems", "uniqueItems", "minLength", "$schema"):
-                            cv_items.pop(key_to_drop, None)
-                        cv["items"] = cv_items
-                clean_props[k] = cv
-            res["properties"] = clean_props
-        return res
+        return _clean_node(schema)
 
     def call(self, request: Any) -> WorkerResult:
         instructions, input_text = self._split_prompt(request.prompt)

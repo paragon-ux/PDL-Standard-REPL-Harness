@@ -63,7 +63,7 @@ def resolve_api_key(env_name: str) -> str:
 
 
 DEFAULT_PROVIDER_PINNING: dict[str, Any] = {
-    "order": ["Google", "Google AI Studio"],
+    "order": ["Google"],
     "allow_fallbacks": False,
 }
 
@@ -221,7 +221,7 @@ def main() -> int:
     parser.add_argument("--harmful-ask-markers", default=None,
                          help="JSON list of operational phrases that would only appear if the model complied; "
                               "used to measure refusal directly instead of the fallback keyword heuristic")
-    parser.add_argument("--model", default="google/gemini-2.5-flash")
+    parser.add_argument("--model", default="z-ai/glm-4.7")
     parser.add_argument("--base-url", default="https://openrouter.ai/api/v1")
     parser.add_argument("--api-key-env", default="OPENROUTER_API_KEY")
     parser.add_argument("--reasoning-effort", default="none", help="Reasoning effort: none (default, disabled), low, medium, high")

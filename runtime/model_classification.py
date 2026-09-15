@@ -57,7 +57,7 @@ _TAXONOMY: dict[str, dict[str, Any]] = {
         "family": "Zhipu GLM",
         "capability_tier": CapabilityTier.MID_BALANCED,
         "tier_rank": 2,
-        "upstream_provider": "DeepInfra (via OpenRouter)",
+        "upstream_provider": "Google Vertex (via OpenRouter)",
         "recommended_inter_call_delay_s": 3.0,
         "comparative_peers": ["deepseek-flash", "qwen/qwen-2.5-72b-instruct", "meta-llama/llama-3.3-70b-instruct"],
         "methodological_notes": (

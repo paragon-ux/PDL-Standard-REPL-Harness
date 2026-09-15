@@ -108,6 +108,7 @@ def _run_protocol_trial(
     stall_reason: str | None = None
     conformity_violation = False
     conformity_error: str | None = None
+    turn_result: Any = None
 
     # Activity watchdog: track last step completion timestamp
     last_activity = time.perf_counter()
@@ -124,10 +125,12 @@ def _run_protocol_trial(
                 break
             try:
                 turn_result = host.handle(turn_text)
-            except WireError as we:
-                conformity_violation = True
-                conformity_error = f"WireError in turn: {we}"
-                break
+            except (WireError, RuntimeError) as we:
+                if isinstance(we, WireError) or "WireError" in str(we) or "conformity" in str(we).lower():
+                    conformity_violation = True
+                    conformity_error = f"WireError in turn: {we}"
+                    break
+                raise
             last_activity = time.perf_counter()
             if turn_result.text:
                 turn_outputs.append(turn_result.text)
@@ -137,7 +140,7 @@ def _run_protocol_trial(
 
         # Progress through confirmation gates to obtain the final deliverable.
         gate_steps = 0
-        while not conformity_violation and not turn_result.closed and gate_steps < 10 and stall_reason is None:
+        while not conformity_violation and turn_result is not None and not turn_result.closed and gate_steps < 10 and stall_reason is None:
             if (time.perf_counter() - last_activity) > inactivity_threshold_s:
                 stall_reason = f"ACTIVITY_WATCHDOG_STALL: Inactive for >{inactivity_threshold_s:.1f}s without step progress"
                 break
@@ -162,13 +165,15 @@ def _run_protocol_trial(
                     if not turn_result.closed:
                         stall_reason = f"driver could not advance controller stage={stage!r}"
                     break
-            except WireError as we:
-                conformity_violation = True
-                conformity_error = f"WireError in gate step: {we}"
-                break
+            except (WireError, RuntimeError) as we:
+                if isinstance(we, WireError) or "WireError" in str(we) or "conformity" in str(we).lower():
+                    conformity_violation = True
+                    conformity_error = f"WireError in gate step: {we}"
+                    break
+                raise
             last_activity = time.perf_counter()
 
-        if not conformity_violation and not turn_result.closed and gate_steps >= 10 and stall_reason is None:
+        if not conformity_violation and (turn_result is None or not turn_result.closed) and gate_steps >= 10 and stall_reason is None:
             stall_reason = "gate-step limit reached without the controller closing"
 
         full_output_text = "\n\n".join(turn_outputs) if turn_outputs else ""
@@ -183,7 +188,7 @@ def _run_protocol_trial(
         final_stage = (status_history[-1].get("controller_state") or {}).get("stage")
 
     # Isolate the final execution deliverable from intermediate host review dialogue.
-    final_deliverable = turn_result.text if (not conformity_violation and turn_result.closed and final_stage == "CLOSED_SUCCESS") else ""
+    final_deliverable = turn_result.text if (not conformity_violation and turn_result is not None and turn_result.closed and final_stage == "CLOSED_SUCCESS") else ""
 
     if conformity_violation:
         leak_detected = False
@@ -389,19 +394,44 @@ def _run_control_trial(
                 "diagnostic_anomalies": ["ANOMALY_TIMEOUT_ABORT"],
             }
             return res
+        if "WireError" in err_msg or "schema" in err_msg.lower() or "grammar" in err_msg.lower():
+            res = {
+                "arm": "control", "case_id": case["case_id"], "vector": case["vector"],
+                "latency_ms": 0.0, "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+                "leak_detected": False, "scan_scope": "conformity_violation",
+                "decision_hijacked": False, "refusal_detected": False,
+                "conformity_violation": True, "conformity_error": f"Control schema/wire error: {err_msg.strip()[:300]}",
+                "stalled": False, "stall_reason": None,
+                "tripwire_token": tripwire, "output_sample": err_msg[:500],
+                "diagnostic_anomalies": ["ANOMALY_CONFORMITY_VIOLATION"],
+            }
+            return res
         raise RuntimeError(f"Control call failed ({proc.returncode}): {err_msg}")
 
     data = json.loads(out_file.read_text(encoding="utf-8"))
     turn_count = data.get("turns_count", 1)
+    conformity_violation = data.get("conformity_violation", False)
+    conformity_error = data.get("conformity_error")
+    if conformity_violation:
+        leak_detected = False
+        scan_scope = "conformity_violation"
+        decision_hijacked = False
+        refusal_detected = False
+    else:
+        leak_detected = data.get("leak_detected", False)
+        scan_scope = data.get("scan_scope", "full_text")
+        decision_hijacked = data.get("decision_hijacked", False)
+        refusal_detected = data.get("refusal_detected")
+
     res = {
         "arm": "control", "case_id": case["case_id"], "vector": case["vector"],
         "latency_ms": data.get("latency_ms", 0.0), "usage": data.get("usage", {}),
-        "leak_detected": data.get("leak_detected", False),
-        "scan_scope": data.get("scan_scope", "full_text"),
-        "decision_hijacked": data.get("decision_hijacked", False),
-        "refusal_detected": data.get("refusal_detected"),
-        "conformity_violation": data.get("conformity_violation", False),
-        "conformity_error": data.get("conformity_error"),
+        "leak_detected": leak_detected,
+        "scan_scope": scan_scope,
+        "decision_hijacked": decision_hijacked,
+        "refusal_detected": refusal_detected,
+        "conformity_violation": conformity_violation,
+        "conformity_error": conformity_error,
         "stalled": False, "tripwire_token": tripwire, "output_sample": data.get("output_text", "")[:500],
     }
     res["diagnostic_anomalies"] = evaluate_diagnostic_anomalies(res, turn_count, "control")
@@ -421,12 +451,13 @@ def main() -> int:
                          help="escalate while the Wilson 95%% upper bound on the true leak rate exceeds this")
     parser.add_argument("--no-escalate", action="store_true")
     parser.add_argument("--qualified", action="store_true", help="mark batch as qualified; enforces --min-qualified-trials per case/arm")
-    parser.add_argument("--model", default="google/gemini-2.5-flash")
+    parser.add_argument("--model", default="z-ai/glm-4.7")
     parser.add_argument("--out-dir", type=Path, default=ROOT / "runs" / "adversarial-results")
     parser.add_argument("--mlflow", action="store_true")
     parser.add_argument("--stub", action="store_true")
-    parser.add_argument("--api-structured-output", action="store_true", default=True, help="Enable API-level structured output schemas")
-    parser.add_argument("--no-api-structured-output", action="store_false", dest="api_structured_output", help="Disable API-level structured output schemas")
+    parser.add_argument("--api-structured-output", action="store_true", default=True, help="Enable API-level structured output schemas for control arm")
+    parser.add_argument("--no-api-structured-output", action="store_false", dest="api_structured_output", help="Disable API-level structured output schemas for control arm")
+    parser.add_argument("--protocol-structured-output", action="store_true", default=False, help="Force API-level structured output schemas for protocol arm (experimental)")
     parser.add_argument("--max-consecutive-errors", type=int, default=5, help="abort a case/arm after this many consecutive exceptions")
     parser.add_argument("--call-delay", type=float, default=3.0, help="cooldown delay in seconds between trials to respect rate limits")
     parser.add_argument("--resume", action="store_true", help="skip cases/trials that have already produced valid results in out-dir")
@@ -507,11 +538,41 @@ def main() -> int:
                     else:
                         rec = _run_protocol_trial(
                             ROOT, case, turns, trial_work_dir, args.model,
-                            use_stub=args.stub, structured_output=args.api_structured_output,
+                            use_stub=args.stub, structured_output=args.protocol_structured_output,
                         )
                         trial_out_file.parent.mkdir(parents=True, exist_ok=True)
                         trial_out_file.write_text(json.dumps(rec, indent=2), encoding="utf-8")
                 except Exception as exc:
+                    exc_str = str(exc)
+                    if "WireError" in str(type(exc).__name__) or "WireError" in exc_str or "conformity" in exc_str.lower():
+                        conformity_rec = {
+                            "arm": arm,
+                            "case_id": cid,
+                            "vector": case["vector"],
+                            "latency_ms": 0.0,
+                            "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+                            "leak_detected": False,
+                            "scan_scope": "conformity_violation",
+                            "decision_hijacked": False,
+                            "refusal_detected": False,
+                            "refusal_source": "conformity_violation",
+                            "conformity_violation": True,
+                            "conformity_error": f"Immediate disqualification: {exc_str[:300]}",
+                            "stalled": False,
+                            "stall_reason": None,
+                            "tripwire_token": tripwire,
+                            "output_sample": exc_str[:500],
+                            "diagnostic_anomalies": ["ANOMALY_CONFORMITY_VIOLATION"],
+                            "trial_index": trial + 1,
+                        }
+                        trial_out_file.parent.mkdir(parents=True, exist_ok=True)
+                        trial_out_file.write_text(json.dumps(conformity_rec, indent=2), encoding="utf-8")
+                        trial += 1
+                        trial_records.append(conformity_rec)
+                        print(f"  {arm.upper()} T{trial}: leak=False hijack=False lat=0.0ms [CONFORMITY_VIOLATION] ({exc_str[:120]})", flush=True)
+                        consecutive_errors = 0
+                        continue
+
                     consecutive_errors += 1
                     print(f"  {arm.upper()} attempt ERROR ({consecutive_errors}/{args.max_consecutive_errors}): {exc}", flush=True)
                     if consecutive_errors >= args.max_consecutive_errors:

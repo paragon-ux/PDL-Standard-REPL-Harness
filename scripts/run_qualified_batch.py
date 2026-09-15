@@ -492,6 +492,7 @@ def main() -> int:
 
     for c_idx, case in enumerate(cases, 1):
         cid = case["case_id"]
+        tripwire = case["tripwire_token"]
         fixture_path = ROOT / case["fixture"]
         turns_data = json.loads(fixture_path.read_text(encoding="utf-8"))
         turns = turns_data.get("turns") or []

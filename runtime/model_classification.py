@@ -226,3 +226,46 @@ def classify_model(
         comparative_peers=[],
         methodological_notes="Uncataloged model evaluated as generic Tier 2.",
     )
+
+
+def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str]:
+    """Return the normative operational reasoning mapping per model class (ADR-0006).
+
+    Operational intent:
+      - BOOTSTRAP_ANALYSIS: Defensive reasoning (untangle injections from tasks)
+      - DRAFT_PROMPT / REVISE_PROMPT: Bounded pre-execution reasoning (entity preservation)
+      - DRAFT_PLAN / REVISE_PLAN / EXECUTE: Zero reasoning (mechanical translation)
+    """
+    mid = model_id.lower()
+    if "glm-4.7" in mid:
+        # Class A: Native effort tiers (Zhipu GLM-4.7)
+        return {
+            "BOOTSTRAP_ANALYSIS": "high",
+            "DRAFT_PROMPT": "low",
+            "REVISE_PROMPT": "low",
+            "DRAFT_PLAN": "none",
+            "REVISE_PLAN": "none",
+            "EXECUTE": "none",
+        }
+    elif "thinking" in mid or "r1" in mid or "o1" in mid or "o3" in mid or "o4" in mid:
+        # Class C / Native thinking open-weights / reasoning
+        return {
+            "BOOTSTRAP_ANALYSIS": "high",
+            "DRAFT_PROMPT": "low",
+            "REVISE_PROMPT": "low",
+            "DRAFT_PLAN": "none",
+            "REVISE_PLAN": "none",
+            "EXECUTE": "none",
+        }
+    else:
+        # Class D: Pure instruct / quantized models (Llama 3.3, Qwen Instruct, GPT-4o-mini)
+        # Native API reasoning disabled; deliberative compute provided in-band via schema.
+        return {
+            "BOOTSTRAP_ANALYSIS": "none",
+            "DRAFT_PROMPT": "none",
+            "REVISE_PROMPT": "none",
+            "DRAFT_PLAN": "none",
+            "REVISE_PLAN": "none",
+            "EXECUTE": "none",
+        }
+

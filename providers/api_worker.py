@@ -208,7 +208,11 @@ class ApiWorker:
             if "items" in res:
                 res["items"] = _clean_node(res["items"])
             if "oneOf" in res and isinstance(res["oneOf"], list):
-                res["oneOf"] = [_clean_node(b) for b in res["oneOf"]]
+                # Vertex/Gemini grammar enforcement accepts anyOf but rejects
+                # oneOf; all oneOf branches here are distinguished by a const
+                # 'kind' discriminator, so anyOf is semantically equivalent.
+                res.pop("oneOf", None)
+                res["anyOf"] = [_clean_node(b) for b in node["oneOf"]]
             if "anyOf" in res and isinstance(res["anyOf"], list):
                 res["anyOf"] = [_clean_node(b) for b in res["anyOf"]]
             if "allOf" in res and isinstance(res["allOf"], list):

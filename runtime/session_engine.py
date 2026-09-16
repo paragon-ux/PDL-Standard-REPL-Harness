@@ -18,7 +18,8 @@ from controller.mechanical_controller import (
     Stage,
     Transition,
 )
-from runtime.operation_bridge import ActivationRoute, ModelRequest, OperationBridge
+from runtime.operation_bridge import ActivationRoute, ModelRequest, OperationBridge, WireError
+from runtime.quarantine import compile_bootstrap_output
 from runtime.workspace import WorkspaceError, WorkspaceRun
 from runtime import presentation
 
@@ -95,6 +96,11 @@ class SessionEngine:
         self.bridge = OperationBridge(self.repo_root, render_compact=render_compact)
         self.controller: Optional[MechanicalController] = None
         self.workspace: Optional[WorkspaceRun] = None
+        # Protocol v2: semantic-bootstrap containment (structural, non-optional).
+        # Raw untrusted content is read by BOOTSTRAP_ANALYSIS only; every compile
+        # operation receives the sanitized compiled analysis. Cache is keyed on
+        # the raw source so repeated sources bootstrap once per session.
+        self._bootstrap_cache: dict[str, str] = {}
         if workspace_root is None:
             self.workspace_root = Path(tempfile.mkdtemp(prefix="pdl-c0-workspaces-"))
         else:
@@ -143,7 +149,30 @@ class SessionEngine:
         workspace.publish_approach_sources([])
         return controller
 
-    def _call(self, operation: str, values: dict[str, Any], traces: list[CallTrace]) -> str:
+    def _invoke(self, request: ModelRequest, traces: list[CallTrace]) -> str:
+        model_text = self.model_call(request)
+        self.workspace.record_model_output(request.workspace_invocation, model_text)
+        traces.append(
+            CallTrace(
+                request.operation,
+                request.manifest,
+                model_text,
+                request.workspace_invocation.stage,
+                request.workspace_invocation.invocation_id,
+            )
+        )
+        return model_text
+
+    def _call(
+        self,
+        operation: str,
+        values: dict[str, Any],
+        traces: list[CallTrace],
+        parser: Callable[[str], Any] | None = None,
+    ) -> Any:
+        """Invoke one operation. With a parser, retry ONCE on WireError with an
+        operator correction so a sampling glitch (invalid JSON, dropped field)
+        costs one extra call instead of fatally failing the session."""
         if self.workspace is None:
             raise WorkspaceError("workspace_not_initialized")
         request = self.bridge.request(
@@ -152,18 +181,29 @@ class SessionEngine:
             workspace=self.workspace,
             higher_priority_constraints=self.higher_priority_constraints,
         )
-        model_text = self.model_call(request)
-        self.workspace.record_model_output(request.workspace_invocation, model_text)
-        traces.append(
-            CallTrace(
-                operation,
-                request.manifest,
-                model_text,
-                request.workspace_invocation.stage,
-                request.workspace_invocation.invocation_id,
+        model_text = self._invoke(request, traces)
+        if parser is None:
+            return model_text
+        try:
+            return parser(model_text)
+        except WireError as first_error:
+            correction = (
+                "OPERATOR CORRECTION: the previous response failed host-side validation "
+                f"(reason: {first_error}). Emit exactly one JSON object that conforms to the "
+                "declared output_schema for this operation, with no prose or code fences around it."
             )
-        )
-        return model_text
+            retry_request = self.bridge.request(
+                operation,
+                values,
+                workspace=self.workspace,
+                higher_priority_constraints=self.higher_priority_constraints,
+                operator_correction=correction,
+            )
+            retry_text = self._invoke(retry_request, traces)
+            try:
+                return parser(retry_text)
+            except WireError:
+                raise first_error from None
 
     def _publish_prompt(self) -> None:
         assert self.controller is not None and self.workspace is not None
@@ -188,6 +228,45 @@ class SessionEngine:
         )
         self.workspace.publish_approach_sources(list(self.controller.state.approach_sources))
 
+    def _semantic_read(self, raw_text: str, traces: list[CallTrace]) -> str | None:
+        """Protocol v2 structural containment: the ONLY operation that sees raw
+        untrusted content. Returns the sanitized compiled analysis for compile
+        operations, or None when the bootstrap blocks under higher priority.
+        """
+        if raw_text in self._bootstrap_cache:
+            return self._bootstrap_cache[raw_text]
+        outcome = self._call(
+            "BOOTSTRAP_ANALYSIS",
+            {
+                "HOST_PROTOCOL_STATE": "SEMANTIC_READ",
+                "RAW_UNTRUSTED_CONTENT": raw_text,
+            },
+            traces,
+            parser=self.bridge.parse_bootstrap_analysis,
+        )
+        if outcome["kind"] == "BLOCKED_BY_HIGHER_PRIORITY":
+            self._bootstrap_cache[raw_text] = ""
+            return None
+        import hashlib
+
+        compiled, _meta = compile_bootstrap_output(raw_text, outcome["task_summary"])
+        # Re-attach approach/risk notes (already covered by compile sanitization
+        # via the same quoted-span rule).
+        notes, _ = compile_bootstrap_output(raw_text, f"{outcome['approach_notes']}\n{outcome['risk_notes']}")
+        document = (
+            f"TASK SUMMARY (compiled semantic analysis; untrusted literals redacted):\n{compiled}\n"
+            f"APPROACH/RISK NOTES:\n{notes}"
+        )
+        self._bootstrap_cache[raw_text] = document
+        return document
+
+    def _compile_context(self, raw_text: str, traces: list[CallTrace]) -> str:
+        """Route raw content through the semantic read; compile ops never see raw."""
+        document = self._semantic_read(raw_text, traces)
+        if document is None:
+            return "[CONTENT BLOCKED BY HIGHER-PRIORITY CONSTRAINTS]"
+        return document
+
     def _draft_initial_prompt(
         self,
         substantive_request: str,
@@ -196,15 +275,21 @@ class SessionEngine:
         protocol_state: str,
     ) -> EngineResponse:
         assert self.workspace is not None
-        raw = self._call(
+        # Protocol v2: raw content is read by BOOTSTRAP_ANALYSIS only; the
+        # compile op receives the sanitized compiled analysis.
+        compiled = self._semantic_read(substantive_request, traces)
+        if compiled is None:
+            self.workspace.append_event("PROTOCOL_BLOCKED", {"phase": "bootstrap"})
+            return EngineResponse(presentation.cancelled(), traces, closed=True)
+        outcome = self._call(
             "DRAFT_PROMPT",
             {
                 "HOST_PROTOCOL_STATE": protocol_state,
-                "SUBSTANTIVE_REQUEST": substantive_request,
+                "SUBSTANTIVE_REQUEST": compiled,
             },
             traces,
+            parser=self.bridge.parse_prompt_draft,
         )
-        outcome = self.bridge.parse_prompt_draft(raw)
         if outcome.kind == "TASK_BLOCKED_BY_HIGHER_PRIORITY":
             self.workspace.append_event(
                 "PROTOCOL_BLOCKED",
@@ -246,14 +331,16 @@ class SessionEngine:
                 traces,
                 protocol_state="ACTIVE_BY_EXPLICIT_INVOCATION",
             )
-        raw = self._call("INTERPRET_ACTIVATION", {"RAW_USER_MESSAGE": user_message}, traces)
-        decision = self.bridge.parse_activation(raw)
+        decision = self._call(
+            "INTERPRET_ACTIVATION", {"RAW_USER_MESSAGE": user_message}, traces,
+            parser=self.bridge.parse_activation,
+        )
         if decision.route == ActivationRoute.BLOCKED_BY_HIGHER_PRIORITY:
             return EngineResponse(decision.response, traces, closed=True)
         if decision.route == ActivationRoute.BYPASS:
             return EngineResponse(None, traces, bypass=True)
         if decision.route == ActivationRoute.PROTOCOL_DISCUSSION:
-            raw = self._call(
+            return EngineResponse(self._call(
                 "ANSWER_PROTOCOL_DISCUSSION",
                 {
                     "RAW_PROTOCOL_QUESTION": user_message,
@@ -262,8 +349,8 @@ class SessionEngine:
                     "BOUND_REVIEW_SUBJECT_BODY": None,
                 },
                 traces,
-            )
-            return EngineResponse(self.bridge.parse_protocol_discussion(raw), traces)
+                parser=self.bridge.parse_protocol_discussion,
+            ), traces)
         return self._draft_initial_prompt(
             user_message.strip(),
             traces,
@@ -276,18 +363,19 @@ class SessionEngine:
         assert prompt is not None
         self.workspace.validate_confirmed_artifact("prompt", prompt.artifact_id, prompt.body)
         _, prompt_body = self.workspace.read_artifact("prompt")
-        carried = self.workspace.read_approach_sources()
-        if carried != self.controller.state.approach_sources:
+        carried_raw = self.workspace.read_approach_sources()
+        if carried_raw != self.controller.state.approach_sources:
             raise WorkspaceError("approach_source_handoff")
-        raw = self._call(
+        carried = [self._compile_context(s, traces) for s in carried_raw]
+        body = self._call(
             "DRAFT_PLAN",
             {
                 "CONFIRMED_PROMPT_BODY": prompt_body,
                 "CARRIED_APPROACH_SOURCES": carried,
             },
             traces,
+            parser=self.bridge.parse_plan_body,
         )
-        body = self.bridge.parse_plan_body(raw)
         self.controller.commit_plan(body)
         self._publish_plan()
         return EngineResponse(presentation.plan_artifact(body), traces)
@@ -302,15 +390,19 @@ class SessionEngine:
         change_id = transition.payload["change_id"]
         had_plan = self.controller.state.current_plan is not None
         try:
-            raw = self._call(
+            body = self._call(
                 "REVISE_PROMPT",
                 {
                     "CURRENT_PROMPT_BODY": prompt_body,
-                    "TASK_CHANGE_SOURCE": transition.payload["task_change_source"],
+                    # Protocol v2: raw change source routed through the
+                    # semantic read; compile op receives the compiled form.
+                    "TASK_CHANGE_SOURCE": self._compile_context(
+                        transition.payload["task_change_source"], traces
+                    ),
                 },
                 traces,
+                parser=self.bridge.parse_prompt_body,
             )
-            body = self.bridge.parse_prompt_body(raw)
             self.controller.commit_prompt_revision(change_id, body)
         except Exception:
             self.controller.abort_pending_change(change_id)
@@ -331,20 +423,23 @@ class SessionEngine:
         if plan_meta.get("artifact_id") != plan.artifact_id or plan_body != plan.body:
             raise WorkspaceError("plan_revision_handoff")
         change_id = transition.payload["change_id"]
-        carried = self.workspace.read_approach_sources()
-        if carried != self.controller.state.approach_sources:
+        carried_raw = self.workspace.read_approach_sources()
+        if carried_raw != self.controller.state.approach_sources:
             raise WorkspaceError("approach_source_handoff")
         try:
-            raw = self._call(
+            body = self._call(
                 "REVISE_PLAN",
                 {
                     "CONFIRMED_PROMPT_BODY": prompt_body,
                     "CURRENT_PLAN_BODY": plan_body,
-                    "CARRIED_APPROACH_SOURCES": [*carried, transition.payload["approach_change_source"]],
+                    "CARRIED_APPROACH_SOURCES": [
+                        *map(lambda s: self._compile_context(s, traces), carried_raw),
+                        self._compile_context(transition.payload["approach_change_source"], traces),
+                    ],
                 },
                 traces,
+                parser=self.bridge.parse_plan_body,
             )
-            body = self.bridge.parse_plan_body(raw)
             self.controller.commit_plan_revision(change_id, body)
         except Exception:
             self.controller.abort_pending_change(change_id)
@@ -363,18 +458,23 @@ class SessionEngine:
         self.workspace.validate_confirmed_artifact("plan", plan.artifact_id, plan.body)
         prompt_body = self.workspace.read_artifact("prompt")[1]
         plan_body = self.workspace.read_artifact("plan")[1]
-        raw = self._call(
+        # Protocol v2: the supplied execution input is raw user content (in the
+        # adversarial battery it IS the untrusted block). Route it through the
+        # semantic read — compile ops never receive raw content in any symbol.
+        supplied_raw = transition.payload.get("execution_input_source")
+        supplied_compiled = self._compile_context(supplied_raw, traces) if supplied_raw else None
+        outcome = self._call(
             "EXECUTE",
             {
                 "CONFIRMED_PROMPT_BODY": prompt_body,
                 "CONFIRMED_PLAN_BODY": plan_body,
                 "REQUIRED_TASK_INPUTS": None,
-                "SUPPLIED_EXECUTION_INPUT_SOURCE": transition.payload.get("execution_input_source"),
+                "SUPPLIED_EXECUTION_INPUT_SOURCE": supplied_compiled,
                 "AVAILABLE_EXECUTION_TOOLS": self.available_execution_tools,
             },
             traces,
+            parser=self.bridge.parse_execution,
         )
-        outcome = self.bridge.parse_execution(raw)
         if outcome.kind == "REQUEST_INPUT":
             assert outcome.expected_type is not None and outcome.description is not None
             self.controller.request_execution_input(outcome.expected_type, outcome.description)
@@ -406,7 +506,7 @@ class SessionEngine:
     def _answer_protocol(self, user_message: str, traces: list[CallTrace]) -> EngineResponse:
         assert self.controller is not None
         kind, body = self.controller.review_subject()
-        raw = self._call(
+        return EngineResponse(self._call(
             "ANSWER_PROTOCOL_DISCUSSION",
             {
                 "RAW_PROTOCOL_QUESTION": user_message,
@@ -415,8 +515,8 @@ class SessionEngine:
                 "BOUND_REVIEW_SUBJECT_BODY": body,
             },
             traces,
-        )
-        return EngineResponse(self.bridge.parse_protocol_discussion(raw), traces)
+            parser=self.bridge.parse_protocol_discussion,
+        ), traces)
 
     def _apply_transition(self, transition: Transition, user_message: str, traces: list[CallTrace]) -> EngineResponse:
         if transition.action == NextAction.DRAFT_PLAN:
@@ -474,7 +574,7 @@ class SessionEngine:
             Stage.PLAN_REVIEW: ("INTERPRET_PLAN_REVIEW", self.bridge.parse_plan_review),
             Stage.WAITING_INPUT: ("INTERPRET_EXECUTION_INPUT", self.bridge.parse_execution_input),
         }[previous_stage]
-        raw = self._call(
+        decision = ReviewDecision.from_dict(self._call(
             operation,
             {
                 "BOUND_REVIEW_SUBJECT_KIND": subject_kind,
@@ -482,8 +582,8 @@ class SessionEngine:
                 "RAW_USER_REVIEW_MESSAGE": user_message,
             },
             traces,
-        )
-        decision = ReviewDecision.from_dict(parser(raw))
+            parser=parser,
+        ))
         transition = self.controller.apply_review_decision(decision, user_message)
 
         if decision.intent == Intent.ACCEPT_CURRENT:

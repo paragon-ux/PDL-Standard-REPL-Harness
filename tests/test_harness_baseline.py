@@ -33,8 +33,9 @@ def test_required_runtime_files_exist() -> None:
 def test_no_absolute_source_repo_paths() -> None:
     _src = "PDL-Standard-R2S"
     markers = ("Desktop" + "\\Frameworks\\" + _src, "Desktop" + "/Frameworks/" + _src)
+    ignored_dirs = {".git", "runs", "mlruns", ".pytest_cache", ".venv", "venv", "scratch"}
     for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts:
+        if not path.is_file() or any(part in ignored_dirs for part in path.parts):
             continue
         if path.name == "SOURCE_PROVENANCE.json":
             continue

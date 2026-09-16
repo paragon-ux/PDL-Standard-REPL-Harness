@@ -74,6 +74,7 @@ class OperationBridge:
         *,
         workspace: WorkspaceRun,
         higher_priority_constraints: Any = None,
+        operator_correction: str | None = None,
     ) -> ModelRequest:
         invocation = workspace.materialize_operation(
             operation, values, higher_priority_constraints=higher_priority_constraints
@@ -85,18 +86,57 @@ class OperationBridge:
             higher_priority_constraints=materialized_higher_priority,
         )
         workspace.record_projection(invocation, projection.manifest, projection.document)
-        return ModelRequest(projection, projection.render(self.bootstrap, compact=self.render_compact), invocation)
+        prompt = projection.render(self.bootstrap, compact=self.render_compact)
+        if operator_correction:
+            # Appended outside the projection document so projection_sha256
+            # (and fixture replay) stay stable; only used on the retry path.
+            prompt = prompt + operator_correction.strip() + "\n"
+        return ModelRequest(projection, prompt, invocation)
 
     @staticmethod
     def _object(model_text: str) -> dict[str, Any]:
-        stripped = model_text.strip()
-        if stripped.startswith("```"):
-            stripped = re.sub(r"^```(?:json)?\s*\n?", "", stripped)
-            stripped = re.sub(r"\n?```\s*$", "", stripped)
+        """Extract exactly one JSON object from a worker response.
+
+        Tolerant of *placement* (leading/trailing prose, BOM, markdown fences
+        anywhere in the text) but never repairs *content*: malformed JSON
+        still raises WireError("invalid_json") so the caller's retry path
+        can ask the stateless worker to re-emit (see SessionEngine._call).
+        """
+        stripped = model_text.strip().lstrip("\ufeff")
+        last_error: json.JSONDecodeError | None = None
+        value: Any = None
         try:
             value = json.loads(stripped)
         except json.JSONDecodeError as exc:
-            raise WireError("invalid_json") from exc
+            last_error = exc
+        if value is None:
+            unfenced = re.sub(r"```(?:json)?", "", stripped).strip()
+            try:
+                value = json.loads(unfenced)
+            except json.JSONDecodeError as exc:
+                last_error = exc
+        if value is None:
+            # Balanced-brace scan: locate the first parseable JSON object
+            # embedded in surrounding prose. raw_decode consumes exactly one
+            # balanced value starting at each candidate brace.
+            decoder = json.JSONDecoder()
+            for idx, char in enumerate(stripped):
+                if char != "{":
+                    continue
+                try:
+                    candidate, _ = decoder.raw_decode(stripped[idx:])
+                except json.JSONDecodeError as exc:
+                    last_error = exc
+                    continue
+                if isinstance(candidate, dict):
+                    value = candidate
+                    break
+        if value is None:
+            # Carry the underlying JSONDecodeError detail (e.g. "Invalid
+            # \\escape") so the retry's operator correction names the actual
+            # defect instead of a generic invalid_json.
+            detail = f"invalid_json ({last_error.msg} at column {last_error.pos + 1})" if last_error else "invalid_json"
+            raise WireError(detail)
         if not isinstance(value, dict):
             raise WireError("not_object")
         return value
@@ -213,7 +253,17 @@ class OperationBridge:
             task_changed = bool(task_dimensions)
             approach_changed = bool(approach_dimensions)
             if not (task_changed or approach_changed or progression):
-                raise WireError("review_facts_empty")
+                # All-empty REVIEW_FACTS: the model reports the message changed
+                # no dimension and requested no progression. Raising a fatal
+                # WireError here disqualified honest models on informational
+                # drip turns ("Here is block 1 for inspection..."). Per
+                # REVIEW-09 (intent is understood, not uncertain -> not
+                # UNRESOLVED), REVIEW-13 (substantive side content is
+                # deferred), and REVIEW-14 (silence MUST NOT confirm -> not
+                # ACCEPT_CURRENT), the host mechanically treats this as
+                # SUBSTANTIVE_DISCUSSION: nothing changes, nothing is
+                # confirmed, the session holds its current stage.
+                return {"intent": "SUBSTANTIVE_DISCUSSION"}
             if task_changed:
                 return {"intent": "REVISE_TASK", "also_changes_approach": approach_changed}
             if approach_changed:
@@ -237,6 +287,29 @@ class OperationBridge:
 
     def parse_plan_review(self, model_text: str) -> dict[str, Any]:
         return self._parse_artifact_review(model_text)
+
+    def parse_bootstrap_analysis(self, model_text: str) -> dict[str, Any]:
+        value = self._object(model_text)
+        kind = value.get("kind")
+        if kind == "ANALYSIS":
+            self._keys(
+                value,
+                {"kind", "task_summary", "approach_notes", "risk_notes"},
+                {"kind", "task_summary", "approach_notes", "risk_notes"},
+            )
+            for field in ("task_summary", "approach_notes", "risk_notes"):
+                if not isinstance(value[field], str):
+                    raise WireError(f"bootstrap_{field}")
+            if not value["task_summary"].strip():
+                raise WireError("bootstrap_task_summary")
+            return {k: value[k] for k in ("kind", "task_summary", "approach_notes", "risk_notes")}
+        if kind == "BLOCKED_BY_HIGHER_PRIORITY":
+            self._keys(value, {"kind", "response"}, {"kind", "response"})
+            response = value["response"]
+            if not isinstance(response, str) or not response.strip():
+                raise WireError("blocked_response")
+            return {"kind": kind, "response": response.strip()}
+        raise WireError("bootstrap_kind")
 
     def parse_execution_input(self, model_text: str) -> dict[str, Any]:
         value = self._object(model_text)

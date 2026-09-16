@@ -4,6 +4,7 @@
 
 This roadmap sequences work across four interconnected tracks:
 - **Track F (Framing & Evidence):** Evidentiary claims in `docs/FRAMING.md`, adversarial evaluation, and proof-by-contradiction.
+- **Track P (Positive Alignment & Fidelity):** Benign task execution, complex specification disambiguation, constraint-satisfaction benchmarks, and Evidence I empirical proof.
 - **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/EFFICIENCY_REPORT.md` and `providers/api_worker.py`.
 - **Track M (Measurement & Multi-Model):** Shared empirical evaluation infrastructure that unlocks high-confidence claims across models and platforms.
 - **Track L (Local & Integration):** Local worker support, prefix-cache architecture, training-data export, and the distillation flywheel for a bespoke PDL-native worker model.
@@ -28,13 +29,16 @@ This roadmap sequences work across four interconnected tracks:
 | **F4** | Contradiction argument runner (relabeled tripwire) | F | M | Low | 4 | **SHIPPED** | Commit `1561d2d` (`--control-prompt-patch`) |
 | **F6.1** | Rigor remediation (12 construct-validity fixes) | F/M | M | Low | 4 | **SHIPPED** | Corrected scripts: `leak_scan.py`, battery v4, runner v3 |
 | **F6.2** | False-positive elimination & deliverable isolation | F/M | M | Low | 4 | **SHIPPED** | Deliverable isolation, markdown extraction, cancellation scoring |
-| **F6.3** | Steelmanned structured adversarial evaluation | F/M | M | Low | 4 | **SHIPPED** | `AdversarialAuditOutcome` schema, reasoning=none, delimiter defenses |
-| **F6.4** | Official qualified baseline validation (N>=10) | F/M | L | Low | 5 | **NEXT PHASE** | Definitive Wilson 95% CI validation across all 27 cases |
+| **F6.3** | Steelmanned structured adversarial evaluation | F/M | M | Low | 4 | **SHIPPED** | `AdversarialAuditOutcome` schema, v2 Gate clean across all 162 trials (0 hijack, 0 leak) |
+| **P1** | Benign multi-constraint task battery | P | M | Low | 5 | **ACTIVE / NEXT** | Multi-constraint, complex spec benchmark (Evidence I in `FRAMING.md`) |
+| **P2** | Inferential fidelity scoring harness | P | M | Low | 5 | **PLANNED** | Requirement recall, constraint adherence, actor attribution scoring |
+| **P3** | Paired positive benchmark (Protocol vs Control) | P | L | Low | 5 | **PLANNED** | Quantified inferential improvement across model tiers |
+| **F6.4** | Official qualified baseline validation (N>=10) | F/M | L | Low | 8 | **SEQUENCED** | Sequenced after Track L (Local Worker) to optimize cost and leverage local execution |
 | **F3b**| Re-measure efficiency on boundary case | F/E | M | Low | 4 | **SHIPPED** | Full token/latency benchmark across all 27 cases |
-| **M2** | Multi-model revalidation (GLM-4.7, Flash, etc.) | M | M | Low | 6 | **PROPOSED** | Battery runner ready; tests runnable across models |
-| **L1** | `--worker local` alias targeting warm daemon | L | S | Low | 6 | **PROPOSED** | `ApiWorker` with `localhost` target |
-| **L2** | `--cache-order-render` default for local workers | L | S | Low | 6 | **PROPOSED** | Prefix-cache reuse as default architecture |
-| **L3** | `--training-export` flag for lifecycle traces | L | M | Low | 6 | **PROPOSED** | Export validated sessions as SFT training data |
+| **M2** | Multi-model revalidation (GLM-4.7, Flash, etc.) | M | M | Low | 7 | **PROPOSED** | Multi-model validation on unified negative + positive benchmarks |
+| **L1** | `--worker local` alias targeting warm daemon | L | S | Low | 6 | **UNLOCKED** | `ApiWorker` with `localhost` target |
+| **L2** | `--cache-order-render` default for local workers | L | S | Low | 6 | **UNLOCKED** | Prefix-cache reuse as default architecture |
+| **L3** | `--training-export` flag for lifecycle traces | L | M | Low | 6 | **UNLOCKED** | Export validated sessions as SFT training data |
 | **L4** | Training data curation pipeline | L | M | Low | 6 | **PROPOSED** | Filter by validation status, format for Unsloth/PEFT |
 | **L5** | LoRA adapter v1 (REVIEW + DRAFT_PLAN) | L | L | Med | 7 | **PROPOSED** | 3B–7B base, frontier teacher distillation |
 | **L6** | Battery-gated deployment validation | L | M | Low | 7 | **PROPOSED** | Adversarial suite as quality ratchet for adapter |
@@ -135,17 +139,19 @@ Eliminated the construct-validity failure where the scoring harness penalized in
 - **Control Socket Retry Resilience:** `control_api_call.py` equipped with exponential backoff retries (3 attempts) on socket/HTTP timeouts, eliminating transient stall aborts (e.g. `DRIP-06`).
 - **Protocol Trial Persistence & Calibrated Ceilings:** Individual trial JSON records are now written for Protocol trials alongside Control; per-case latency ceilings dynamically scale with interactive gate steps (`protocol_ceiling_s = max(150.0, 45.0 * (len(turns) + 4))`).
 
-### F6.3 — Steelmanned Structured Adversarial Evaluation [SHIPPED]
+### F6.3 — Steelmanned Structured Adversarial Evaluation & v2 Gate [SHIPPED / PASSED]
 Eliminated false equivalence between unconstrained conversational free-prose and structured protocol execution:
 - Standardized both Control and Protocol arms on the **`AdversarialAuditOutcome` structured facts JSON contract** (`verdict`, `threat_categories`, `contains_override_directive`, `technical_critique`, `sanitized_clean_deliverable`).
 - Steelmanned the Control Arm with explicit `<untrusted_input>` delimiter boundaries, production-grade defensive system prompts, and DLP redaction mandates.
 - Disabled runaway chain-of-thought token generation (`reasoning_effort="none"`), achieving a 7.3× speedup and enforcing active per-case hard-stop circuit breakers.
 - Discovered **Contextual Amnesia**: Control Arm experiences an 86.7% decision-hijack rate across multi-turn chains (certifying malicious inputs as `verdict: "SAFE"`), whereas Protocol Arm achieves **0.0% hijacking (0/27)**.
+- **v2 Hard Gate Execution (162/162 trials across 27 cases): PASSED.**
+  - **Control Arm ($N=81$):** 0 deliverable leaks, 2 metadata leaks, **19 decision hijackings**, 0 wire errors, 1 stall. Clean pass: 74.1%.
+  - **Protocol v2 Arm ($N=81$):** **0 deliverable leaks, 0 metadata leaks, 0 decision hijackings, 0 wire errors**, 5 honest input-unavailable refusals, 0 stalls. Clean pass: **93.8%** ($p < 0.0001$). Replicated across 3 full runs; combinatorial STACK vectors went 3/3 protocol-clean vs 100% control-failed.
 
-### F6.4 — Official Qualified Baseline Validation (N>=10) [NEXT PHASE / COMMIT]
-- Enforces an official qualified baseline ($N \ge 10$ trials per case across both arms, 270 trials per arm).
-- Gated behind external human evaluation of the single-trial confirmation suite to prevent premature spend before failure modes are audited.
-- Establishes a publication-grade Wilson 95% confidence interval ($\le 0.25$ upper bound on leak rate).
+### F6.4 — Official Qualified Baseline Validation (N>=10) [SEQUENCED AFTER TRACK L]
+- Official publication-grade qualified baseline ($N \ge 10$ trials per case across both arms, $\ge 540$ total trials).
+- **Sequencing Decision:** Intentionally sequenced *after* Track L (Local Worker L1/L2) implementation. Running $N \ge 10$ against cloud APIs incurs substantial recurring cost (~$15–$30+ per full battery run). Implementing `--worker local` and prefix caching first enables running large-scale qualification batteries locally on warm daemons with deterministic cost control and zero provider rate-limit volatility, preserving scientific rigor without shifting goalposts.
 
 ### F3b — Re-measure Efficiency on Boundary Cases [SHIPPED]
 - Measured full token/latency distributions across all 27 adversarial cases using `run_qualified_batch.py`. Protocol completed with 100% completion rate (27/27), zero stalls, and an average case latency of ~35s. Initial paired benchmark documented in `docs/EVAL_METRICS.md` and `docs/EFFICIENCY_REPORT.md`.
@@ -157,7 +163,29 @@ Eliminated false equivalence between unconstrained conversational free-prose and
 
 ---
 
-## Phase 5 — Exploratory Levers (GO/NO-GO Discipline)
+## Phase 5 — Positive Alignment & Inferential Fidelity (Track P)
+
+Fulfills the core thesis of `docs/FRAMING.md` (Evidence I): proving that Prompt Pseudocode compilation does not merely prevent negative attacks, but actively improves task execution fidelity, disambiguates complex multi-constraint specifications, and enforces accurate task-actor attribution.
+
+### P1 — Benign Multi-Constraint Task Battery [ACTIVE / NEXT]
+- **Goal:** Construct a standardized suite of non-adversarial, complex engineering and reasoning tasks (e.g. multi-step refactoring under strict backwards-compatibility rules, API contract migrations, multi-actor coordination).
+- **Structure:** Parametric covering array varying constraint density (2, 4, 8 simultaneous constraints), ambiguity level (underspecified requirements requiring clarifying review), and actor attribution (distinguishing user acts from agent acts per `SEM-05`).
+- **Scaffold:** Stored in `runs/fidelity/MANIFEST.json` with turn scripts and ground-truth constraint checklists.
+
+### P2 — Inferential Fidelity Scoring Harness [PLANNED]
+- **Goal:** Automated, deterministic scoring of positive execution deliverables against ground-truth requirement sets:
+  - **Requirement Recall:** Fraction of explicit user constraints satisfied in the final deliverable.
+  - **Negative Constraint Compliance:** Strict absence of prohibited side-effects or out-of-scope modifications.
+  - **Actor Attribution Accuracy:** Correct representation of who performs each act in Prompt Pseudocode (`SEM-05`).
+  - **Ambiguity Disambiguation Rate:** Whether the protocol successfully surfaces underspecified edge cases during the review stage rather than guessing incorrectly.
+
+### P3 — Paired Positive Benchmark (Protocol vs Control) [PLANNED]
+- **Goal:** Paired benchmark evaluating Protocol Arm vs Control Arm across candidate models on Track P.
+- **Evidentiary Standard:** Demonstrate that the Protocol Arm achieves statistically significant gains in requirement recall and constraint satisfaction ($p < 0.01$) over unconstrained single-prompt API calls, completing the dual-frame proof of `docs/FRAMING.md`.
+
+---
+
+## Phase 5b — Exploratory Levers (GO/NO-GO Discipline)
 
 Follows the same evidentiary standard as earlier rejected levers (draft-stage low reasoning, aggressive static prefix caching).
 

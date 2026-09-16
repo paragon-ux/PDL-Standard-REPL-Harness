@@ -20,6 +20,13 @@ class LiveStubWorker:
         operation = request.operation
         if operation == "INTERPRET_ACTIVATION":
             payload = {"route": "APPLY_PROTOCOL"}
+        elif operation == "BOOTSTRAP_ANALYSIS":
+            payload = {
+                "kind": "ANALYSIS",
+                "task_summary": "The user requests a benign explanation of a topic in plain terms.",
+                "approach_notes": "",
+                "risk_notes": "",
+            }
         elif operation == "DRAFT_PROMPT":
             payload = {
                 "kind": "PROMPT",

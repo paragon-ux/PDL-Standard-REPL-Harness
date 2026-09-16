@@ -467,6 +467,56 @@
       ],
       "output_schema": "controller/schemas/protocol_discussion.schema.json",
       "workspace_stage": "90_protocol_discussion"
+    },
+    "BOOTSTRAP_ANALYSIS": {
+      "requirements": [
+        "TASK-01",
+        "TASK-02",
+        "TASK-03",
+        "SEM-01",
+        "SEM-02",
+        "SEM-03",
+        "SEM-04",
+        "SEM-05",
+        "PROMPT-01",
+        "PROMPT-02",
+        "PROMPT-03",
+        "PROMPT-04",
+        "PDL-01",
+        "PDL-02",
+        "PDL-03",
+        "PDL-04",
+        "PDL-05",
+        "PDL-06",
+        "PDL-07",
+        "PDL-08",
+        "ARTIFACT-02"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "HOST_PROTOCOL_STATE",
+        "RAW_UNTRUSTED_CONTENT",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "EXPLICIT_INVOCATION_WRAPPER",
+        "GLOBAL_PROTOCOL_PROSE",
+        "PLAN_ARTIFACTS",
+        "REJECTED_ARTIFACTS",
+        "EXECUTION_OUTPUT",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "BOOTSTRAP_ANALYSIS_OUTCOME",
+      "output_fields": [
+        "kind",
+        "task_summary",
+        "approach_notes",
+        "risk_notes"
+      ],
+      "output_schema": "controller/schemas/bootstrap_analysis.schema.json",
+      "workspace_stage": "10_prompt"
     }
   }
 }

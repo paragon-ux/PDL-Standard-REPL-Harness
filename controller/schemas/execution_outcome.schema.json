@@ -6,15 +6,21 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "body"],
+      "description": "Deliverable completing the confirmed task (e.g. source code, implementation, written response, or analysis artifact). When the confirmed task requests writing, creating, or implementing code or functions, emit the complete deliverable implementation in body.",
       "properties": {
         "kind": {"const": "RESULT"},
-        "body": {"type": "string", "minLength": 1}
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The complete deliverable content (e.g. full source code, written answer, or output artifact)."
+        }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "body", "expected_type", "description"],
+      "description": "Request missing input ONLY when an external tool execution or runtime data processing is genuinely blocked without user-provided runtime variables, and the requested deliverable is not the source code or artifact itself.",
       "properties": {
         "kind": {"const": "REQUEST_INPUT"},
         "body": {"type": "string", "minLength": 1},

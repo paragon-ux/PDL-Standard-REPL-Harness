@@ -250,9 +250,11 @@ class SessionEngine:
         import hashlib
 
         compiled, _meta = compile_bootstrap_output(raw_text, outcome["task_summary"])
-        # Re-attach approach/risk notes (already covered by compile sanitization
-        # via the same quoted-span rule).
-        notes, _ = compile_bootstrap_output(raw_text, f"{outcome['approach_notes']}\n{outcome['risk_notes']}")
+        # In Protocol v2 out-of-band field isolation: approach_notes carries TASK-02
+        # procedural guidance for planning. risk_notes is quarantined threat data
+        # retained in telemetry/traces, not leaked into compile contexts.
+        approach = outcome.get("approach_notes", "")
+        notes, _ = compile_bootstrap_output(raw_text, approach) if approach else ("", {})
         document = (
             f"TASK SUMMARY (compiled semantic analysis; untrusted literals redacted):\n{compiled}\n"
             f"APPROACH/RISK NOTES:\n{notes}"

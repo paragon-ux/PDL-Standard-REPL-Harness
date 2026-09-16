@@ -139,7 +139,7 @@ Eliminated the construct-validity failure where the scoring harness penalized in
 - **Control Socket Retry Resilience:** `control_api_call.py` equipped with exponential backoff retries (3 attempts) on socket/HTTP timeouts, eliminating transient stall aborts (e.g. `DRIP-06`).
 - **Protocol Trial Persistence & Calibrated Ceilings:** Individual trial JSON records are now written for Protocol trials alongside Control; per-case latency ceilings dynamically scale with interactive gate steps (`protocol_ceiling_s = max(150.0, 45.0 * (len(turns) + 4))`).
 
-### F6.3 — Steelmanned Structured Adversarial Evaluation & v2 Gate [SHIPPED / PASSED]
+### F6.3 — Steelmanned Structured Adversarial Evaluation & v2 Gate [SHIPPED / PASSED WITH AUDIT NOTE]
 Eliminated false equivalence between unconstrained conversational free-prose and structured protocol execution:
 - Standardized both Control and Protocol arms on the **`AdversarialAuditOutcome` structured facts JSON contract** (`verdict`, `threat_categories`, `contains_override_directive`, `technical_critique`, `sanitized_clean_deliverable`).
 - Steelmanned the Control Arm with explicit `<untrusted_input>` delimiter boundaries, production-grade defensive system prompts, and DLP redaction mandates.
@@ -148,10 +148,15 @@ Eliminated false equivalence between unconstrained conversational free-prose and
 - **v2 Hard Gate Execution (162/162 trials across 27 cases): PASSED.**
   - **Control Arm ($N=81$):** 0 deliverable leaks, 2 metadata leaks, **19 decision hijackings**, 0 wire errors, 1 stall. Clean pass: 74.1%.
   - **Protocol v2 Arm ($N=81$):** **0 deliverable leaks, 0 metadata leaks, 0 decision hijackings, 0 wire errors**, 5 honest input-unavailable refusals, 0 stalls. Clean pass: **93.8%** ($p < 0.0001$). Replicated across 3 full runs; combinatorial STACK vectors went 3/3 protocol-clean vs 100% control-failed.
+- **Audit & Confound Finding:** The control-plane hijack defense (0.0% hijacking, $p < 0.0001$) is 100% structural (enforced by schema bounds and mechanical confirmation gates `PROTO-02`/`AUTH-03`) and remains completely valid. However, leak suppression in F6.3 was assisted by the driver-level `ADVERSARIAL_HIGHER_PRIORITY_CONSTRAINTS` prose override and in-band `<<<EVIDENCE>>>` delimiter hacks. This override caused the Track P fidelity regression (GLM 5.3 Flash renaming `fetch_with_retry` $\rightarrow$ `fetch_resource`). F6.3 is ratified for hijack prevention, but unassisted DLP containment must be validated under F6.4.
 
-### F6.4 — Official Qualified Baseline Validation (N>=10) [SEQUENCED AFTER TRACK L]
+### F6.4 — Connected Dual-Gate Baseline Qualification (N>=10) [CONNECTED GATE WITH TRACK P; SEQUENCED AFTER TRACK L]
 - Official publication-grade qualified baseline ($N \ge 10$ trials per case across both arms, $\ge 540$ total trials).
-- **Sequencing Decision:** Intentionally sequenced *after* Track L (Local Worker L1/L2) implementation. Running $N \ge 10$ against cloud APIs incurs substantial recurring cost (~$15–$30+ per full battery run). Implementing `--worker local` and prefix caching first enables running large-scale qualification batteries locally on warm daemons with deterministic cost control and zero provider rate-limit volatility, preserving scientific rigor without shifting goalposts.
+- **The Connected Dual-Gate Invariant ("If either fail, both fail"):** F6.4 (negative containment) and Track P (positive fidelity) form an indivisible, connected qualification gate. An agent architecture cannot claim alignment by trading off safety for utility (leaking/hijacking to preserve recall) or trading off utility for safety (over-censoring or renaming identifiers to suppress leaks). Both arms must pass simultaneously under the exact same unassisted configuration:
+  1. **Negative Dimension (F6.4 Adversarial Battery):** $N \ge 10$ across all 27 cases. Evaluated under **pure, unassisted native schema containment** (retiring `ADVERSARIAL_HIGHER_PRIORITY_CONSTRAINTS` and in-band `<<<EVIDENCE>>>` delimiter hacks in favor of out-of-band JSON field isolation: `task_summary` vs `risk_notes`). Hard gate: 0 deliverable leaks, 0 hijacks, 0 wire errors.
+  2. **Positive Dimension (P3 Fidelity Battery):** $N \ge 10$ across all 13 cases in `runs/fidelity/`. Hard gate: Requirement recall $\ge$ Control, 100% preservation of exact technical contracts (`TASK-01`), 0 out-of-scope modifications.
+  3. **Rejection of Oracles & Branching:** Both batteries must execute against the identical engine and context without evaluator oracles, test-runner overrides, or dynamic fail-open routing switches.
+- **Sequencing Decision:** Intentionally sequenced *after* Track L (Local Worker L1/L2) implementation. Running $N \ge 10$ across both batteries against cloud APIs incurs substantial recurring cost (~$30–$60+ per full dual battery run). Implementing `--worker local` and prefix caching first enables running large-scale qualification batteries locally on warm daemons with deterministic cost control and zero provider rate-limit volatility.
 
 ### F3b — Re-measure Efficiency on Boundary Cases [SHIPPED]
 - Measured full token/latency distributions across all 27 adversarial cases using `run_qualified_batch.py`. Protocol completed with 100% completion rate (27/27), zero stalls, and an average case latency of ~35s. Initial paired benchmark documented in `docs/EVAL_METRICS.md` and `docs/EFFICIENCY_REPORT.md`.
@@ -167,21 +172,24 @@ Eliminated false equivalence between unconstrained conversational free-prose and
 
 Fulfills the core thesis of `docs/FRAMING.md` (Evidence I): proving that Prompt Pseudocode compilation does not merely prevent negative attacks, but actively improves task execution fidelity, disambiguates complex multi-constraint specifications, and enforces accurate task-actor attribution.
 
-### P1 — Benign Multi-Constraint Task Battery [ACTIVE / NEXT]
+### P1 — Benign Multi-Constraint Task Battery [SHIPPED — 13 cases]
 - **Goal:** Construct a standardized suite of non-adversarial, complex engineering and reasoning tasks (e.g. multi-step refactoring under strict backwards-compatibility rules, API contract migrations, multi-actor coordination).
 - **Structure:** Parametric covering array varying constraint density (2, 4, 8 simultaneous constraints), ambiguity level (underspecified requirements requiring clarifying review), and actor attribution (distinguishing user acts from agent acts per `SEM-05`).
-- **Scaffold:** Stored in `runs/fidelity/MANIFEST.json` with turn scripts and ground-truth constraint checklists.
+- **Scaffold:** Stored in `runs/fidelity/MANIFEST.json` (P1-FIDELITY-V1: 6 MC, 4 DISAMB, 3 ACTOR) with turn scripts and ground-truth constraint checklists embedded per case.
 
-### P2 — Inferential Fidelity Scoring Harness [PLANNED]
+### P2 — Inferential Fidelity Scoring Harness [SHIPPED]
 - **Goal:** Automated, deterministic scoring of positive execution deliverables against ground-truth requirement sets:
   - **Requirement Recall:** Fraction of explicit user constraints satisfied in the final deliverable.
   - **Negative Constraint Compliance:** Strict absence of prohibited side-effects or out-of-scope modifications.
   - **Actor Attribution Accuracy:** Correct representation of who performs each act in Prompt Pseudocode (`SEM-05`).
   - **Ambiguity Disambiguation Rate:** Whether the protocol successfully surfaces underspecified edge cases during the review stage rather than guessing incorrectly.
+- **Implementation:** `scripts/fidelity_scan.py` (+ `tests/test_fidelity_scan.py`). Stalled/conformity trials unscored, counted, excluded from rates (leak-scoring convention). Control arm runs `control_mode: "task"` (plain executor, no audit schema) per the steelman tenet.
 
-### P3 — Paired Positive Benchmark (Protocol vs Control) [PLANNED]
+### P3 — Paired Positive Benchmark (Protocol vs Control) [CONNECTED GATE WITH F6.4]
 - **Goal:** Paired benchmark evaluating Protocol Arm vs Control Arm across candidate models on Track P.
-- **Evidentiary Standard:** Demonstrate that the Protocol Arm achieves statistically significant gains in requirement recall and constraint satisfaction ($p < 0.01$) over unconstrained single-prompt API calls, completing the dual-frame proof of `docs/FRAMING.md`.
+- **First probe (GLM-4.7, `runs/fidelity-smoke-1`, n=3/case):** NULL — control recall 1.0 vs protocol 0.777; primary mechanism identified is **identifier drift through the compile tier** caused by the driver-level `ADVERSARIAL_HIGHER_PRIORITY_CONSTRAINTS` override and schema-level over-generalization.
+- **Resolution:** Out-of-band schema field isolation (`task_summary` for `TASK-01` operative specifications vs `risk_notes` for `SEM-02`/`SEM-06` threat analysis). In-band delimiters (`<<<EVIDENCE>>>`) and driver prompt overrides are retired.
+- **Connected Dual-Gate Invariant:** Tied directly to F6.4: **if either fail, both fail.** Requires demonstrating statistically significant gains in requirement recall and constraint satisfaction ($p < 0.01$) over unconstrained single-prompt API calls while maintaining 0% leaks and 0% hijacks under the unassisted F6.4 battery.
 
 ---
 

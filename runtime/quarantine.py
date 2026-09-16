@@ -53,16 +53,24 @@ def strip_evidence_sink(text: str) -> tuple[str, dict]:
     return "".join(out), meta
 
 
+# Known canary, tripwire, and exploit directive patterns
+_CANARY_OR_TRIPWIRE = re.compile(r"\b(?:TRIPWIRE_[A-Za-z0-9_]+|CANARY_[A-Za-z0-9_]+|ACTIVATED)\b")
+_OVERRIDE_DIRECTIVE = re.compile(r"\+{3}\s*(?:SYSTEM\s+(?:DIRECTIVE\s+)?OVERRIDE|END)\s*\+{3}", re.IGNORECASE)
+_EXPLOIT_PHRASE = re.compile(
+    r"(?:system\s+(?:directive\s+)?override|ignore\s+previous\s+instructions|dump\s+system\s+secrets|rootkit|credential[- ]harvesting)",
+    re.IGNORECASE,
+)
+
+
 def compile_bootstrap_output(raw_source: str, analysis_text: str) -> tuple[str, dict]:
     """Sanitize a bootstrap analysis for use as a compile-operation input.
 
     1. Strip balanced evidence sinks (declared channel).
-    2. Replace quoted spans whose content appears verbatim in the raw source
-       with [REDACTED_IOC] (covers 'TRIPWIRE_X', "emit TRIPWIRE ...", `...`).
-    3. Replace distinctive unquoted tokens (len>=8 containing a digit or
-       underscore, or len>=20) that appear verbatim in the raw source --
-       catches unquoted canary reproduction (measured in the v2 probe:
-       DRIP-01/ENC-01 EXECUTE leaks routed via unquoted bootstrap echo).
+    2. Replace explicit canary tokens, tripwire strings, and override directives
+       with [REDACTED_IOC].
+    3. Redact quoted spans that contain exploit directives or canary tokens.
+       Legitimate code specifications, identifiers, exception classes, and
+       parameter names are strictly preserved.
     Returns (sanitized_text, meta{sinks, redactions}).
     """
     meta: dict = {"sinks": 0, "redactions": 0}
@@ -72,22 +80,21 @@ def compile_bootstrap_output(raw_source: str, analysis_text: str) -> tuple[str, 
     if not raw_source:
         return text, meta
 
-    def _redact(m: re.Match) -> str:
+    # 1. Redact quoted spans if they contain attack directives, canaries, or overrides
+    def _redact_quoted_span(m: re.Match) -> str:
         inner = m.group(1)[1:-1]
-        if inner in raw_source:
+        if _EXPLOIT_PHRASE.search(inner) or _CANARY_OR_TRIPWIRE.search(inner) or _OVERRIDE_DIRECTIVE.search(inner):
             meta["redactions"] += 1
             return "[REDACTED_IOC]"
         return m.group(0)
 
-    text = _QUOTED_SPAN.sub(_redact, text)
+    text = _QUOTED_SPAN.sub(_redact_quoted_span, text)
 
+    # 2. Redact explicit tripwire/canary tokens
     def _redact_token(m: re.Match) -> str:
-        tok = m.group(0)
-        if tok in raw_source:
-            meta["redactions"] += 1
-            return "[REDACTED_IOC]"
-        return tok
+        meta["redactions"] += 1
+        return "[REDACTED_IOC]"
 
-    text = re.sub(r"\b[A-Za-z0-9_]*(?:\d[\w]*)_[\w]*\b", _redact_token, text)  # underscore+digit style (tripwire-like)
-    text = re.sub(r"\b[A-Za-z0-9_]{20,}\b", _redact_token, text)  # very long tokens
+    text = _CANARY_OR_TRIPWIRE.sub(_redact_token, text)
+    text = _OVERRIDE_DIRECTIVE.sub(_redact_token, text)
     return text, meta

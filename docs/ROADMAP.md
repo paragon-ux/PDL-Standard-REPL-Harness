@@ -161,10 +161,28 @@ Eliminated false equivalence between unconstrained conversational free-prose and
 ### F3b — Re-measure Efficiency on Boundary Cases [SHIPPED]
 - Measured full token/latency distributions across all 27 adversarial cases using `run_qualified_batch.py`. Protocol completed with 100% completion rate (27/27), zero stalls, and an average case latency of ~35s. Initial paired benchmark documented in `docs/EVAL_METRICS.md` and `docs/EFFICIENCY_REPORT.md`.
 
-### M2 — Multi-Model Revalidation [PROPOSED]
-- Run the F6 battery and SEM-05 fidelity suite across candidate model families (`z-ai/glm-4.7`, `z-ai/glm-4.7-flash`, DeepSeek, Claude, GPT-4o) using `--model`.
-- Document cross-model defense rates and efficiency variations in `RELEASE_NOTES.md`.
-- M2 also serves as the **training data pipeline** for Track L: every validated session across model families generates (input, output, validation) triples for distillation.
+### Track E2 / M2 — Cross-Model Generalization & Multi-Model Revalidation [PROPOSED]
+- **Goal:** Prove that the Connected Dual Gate (TRD-0002 out-of-band structural containment + bounded pre-execution reasoning) is model-agnostic and universally valid across disparate model families, architectures, and tokenizers.
+- **Candidate Selection Criteria:**
+  1. **Context Window Requirement:** Models MUST have $\ge 128\text{k}$ context length to comfortably accommodate multi-turn adversarial sequences and high-constraint task projections without token-truncation artifacts (excluding legacy $\le 32\text{k}$ models like `qwen-2.5-coder-32b-instruct`).
+  2. **Active Provider Availability:** Pinned strictly to currently active endpoints on OpenRouter (superseding unavailable models such as Claude 3.5 Sonnet).
+  3. **Economic Satiety:** Optimized for high-throughput evaluation ($\le \$1.00$ per complete 40-case dual sweep).
+- **Candidate Model Matrix:**
+
+| Model ID | Family | Context Window | Prompt Pricing (1M) | Completion Pricing (1M) | Role in Evaluation / Distillation |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `z-ai/glm-4.7` | Zhipu GLM | 204,800 (200k) | $0.40 | $1.75 | **Primary Reference Baseline** (TRD-0002 ratified worker) |
+| `qwen/qwen3-coder-30b-a3b-instruct` | Qwen / Alibaba | 262,144 (256k) | $0.07 | $0.28 | **Open-Weights Coding & Distillation Source** (replaces 32k Qwen 2.5) |
+| `deepseek/deepseek-chat` | DeepSeek-V3 | 163,840 (164k) | $0.26 | $1.03 | **Open-Weights Reasoning & MoE Validation** |
+| `z-ai/glm-5.3-flash` | Zhipu GLM | 1,310,720 (1.3M) | $0.09 | $0.30 | **Ultra-Fast / High-Throughput Flash Tier** |
+| `openai/gpt-4o-mini` | OpenAI | 128,000 (128k) | $0.15 | $0.60 | **Lightweight Proprietary Baseline** |
+| `anthropic/claude-haiku-4.5` | Anthropic | 200,000 (200k) | $1.00 | $5.00 | **Frontier Anchor & Upper-Bound Audit** (replaces Claude 3.5 Sonnet) |
+
+- **Protocol:**
+  1. Execute high-risk connected probe (`UNIT-ADV-01..03` + `ACTOR-02`, `DISAMB-03..04`) before full sweeps to verify schema compliance.
+  2. Sweep full dual battery (F6.4 + Track P) across candidate models using `run_qualified_batch.py --model <id>`.
+  3. Document cross-model defense rates, fidelity scores, and efficiency variations in `RELEASE_NOTES.md`.
+  4. Export validated sessions to serve as the **training data pipeline** for Track L (L3–L5).
 
 ---
 

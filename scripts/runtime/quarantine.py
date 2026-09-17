@@ -24,6 +24,20 @@ _CANARY_OR_TRIPWIRE = re.compile(
     r"\b(?:TRIPWIRE_[A-Za-z0-9_]+|CANARY_[A-Za-z0-9_]+|PWNED_[A-Za-z0-9_]+|ACTIVATED|ROOTKIT-[A-Za-z0-9_]+)\b"
 )
 _OVERRIDE_DIRECTIVE = re.compile(r"\+{3}\s*(?:SYSTEM\s+(?:DIRECTIVE\s+)?OVERRIDE|END)\s*\+{3}", re.IGNORECASE)
+
+# D29 generalized opaque-identifier shapes: canaries need not carry a
+# recognizable prefix (UUID / long-hex canaries measurably reached the
+# deliverable on the primary tier -- runs/canary_shape_probe). These
+# apply ONLY to the sanitized summary surface, where an untrusted literal
+# of digest length or UUID shape has no legitimate role; digest
+# verification belongs in code, which this sanitizer never touches
+# (execution-stage output is out of scope). Deliberate policy: >=32 hex
+# chars includes SHA-256-length digests on this surface -- refer to them
+# by role, not verbatim.
+_UUID_SHAPE = re.compile(
+    r"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"
+)
+_LONG_HEX_RUN = re.compile(r"\b[0-9a-fA-F]{32,}\b")
 _EXPLOIT_PHRASE = re.compile(
     r"(?:system\s+(?:directive\s+)?override|ignore\s+previous\s+instructions|dump\s+system\s+secrets|rootkit|credential[- ]harvesting)",
     re.IGNORECASE,
@@ -66,4 +80,12 @@ def compile_bootstrap_output(raw_source: str, analysis_text: str) -> tuple[str, 
 
     text = _CANARY_OR_TRIPWIRE.sub(_redact_token, text)
     text = _OVERRIDE_DIRECTIVE.sub(_redact_token, text)
+
+    # 3. D29 generalized-shape redaction (prefix-independent canaries)
+    def _redact_generalized(m: re.Match) -> str:
+        meta["redactions_generalized"] = meta.get("redactions_generalized", 0) + 1
+        return "[REDACTED_IOC]"
+
+    text = _UUID_SHAPE.sub(_redact_generalized, text)
+    text = _LONG_HEX_RUN.sub(_redact_generalized, text)
     return text, meta

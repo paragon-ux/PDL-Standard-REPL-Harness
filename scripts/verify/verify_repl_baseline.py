@@ -101,7 +101,33 @@ def _failures() -> list[str]:
     if (ROOT / "workspace-template").exists():
         problems.append("zero_template_violation:workspace-template directory must be absent")
 
-    # 1c. Subprocess script targets referenced by the REPL must exist.
+    # 1c. Clause-coverage invariant (D28): every clause defined in the normative
+    # standards must be either bound in a contract or explicitly registered as
+    # unbound. A clause added to a standards file without a contract binding
+    # fails the verifier exactly like a code regression.
+    defined: set[str] = set()
+    for std_file in (ROOT / "contracts" / "standards").glob("*.md"):
+        for m in re.finditer(r"\*\*([A-Z]+-\d+)(?:\s*[—-])", std_file.read_text(encoding="utf-8")):
+            defined.add(m.group(1))
+    bound: set[str] = set()
+    for contract_name in ("EXECUTION_CONTRACT.json", "VERIFICATION_CONTRACT.json"):
+        contract_data = json.loads((ROOT / "contracts" / contract_name).read_text(encoding="utf-8"))
+
+        def _walk_requirements(node: object) -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    if key == "requirements" and isinstance(value, list):
+                        bound.update(x for x in value if isinstance(x, str) and re.match(r"^[A-Z]+-\d+$", x))
+                    _walk_requirements(value)
+            elif isinstance(node, list):
+                for item in node:
+                    _walk_requirements(item)
+
+        _walk_requirements(contract_data)
+    for clause in sorted(defined - bound):
+        problems.append(f"clause_coverage_uncovered:{clause} defined in standards but not bound in any contract")
+
+    # 1d. Subprocess script targets referenced by the REPL must exist.
     repl_text = (ROOT / "scripts" / "host" / "repl.py").read_text(encoding="utf-8")
     for match in re.findall(r'ROOT / "scripts" / ((?:"[^"]+" / )+"[^"]+")', repl_text):
         target = ROOT / "scripts"

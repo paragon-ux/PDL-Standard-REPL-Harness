@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -12,6 +13,24 @@ if str(ROOT) not in sys.path:
 
 import mlflow
 from scripts.tracking.mlflow_sink import log_experiment_run
+
+
+def _default_tracking_db() -> Path:
+    """Resolve the MLflow SQLite tracking store.
+
+    MLflow telemetry is post-hoc and non-authoritative; the store lives in the
+    external archive by default (repo-restructure-plan §3.1):
+    1. PDLT_MLFLOW_DB environment variable (explicit db path override).
+    2. Sibling archive: <parent>/PDL-Standard-Archive/mlflow/mlflow.db.
+    3. Legacy repo-root mlflow.db fallback (isolated test trees, archive absent).
+    """
+    env = os.environ.get("PDLT_MLFLOW_DB", "").strip()
+    if env:
+        return Path(env)
+    archive = ROOT.parent / "PDL-Standard-Archive" / "mlflow" / "mlflow.db"
+    if (ROOT.parent / "PDL-Standard-Archive").is_dir():
+        return archive
+    return ROOT / "mlflow.db"
 
 
 def main() -> int:
@@ -51,7 +70,7 @@ def main() -> int:
     if worker_progress.is_file():
         artifacts.append(str(worker_progress))
 
-    mlflow.set_tracking_uri(f"sqlite:///{(ROOT / 'mlflow.db').as_posix()}")
+    mlflow.set_tracking_uri(f"sqlite:///{_default_tracking_db().as_posix()}")
     mlflow.set_experiment("PDL-R2S")
     run_id = log_experiment_run(
         args.run_name or f"live-session-{session_id}",

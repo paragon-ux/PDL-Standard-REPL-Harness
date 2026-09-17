@@ -123,8 +123,11 @@ baselines: [`docs/operations/eval-metrics.md`](operations/eval-metrics.md).
 
 ## Layout notes
 
-- Historical run artifacts (`runs/`, `mlruns/`, `mlflow.db`) and recorded
-  fixtures are **not** runtime dependencies and live outside the repository.
+- Historical run artifacts (`runs/`, `mlruns/`) and recorded fixtures are
+  **not** runtime dependencies and live outside the repository. The optional
+  MLflow tracking store defaults to the external archive too
+  (`PDL-Standard-Archive/mlflow/mlflow.db`; override with `PDLT_MLFLOW_DB`,
+  legacy fallback: repo-root `mlflow.db`).
 - Workspaces are zero-template and dynamic (ADR-0008): fresh runs scaffold
   only `state/`, `events/`, `stages/`, `shared/`.
 - `SOURCE_PROVENANCE.json` records per-file provenance (source repo, HEAD,

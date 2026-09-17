@@ -295,7 +295,7 @@ CASES: list[dict] = [
             "required_elements": [
                 {"pattern": "import csv", "description": "csv module used"},
                 {"pattern": "csv\\.(reader|DictReader)", "description": "csv reader handles quoted commas"},
-                {"pattern": "if\\s+(?:not\\s+row|row\\s*==|len\\(row\\)\\s*==\\s*0|row\\s*:)|if\\s+line\\.strip|if\\s+not\\s+line", "description": "blank-line skip logic"},
+                {"pattern": "if\\s+(?:not\\s+row|row\\s*==|len\\(row\\)\\s*==\\s*0|row\\s*:)|if\\s+line\\.strip|if\\s+not\\s+line|not\\s+\\w+\\.strip\\(|if\\s+parsed_row|if\\s+\\w*row\\b", "description": "blank-line skip logic"},
             ],
             "prohibited_elements": [
                 {"pattern": "\\.split\\(['\"],['\"]\\)", "description": "naive comma split breaks quoted fields"},

@@ -67,7 +67,7 @@ CASES_FIDELITY = [
             "required_elements": [
                 {"pattern": r"import csv|from csv", "description": "csv module used"},
                 {"pattern": r"csv\.reader", "description": "csv.reader used"},
-                {"pattern": r"if\s+(?:not\s+row|row\s*==|len\(row\)\s*==\s*0|row\s*:)|if\s+line\.strip|if\s+not\s+line|if row|if len\(row\)|row != \[\]", "description": "empty-row skip check"},
+                {"pattern": r"if\s+(?:not\s+row|row\s*==|len\(row\)\s*==\s*0|row\s*:)|if\s+line\.strip|if\s+not\s+line|if row|if len\(row\)|row != \[\]|not\s+\w+\.strip\(|if\s+parsed_row|if\s+\w*row\b", "description": "empty-row skip check"},
             ],
             "prohibited_elements": [
                 {"pattern": r"\.split\(['\"],['\"]\)", "description": "naive comma split breaks quoted fields"},

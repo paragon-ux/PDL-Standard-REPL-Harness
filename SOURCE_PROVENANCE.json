@@ -11,7 +11,7 @@
       "HEAD": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7"
     }
   },
-  "extraction_notes": "Byte-identical copies preferred; adaptations limited to fixture relocation and standalone verification. runs/ artifacts and architecture docs excluded.",
+  "extraction_notes": "Byte-identical copies preferred; adaptations limited to fixture relocation and standalone verification. runs/ artifacts and architecture docs excluded. v2.3.0 restructure: code consolidated under scripts/ code root; docs organized (architecture/operations/governance); fixtures and workspace-template externalized to PDL-Standard-Archive (see PDLt/docs/proposed/repo-restructure-plan.md). extracted_sha256 reflects current extracted bytes; ADAPTED flags include restructure adaptations.",
   "files": [
     {
       "source_repository": "PDL-Standard-R2S",
@@ -29,9 +29,9 @@
       "original_source_path": null,
       "extracted_path": ".gitignore",
       "source_sha256": null,
-      "extracted_sha256": "8681a67678f9dfa42002e02de4f956ca8c5a469b3784621a3e19b16dcae5957a",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "a6dc32bc4527b5be0b69c21323b53e4daf305137891f33652f87c1310447800d",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -59,9 +59,9 @@
       "original_source_path": null,
       "extracted_path": "README.md",
       "source_sha256": null,
-      "extracted_sha256": "329182c34184eedc75ad529bdd935559af22865079e9d80203ef95b9c8dadffa",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "0efad03ff2244246707d2dad624bc0d9e8f4c47390c702e0de8cefd1cac5ea78",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure"
     },
     {
       "source_repository": null,
@@ -69,9 +69,9 @@
       "original_source_path": null,
       "extracted_path": "SOURCE_PROVENANCE.json",
       "source_sha256": null,
-      "extracted_sha256": "a78884e874cafd9c6a399976687d072d639056494eb2320006adad1cfe0fc424",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "02e9a408e4159936727564a392e9fffd0e7076510caad642490d5bae8a6b6adb",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -119,9 +119,9 @@
       "original_source_path": "contracts/CONTRACT_MANIFEST.json",
       "extracted_path": "contracts/CONTRACT_MANIFEST.json",
       "source_sha256": "95aacd25c78c726168eed174d3e4ee0cd03d231cc3351c3fae40aa207f7bd3c6",
-      "extracted_sha256": "95aacd25c78c726168eed174d3e4ee0cd03d231cc3351c3fae40aa207f7bd3c6",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "866fbdbd0d4b9b4757ddccb7d04e32cff9c6de773b77c0fc234c8befdae37409",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -129,9 +129,9 @@
       "original_source_path": "contracts/EXECUTION_CONTRACT.json",
       "extracted_path": "contracts/EXECUTION_CONTRACT.json",
       "source_sha256": "156cc7b270866fb4c2343a826da8ea8ca044aefb447317b8a07ab13aa30cbf40",
-      "extracted_sha256": "156cc7b270866fb4c2343a826da8ea8ca044aefb447317b8a07ab13aa30cbf40",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "9ce5acf01ce3655d48907bb067b2433b1076246f134d5cb349063b729ba55c40",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -149,9 +149,9 @@
       "original_source_path": "contracts/VERIFICATION_CONTRACT.json",
       "extracted_path": "contracts/VERIFICATION_CONTRACT.json",
       "source_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
-      "extracted_sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "72eb0c6f93a56b21c32fdf466e8258b5a6701e41f178d2a3cfdd353ddf36262d",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -199,9 +199,9 @@
       "original_source_path": "contracts/standards/EXECUTION_STANDARD.md",
       "extracted_path": "contracts/standards/EXECUTION_STANDARD.md",
       "source_sha256": "c5145ad84d53de6674f25589df447a4c9c4ddcf4b17790e8d6c7d270fb10d8b2",
-      "extracted_sha256": "c5145ad84d53de6674f25589df447a4c9c4ddcf4b17790e8d6c7d270fb10d8b2",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "7f41407de602cd9e68db4b74e035030f27f53d25126bfdf607a88a8634902f42",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -259,9 +259,9 @@
       "original_source_path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
       "extracted_path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
       "source_sha256": "f928362c47081b4e66e2563a5b9d467f4dba962e67ee60586227efe0a2858fef",
-      "extracted_sha256": "f928362c47081b4e66e2563a5b9d467f4dba962e67ee60586227efe0a2858fef",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "f544c6ea74859f800a2064accc646a7c204cda3d9900cb71169662094860f980",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -279,9 +279,9 @@
       "original_source_path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
       "extracted_path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
       "source_sha256": "67136fa570136cff665020669905fa414860e5ed98ed11ec9e9737a03a5fc4f0",
-      "extracted_sha256": "67136fa570136cff665020669905fa414860e5ed98ed11ec9e9737a03a5fc4f0",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "e6a7a356681c551a812f93677c099927ec64607c15045c48e13c64afcb47d705",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -297,101 +297,101 @@
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/__init__.py",
-      "extracted_path": "controller/__init__.py",
+      "extracted_path": "scripts/controller/__init__.py",
       "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "extracted_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/mechanical_controller.py",
-      "extracted_path": "controller/mechanical_controller.py",
+      "extracted_path": "scripts/controller/mechanical_controller.py",
       "source_sha256": "692897c68def26ade092230cfbea9f1ed735acdf888e9f1698ec0a57c44d6b3d",
-      "extracted_sha256": "692897c68def26ade092230cfbea9f1ed735acdf888e9f1698ec0a57c44d6b3d",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "d3edb93e55d988cb178686aa260cc136b38c328e0d7e3fe5df250ec466a3f40f",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/activation_decision.schema.json",
-      "extracted_path": "controller/schemas/activation_decision.schema.json",
+      "extracted_path": "scripts/controller/schemas/activation_decision.schema.json",
       "source_sha256": "85058fbe97c0a70113ae2a9bc08b15cfbbed4d4858372b5e5094ed92d3a15c10",
       "extracted_sha256": "85058fbe97c0a70113ae2a9bc08b15cfbbed4d4858372b5e5094ed92d3a15c10",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/artifact_body.schema.json",
-      "extracted_path": "controller/schemas/artifact_body.schema.json",
+      "extracted_path": "scripts/controller/schemas/artifact_body.schema.json",
       "source_sha256": "b85f6e2833d90215d18e1c768ff6bcb19502b384fa321ced0e707f060d8b75c3",
       "extracted_sha256": "b85f6e2833d90215d18e1c768ff6bcb19502b384fa321ced0e707f060d8b75c3",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/artifact_review_facts.schema.json",
-      "extracted_path": "controller/schemas/artifact_review_facts.schema.json",
+      "extracted_path": "scripts/controller/schemas/artifact_review_facts.schema.json",
       "source_sha256": "62b138e6685da763ca671551ec14a672d61a87dc9b1193dfbb4e65b72dab265c",
       "extracted_sha256": "62b138e6685da763ca671551ec14a672d61a87dc9b1193dfbb4e65b72dab265c",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/execution_input_decision.schema.json",
-      "extracted_path": "controller/schemas/execution_input_decision.schema.json",
+      "extracted_path": "scripts/controller/schemas/execution_input_decision.schema.json",
       "source_sha256": "a67204eb79771d1b326106f0f91c44be85eba939807e5a7861a12dbf4cfd8e90",
       "extracted_sha256": "a67204eb79771d1b326106f0f91c44be85eba939807e5a7861a12dbf4cfd8e90",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/execution_outcome.schema.json",
-      "extracted_path": "controller/schemas/execution_outcome.schema.json",
+      "extracted_path": "scripts/controller/schemas/execution_outcome.schema.json",
       "source_sha256": "240cb15870954a5d73e2158498283bb632ef8f8e4f4001d5384196cb2a83014c",
-      "extracted_sha256": "240cb15870954a5d73e2158498283bb632ef8f8e4f4001d5384196cb2a83014c",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "c1dc5265dc8c1ed79499fb79b31346fbc531c92073f27534861762aa3789e239",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/plan_artifact.schema.json",
-      "extracted_path": "controller/schemas/plan_artifact.schema.json",
+      "extracted_path": "scripts/controller/schemas/plan_artifact.schema.json",
       "source_sha256": "31c182639c4f668d620115e5f0afc6088f5a864304b4b326ba4d3e346668cf2a",
       "extracted_sha256": "31c182639c4f668d620115e5f0afc6088f5a864304b4b326ba4d3e346668cf2a",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/prompt_artifact.schema.json",
-      "extracted_path": "controller/schemas/prompt_artifact.schema.json",
+      "extracted_path": "scripts/controller/schemas/prompt_artifact.schema.json",
       "source_sha256": "88e67315cada26233878be63874bd74c63fa79f5a28f0113c20ac891b2d43189",
-      "extracted_sha256": "88e67315cada26233878be63874bd74c63fa79f5a28f0113c20ac891b2d43189",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "ece37103650abc4c677dc28803a488bf5efdf2204f3239abc0be3418f4253255",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "controller/schemas/protocol_discussion.schema.json",
-      "extracted_path": "controller/schemas/protocol_discussion.schema.json",
+      "extracted_path": "scripts/controller/schemas/protocol_discussion.schema.json",
       "source_sha256": "5404567a49c72513eb744a68fcc5329bdf82a7eaf6bf3bede832c4fb6bf61af4",
       "extracted_sha256": "5404567a49c72513eb744a68fcc5329bdf82a7eaf6bf3bede832c4fb6bf61af4",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
@@ -401,7 +401,8 @@
       "source_sha256": "1b5ae0c11e91ff22bd93adffab0d325647a52fea688f89bac60cd0071ae937ca",
       "extracted_sha256": "41798b1e6ef10b7ff76f8feefd44e87ae279e400c941013d28bddff4c777b518",
       "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
-      "reason_for_adaptation": "regenerated from vendored recorded-cases.json (G06+A02)"
+      "reason_for_adaptation": "regenerated from vendored recorded-cases.json (G06+A02)",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (fixtures/r4-recorded-worker/FIXTURE_MANIFEST.json)"
     },
     {
       "source_repository": null,
@@ -411,187 +412,188 @@
       "source_sha256": null,
       "extracted_sha256": "09e070d1c53f247939ed3fae397ee0c5b46485f988140c5ac982353762002d69",
       "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "reason_for_adaptation": "created for standalone harness",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (fixtures/r4-recorded-worker/recorded-cases.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "host/__init__.py",
-      "extracted_path": "host/__init__.py",
+      "extracted_path": "scripts/host/__init__.py",
       "source_sha256": "1579a9cb4d0b0a12932d0614253a18d789f84fafda848dc35c533e0ba5429407",
       "extracted_sha256": "1579a9cb4d0b0a12932d0614253a18d789f84fafda848dc35c533e0ba5429407",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "host/app.py",
-      "extracted_path": "host/app.py",
+      "extracted_path": "scripts/host/app.py",
       "source_sha256": "bcba372a65395ae7b80bbd38078937c2fc41e0526b0a41346708cd0a6fc49121",
-      "extracted_sha256": "bcba372a65395ae7b80bbd38078937c2fc41e0526b0a41346708cd0a6fc49121",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "9c621a3c4d2e55ef1e0611da0134bb8a4d8219fb1d38704866ae872708a624b4",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "host/repl.py",
-      "extracted_path": "host/repl.py",
+      "extracted_path": "scripts/host/repl.py",
       "source_sha256": "9065990141ceae7b29b0b48eb9def086812d68faa61261c7e26ae54dc054d899",
-      "extracted_sha256": "c6119c75eeb609b7277132eb43d6d76ce1897cb21e2ecc90db676577687d0484",
+      "extracted_sha256": "fa510637bbe61e7dc43995b6eedb7ba30b7440e87ff337d0b604b4e3c3942f06",
       "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
-      "reason_for_adaptation": "vendored recorded-cases.json routing at startup and interactive /worker recorded; legacy eval-workspace path preserved"
+      "reason_for_adaptation": "vendored recorded-cases.json routing at startup and interactive /worker recorded; legacy eval-workspace path preserved | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/__init__.py",
-      "extracted_path": "observation/__init__.py",
+      "extracted_path": "scripts/observation/__init__.py",
       "source_sha256": "97021f430c7262ffd8cd630b53ac8feba4c9745360986eb4970d9f03cc6dad70",
       "extracted_sha256": "97021f430c7262ffd8cd630b53ac8feba4c9745360986eb4970d9f03cc6dad70",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/cli.py",
-      "extracted_path": "observation/cli.py",
+      "extracted_path": "scripts/observation/cli.py",
       "source_sha256": "08d60dc56283732a3f9ba89e2291a28c21fe3f3b987a618ebdb49595e2787a6d",
       "extracted_sha256": "08d60dc56283732a3f9ba89e2291a28c21fe3f3b987a618ebdb49595e2787a6d",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/observed_session.py",
-      "extracted_path": "observation/observed_session.py",
+      "extracted_path": "scripts/observation/observed_session.py",
       "source_sha256": "2585fc9b9969247fdde79749d59f24133f678a041009d28a40a8ad85b88ad808",
-      "extracted_sha256": "2585fc9b9969247fdde79749d59f24133f678a041009d28a40a8ad85b88ad808",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "d62041ca59fe988e2344126d8e3f82bc9ea274473f1ed5dd84abfdc4410f1472",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/parsers.py",
-      "extracted_path": "observation/parsers.py",
+      "extracted_path": "scripts/observation/parsers.py",
       "source_sha256": "b6a835ec891d8e77ad0f85ec20a8f18786e75f1187c40b8af09b4a689243ac40",
-      "extracted_sha256": "b6a835ec891d8e77ad0f85ec20a8f18786e75f1187c40b8af09b4a689243ac40",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "3ec01b42c6a8afdfa52972dfe383c457ea7271e8acac85a39c19b69b05c0fd76",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/records.py",
-      "extracted_path": "observation/records.py",
+      "extracted_path": "scripts/observation/records.py",
       "source_sha256": "29125cceb41cd0c7ce293627a8ffd2059134b5faf9545db8bb09a6357b17676b",
       "extracted_sha256": "29125cceb41cd0c7ce293627a8ffd2059134b5faf9545db8bb09a6357b17676b",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/session.py",
-      "extracted_path": "observation/session.py",
+      "extracted_path": "scripts/observation/session.py",
       "source_sha256": "f067b9e628f2cb155c7330195d4a548eccf69fd50874c41549fc254a1346a35d",
-      "extracted_sha256": "f067b9e628f2cb155c7330195d4a548eccf69fd50874c41549fc254a1346a35d",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "afd94f1e5b3f178edd420f10214ebd597122a842b815fed4e71269829527df3b",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/sink.py",
-      "extracted_path": "observation/sink.py",
+      "extracted_path": "scripts/observation/sink.py",
       "source_sha256": "07aa5655cf285d27e74432cd80c3fbf3744a00fd0c8b05f7e93734e8baff45a6",
-      "extracted_sha256": "07aa5655cf285d27e74432cd80c3fbf3744a00fd0c8b05f7e93734e8baff45a6",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "58d0271294035f3ca4624ca4c35612b991895999df676c1e42f5777e8ce80e26",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "observation/sinks.py",
-      "extracted_path": "observation/sinks.py",
+      "extracted_path": "scripts/observation/sinks.py",
       "source_sha256": "60f4171d5aab7ed2071b477bb55150c6c7387805eaea046d76ea243203fba6d0",
       "extracted_sha256": "60f4171d5aab7ed2071b477bb55150c6c7387805eaea046d76ea243203fba6d0",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/README.md",
-      "extracted_path": "providers/README.md",
+      "extracted_path": "scripts/providers/README.md",
       "source_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
       "extracted_sha256": "484376b6ca55e3fd1abb33a192b2155ee97f4007c39f3384dc1f8842937dbfe9",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/__init__.py",
-      "extracted_path": "providers/__init__.py",
+      "extracted_path": "scripts/providers/__init__.py",
       "source_sha256": "516f76f6a6988dedcd470fe9d3d95ba4849118b4ab0539c10d5619dba94b7fe8",
       "extracted_sha256": "516f76f6a6988dedcd470fe9d3d95ba4849118b4ab0539c10d5619dba94b7fe8",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/base.py",
-      "extracted_path": "providers/base.py",
+      "extracted_path": "scripts/providers/base.py",
       "source_sha256": "95587c258929eb468af8ba3b113a7fe0534956b004565bdf326109414ed70488",
       "extracted_sha256": "95587c258929eb468af8ba3b113a7fe0534956b004565bdf326109414ed70488",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/codex_worker.py",
-      "extracted_path": "providers/codex_worker.py",
+      "extracted_path": "scripts/providers/codex_worker.py",
       "source_sha256": "c4e3b9f31f4b44e4af944933b681e4eb411bdb63467939baaf28c255abebc921",
-      "extracted_sha256": "c4e3b9f31f4b44e4af944933b681e4eb411bdb63467939baaf28c255abebc921",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "c14a18e639ba0ab3c6307bc581b79e60e7a49bf407581a84a9d7b9cc5b8205bf",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/fixtures.py",
-      "extracted_path": "providers/fixtures.py",
+      "extracted_path": "scripts/providers/fixtures.py",
       "source_sha256": "d0e786b14d49d23a01380e22f13dca2ffc103f7120a5f8bd03bf01aff1e5a2af",
-      "extracted_sha256": "91eb5ce03329d828a8e7b05cdb165beb54525f8e1065b1647d626b6d2584381f",
+      "extracted_sha256": "aaaef6f689493f09ecd7fdeceffc5331f9e637f8ad891ae9ac42a307d1a3b299",
       "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
-      "reason_for_adaptation": "appended build_recorded_fixture_from_vendored() for standalone vendored fixture"
+      "reason_for_adaptation": "appended build_recorded_fixture_from_vendored() for standalone vendored fixture | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/live_stub.py",
-      "extracted_path": "providers/live_stub.py",
+      "extracted_path": "scripts/providers/live_stub.py",
       "source_sha256": "b1f8d44ae165531a79a6a97a0c1a50afd15d5650c33711521b3941e2fd322bf9",
-      "extracted_sha256": "b1f8d44ae165531a79a6a97a0c1a50afd15d5650c33711521b3941e2fd322bf9",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "f0d8586c39558d2550d50c96928135942f1a5a89427f903cf5defc789c2ba5b3",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "providers/recorded.py",
-      "extracted_path": "providers/recorded.py",
+      "extracted_path": "scripts/providers/recorded.py",
       "source_sha256": "b3e601d7ec22c7b0cb6773d27b319e4116dca51c36189dfb2db798dca79e8267",
-      "extracted_sha256": "b3e601d7ec22c7b0cb6773d27b319e4116dca51c36189dfb2db798dca79e8267",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "d5d466b5ab2fb7826fc99bc0275ae5e36936b6f4aa16f7f025c65bd37c45e500",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
@@ -617,161 +619,161 @@
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/__init__.py",
-      "extracted_path": "runtime/__init__.py",
+      "extracted_path": "scripts/runtime/__init__.py",
       "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "extracted_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/context_compiler.py",
-      "extracted_path": "runtime/context_compiler.py",
+      "extracted_path": "scripts/runtime/context_compiler.py",
       "source_sha256": "a4257de44d3d8adddabf37041e928360f55306a753bb998ec85ab1148252da84",
-      "extracted_sha256": "a4257de44d3d8adddabf37041e928360f55306a753bb998ec85ab1148252da84",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "4c68984a9b1b4a74050fe8a09374e1e273102253504b7cd4e4861386997c0a01",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/operation_bridge.py",
-      "extracted_path": "runtime/operation_bridge.py",
+      "extracted_path": "scripts/runtime/operation_bridge.py",
       "source_sha256": "7c274f6dc9a5286a2f156d76d4256dd90b73cf7856a978faf33157685177bf3a",
-      "extracted_sha256": "7c274f6dc9a5286a2f156d76d4256dd90b73cf7856a978faf33157685177bf3a",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "a0f9988ae3488567718abce7113aff905fb78bca320760596212b1fb69a0ebe7",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/presentation.py",
-      "extracted_path": "runtime/presentation.py",
+      "extracted_path": "scripts/runtime/presentation.py",
       "source_sha256": "be26575d764fdfe748105cd7c9122591cc6d28153f3010feea92c7861da415da",
       "extracted_sha256": "be26575d764fdfe748105cd7c9122591cc6d28153f3010feea92c7861da415da",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/semantic_observer.py",
-      "extracted_path": "runtime/semantic_observer.py",
+      "extracted_path": "scripts/runtime/semantic_observer.py",
       "source_sha256": "763c3ed430079a3aac953c4d742900759d540142924153781d5422e77c4a5be0",
       "extracted_sha256": "763c3ed430079a3aac953c4d742900759d540142924153781d5422e77c4a5be0",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/session_engine.py",
-      "extracted_path": "runtime/session_engine.py",
+      "extracted_path": "scripts/runtime/session_engine.py",
       "source_sha256": "c12a84c6c1c09a827402afcf940fa04f3c510a2b8971fa2a40a428987115edcd",
-      "extracted_sha256": "c12a84c6c1c09a827402afcf940fa04f3c510a2b8971fa2a40a428987115edcd",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "435cd117eea2d9484e38890aee1e3993584dd4a402504afd0ef9f567dad28b23",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/standard_registry.py",
-      "extracted_path": "runtime/standard_registry.py",
+      "extracted_path": "scripts/runtime/standard_registry.py",
       "source_sha256": "f1056ac9470abe9af31c91812da5a9727a8ec7ac6e4b3c317599df66b72ba1e1",
-      "extracted_sha256": "f1056ac9470abe9af31c91812da5a9727a8ec7ac6e4b3c317599df66b72ba1e1",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "46b41a7f565678bb79ff967161ad54fd152891dc0a6418bc091e59c2cf7f68a2",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/worker-bootstrap.txt",
-      "extracted_path": "runtime/worker-bootstrap.txt",
+      "extracted_path": "scripts/runtime/worker-bootstrap.txt",
       "source_sha256": "2fb6fddf711126c1edde0ca0256d34864547730b1fb48222f7396191e4f2dcad",
       "extracted_sha256": "2fb6fddf711126c1edde0ca0256d34864547730b1fb48222f7396191e4f2dcad",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
       "source_head": "0503f98141a439679a4a59dba6c21524b78d762f",
       "original_source_path": "runtime/workspace.py",
-      "extracted_path": "runtime/workspace.py",
+      "extracted_path": "scripts/runtime/workspace.py",
       "source_sha256": "d07a5fd673f225bd6e798ff51ae95d63d6c39e11298ce9776a952ce6cad745de",
-      "extracted_sha256": "d07a5fd673f225bd6e798ff51ae95d63d6c39e11298ce9776a952ce6cad745de",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "ed01f930e07870120158a301278b0de9339f4b7d0ef3e205743d5cf6500d2923",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "scripts/log_live_session.py",
-      "extracted_path": "scripts/log_live_session.py",
+      "extracted_path": "scripts/tracking/log_live_session.py",
       "source_sha256": "48126a28015651ed103a1061fe558570c89e7131df86c9e7d712a284fdefd0f7",
-      "extracted_sha256": "48126a28015651ed103a1061fe558570c89e7131df86c9e7d712a284fdefd0f7",
-      "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "extracted_sha256": "7d756d4d1d6e6794713c6f37d083a8769447df73274e164df735fa2a3b9d2a60",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": null,
       "source_head": null,
       "original_source_path": null,
-      "extracted_path": "scripts/verify_repl_baseline.py",
+      "extracted_path": "scripts/verify/verify_repl_baseline.py",
       "source_sha256": null,
-      "extracted_sha256": "868842c0bb0288cc62db03ce43f117c7c93cb45e0af4ca28c1aceabfc1899f10",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "99ae236be311f811d915ca811e3cd197864de2338de8d3d815d146b048659c84",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": null,
       "source_head": null,
       "original_source_path": null,
-      "extracted_path": "tests/test_harness_baseline.py",
+      "extracted_path": "scripts/tests/test_harness_baseline.py",
       "source_sha256": null,
-      "extracted_sha256": "cc27e0be46f951199e0108d8cc7bf83aefde12d9da2cc258bf3dc45eb2967b60",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "63363bb0ad960e683d8536ec8a42ce25468551a7df427913b88c2610ee36a866",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": null,
       "source_head": null,
       "original_source_path": null,
-      "extracted_path": "tests/test_mlflow_logger.py",
+      "extracted_path": "scripts/tests/test_mlflow_logger.py",
       "source_sha256": null,
-      "extracted_sha256": "3704c0b137488f2bc16916b68924a7a9bce9cb58ee11bb52a2177c1229b2dae8",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "6575543e579f278ede7ad816fcdb3e8a0b4fd40ac566c9cd4c04312ed68b7a59",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": null,
       "source_head": null,
       "original_source_path": null,
-      "extracted_path": "tests/test_repl_integration.py",
+      "extracted_path": "scripts/tests/test_repl_integration.py",
       "source_sha256": null,
-      "extracted_sha256": "a6100b2c829bd5dbe043760fbe6944a858604750b80e900f97e339ac546263ce",
-      "BYTE_IDENTICAL_or_ADAPTED": "NEW",
-      "reason_for_adaptation": "created for standalone harness"
+      "extracted_sha256": "270c5ec326ba87b8606f605492b0be694cbf1dea8df109a3d41f5963653b6478",
+      "BYTE_IDENTICAL_or_ADAPTED": "ADAPTED",
+      "reason_for_adaptation": "created for standalone harness | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "tracking/__init__.py",
-      "extracted_path": "tracking/__init__.py",
+      "extracted_path": "scripts/tracking/__init__.py",
       "source_sha256": "5493df0b50c34a2dc914be28423228ab3534d2773d7ac8efdb936324b82db1ad",
       "extracted_sha256": "5493df0b50c34a2dc914be28423228ab3534d2773d7ac8efdb936324b82db1ad",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S-Lab",
       "source_head": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7",
       "original_source_path": "tracking/mlflow_sink.py",
-      "extracted_path": "tracking/mlflow_sink.py",
+      "extracted_path": "scripts/tracking/mlflow_sink.py",
       "source_sha256": "465d94681fd31552dcfb2536fc1d56b7749d21cf1e567351acb3934596fda4d8",
       "extracted_sha256": "465d94681fd31552dcfb2536fc1d56b7749d21cf1e567351acb3934596fda4d8",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": " | v2.3.0 repo restructure: relocated under scripts/ code root; import roots updated."
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -781,7 +783,8 @@
       "source_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
       "extracted_sha256": "4eeed2d9642800b5a390f822859a650788df73013230a948c975e4d6b72d65b5",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -791,7 +794,8 @@
       "source_sha256": "085ca7d243b0b155f99f7a59a7042b6bd4bc24b02299413cf2af07dd757dce0f",
       "extracted_sha256": "085ca7d243b0b155f99f7a59a7042b6bd4bc24b02299413cf2af07dd757dce0f",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/_config/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -801,7 +805,8 @@
       "source_sha256": "1d1ff4592b3fd2b585aa3404a23f885c6bffb7c2ea7b6f305c99d65228f5db5c",
       "extracted_sha256": "1d1ff4592b3fd2b585aa3404a23f885c6bffb7c2ea7b6f305c99d65228f5db5c",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/_config/icm-reference.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -811,7 +816,8 @@
       "source_sha256": "2b69d7ba172d9bbc2691f84606556724b740b68d1605ed9315b2e7bada1db3d9",
       "extracted_sha256": "2b69d7ba172d9bbc2691f84606556724b740b68d1605ed9315b2e7bada1db3d9",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/shared/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -821,7 +827,8 @@
       "source_sha256": "648597d2e2275eae3cdf65c68ad35b795249ab0eec1d03f0df61802a99f6837e",
       "extracted_sha256": "648597d2e2275eae3cdf65c68ad35b795249ab0eec1d03f0df61802a99f6837e",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/00_activation/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -831,7 +838,8 @@
       "source_sha256": "b54ba78403aca77c599e5fafee0106d96923e7fbaee26fbf93833c02963976cc",
       "extracted_sha256": "b54ba78403aca77c599e5fafee0106d96923e7fbaee26fbf93833c02963976cc",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/00_activation/references/operation-bindings.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -841,7 +849,8 @@
       "source_sha256": "45a9cfb56c4e270787e46a5155fff8626c22e8a3fd2af610daff99686a7720fa",
       "extracted_sha256": "45a9cfb56c4e270787e46a5155fff8626c22e8a3fd2af610daff99686a7720fa",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/10_prompt/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -851,7 +860,8 @@
       "source_sha256": "ab171d5e6343856831e539cc3aa60c27f1a1d316ecb72c9a1d08cfd2a887eb2c",
       "extracted_sha256": "ab171d5e6343856831e539cc3aa60c27f1a1d316ecb72c9a1d08cfd2a887eb2c",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/10_prompt/references/operation-bindings.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -861,7 +871,8 @@
       "source_sha256": "38c38f0280cdd233188f592e676648c0fa6ed142a9757c12f2e311d07bd20f5c",
       "extracted_sha256": "38c38f0280cdd233188f592e676648c0fa6ed142a9757c12f2e311d07bd20f5c",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/20_prompt_review/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -871,7 +882,8 @@
       "source_sha256": "8dd290a49ee1472b00dc161618eafce3fe6e02747e314175ac3e08f16bfb9776",
       "extracted_sha256": "8dd290a49ee1472b00dc161618eafce3fe6e02747e314175ac3e08f16bfb9776",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/20_prompt_review/references/operation-bindings.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -881,7 +893,8 @@
       "source_sha256": "8ce634ad40cb5c638c50d27478a6c4a954c6915655f0cd53cc1237d84defc37b",
       "extracted_sha256": "8ce634ad40cb5c638c50d27478a6c4a954c6915655f0cd53cc1237d84defc37b",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/30_plan/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -891,7 +904,8 @@
       "source_sha256": "aab456769f15a5367a6e093105161b6a0647b7712f460ee60fac06d308a2f65a",
       "extracted_sha256": "aab456769f15a5367a6e093105161b6a0647b7712f460ee60fac06d308a2f65a",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/30_plan/references/operation-bindings.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -901,7 +915,8 @@
       "source_sha256": "b7c1bed681787d8753d3d8d1acadbac1a1aa6a48e70da6bb4a92016d155c0ca7",
       "extracted_sha256": "b7c1bed681787d8753d3d8d1acadbac1a1aa6a48e70da6bb4a92016d155c0ca7",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/40_plan_review/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -911,7 +926,8 @@
       "source_sha256": "f8c49c10ffe163478659b130f18f19869435e3c579fb5e246cca891dc07fd000",
       "extracted_sha256": "f8c49c10ffe163478659b130f18f19869435e3c579fb5e246cca891dc07fd000",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/40_plan_review/references/operation-bindings.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -921,7 +937,8 @@
       "source_sha256": "77fe92df039fc930b73dd6674423ee416a2fd46c2c5eaa60779838768f6adc04",
       "extracted_sha256": "77fe92df039fc930b73dd6674423ee416a2fd46c2c5eaa60779838768f6adc04",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/50_execution/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -931,7 +948,8 @@
       "source_sha256": "eeeb8accc87bb7b65bbd2cb58d2566e925912068117c641225aa356d7b43dc73",
       "extracted_sha256": "eeeb8accc87bb7b65bbd2cb58d2566e925912068117c641225aa356d7b43dc73",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/50_execution/references/operation-bindings.json)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -941,7 +959,8 @@
       "source_sha256": "f985e443284e0b31649b923a43ffdb63070256f99d813d433fa1ac90742007df",
       "extracted_sha256": "f985e443284e0b31649b923a43ffdb63070256f99d813d433fa1ac90742007df",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/90_protocol_discussion/CONTEXT.md)"
     },
     {
       "source_repository": "PDL-Standard-R2S",
@@ -951,7 +970,8 @@
       "source_sha256": "e9351953acefad5555c373a0bac7fb6bc6ce7431764b62203909bcd4b109a870",
       "extracted_sha256": "e9351953acefad5555c373a0bac7fb6bc6ce7431764b62203909bcd4b109a870",
       "BYTE_IDENTICAL_or_ADAPTED": "BYTE_IDENTICAL",
-      "reason_for_adaptation": ""
+      "reason_for_adaptation": "",
+      "disposition": "externalized to PDL-Standard-Archive in v2.3.0 restructure (workspace-template/stages/90_protocol_discussion/references/operation-bindings.json)"
     }
   ]
 }

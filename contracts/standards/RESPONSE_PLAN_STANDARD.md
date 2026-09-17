@@ -19,3 +19,6 @@ Normative scope: Response Plan Pseudocode coverage, abstraction, neutrality, and
 **PLAN-08 — Carried approach constraints.** When ordered `TASK-02` projections are supplied to a Plan operation, the Response Plan MUST incorporate their operative approach constraints while remaining consistent with the confirmed Prompt and the other Plan requirements.
 
 **PLAN-09 — Message-act response coverage.** When Prompt Pseudocode represents a user message-act with no requested material action or deliverable (`SEM-05`), the Response Plan MUST represent the agent's responsive action to that act.
+
+**PLAN-10 — Negative constraint operationalization by omission.** When Prompt Pseudocode specifies negative constraints, exclusions, or unhandled conditions (e.g. "do not do X", "let unhandled exceptions propagate"), the Response Plan MUST operationalize them as structural omission rather than defensive assertions, catch-all wrappers, or redundant re-raises. In programming deliverables, native platform propagation and runtime defaults MUST be relied upon without generating active procedural steps for unrequested conditions.
+

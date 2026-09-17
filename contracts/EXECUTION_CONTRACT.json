@@ -297,6 +297,7 @@
         "PLAN-06",
         "PLAN-08",
         "PLAN-09",
+        "PLAN-10",
         "PDL-01",
         "PDL-02",
         "PDL-03",
@@ -347,6 +348,7 @@
         "PLAN-07",
         "PLAN-08",
         "PLAN-09",
+        "PLAN-10",
         "PDL-01",
         "PDL-02",
         "PDL-03",
@@ -385,7 +387,8 @@
       "requirements": [
         "AUTH-03",
         "AUTH-04",
-        "EXEC-01"
+        "EXEC-01",
+        "EXEC-05"
       ],
       "include": [
         "OPERATION_ID",

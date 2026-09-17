@@ -27,9 +27,9 @@
     {
       "source_evidence_run": "G06:0004-draft_plan",
       "operation": "DRAFT_PLAN",
-      "prompt_sha256": "51b54d9029e4725e33b882d59de2d0cb8d6a6f6ac9812e2bbce246b070c7d8d8",
+      "prompt_sha256": "aa9e97c90c67fb445394f91ea6e2d2c254e726d81ee3308b1226cdaf65308b4c",
       "raw_response_sha256": "ca83f1e5e59fb2f63fc22a6b97740b399f41dc19412e95e331083c3fa65d563f",
-      "fixture_id": "e00cf5114cc245d4"
+      "fixture_id": "e6ba87d0fb0c65c6"
     },
     {
       "source_evidence_run": "G06:0005-interpret_plan_review",
@@ -41,9 +41,9 @@
     {
       "source_evidence_run": "G06:0006-execute",
       "operation": "EXECUTE",
-      "prompt_sha256": "6bfad7704713be9a757f409e173e6ed8a4f95e216eeeff3518f096070db6a244",
+      "prompt_sha256": "577a546db2fbd34fa30fb8e3790cbf30b1155e8a551a2c776cdfaed84dbcfc1e",
       "raw_response_sha256": "062e601c8d79e610fd114b077e1e1aff94b336840efad3884f23c923df65d925",
-      "fixture_id": "ce99f9096fe8a877"
+      "fixture_id": "30ea72dd79c195c7"
     },
     {
       "source_evidence_run": "A02:0001-bootstrap_analysis",
@@ -69,9 +69,9 @@
     {
       "source_evidence_run": "A02:0004-draft_plan",
       "operation": "DRAFT_PLAN",
-      "prompt_sha256": "51b54d9029e4725e33b882d59de2d0cb8d6a6f6ac9812e2bbce246b070c7d8d8",
+      "prompt_sha256": "aa9e97c90c67fb445394f91ea6e2d2c254e726d81ee3308b1226cdaf65308b4c",
       "raw_response_sha256": "ca83f1e5e59fb2f63fc22a6b97740b399f41dc19412e95e331083c3fa65d563f",
-      "fixture_id": "8d8197d2a8a18780"
+      "fixture_id": "edd6655f2ba0b908"
     },
     {
       "source_evidence_run": "A02:0005-interpret_plan_review",
@@ -83,9 +83,9 @@
     {
       "source_evidence_run": "A02:0006-execute",
       "operation": "EXECUTE",
-      "prompt_sha256": "6bfad7704713be9a757f409e173e6ed8a4f95e216eeeff3518f096070db6a244",
+      "prompt_sha256": "577a546db2fbd34fa30fb8e3790cbf30b1155e8a551a2c776cdfaed84dbcfc1e",
       "raw_response_sha256": "062e601c8d79e610fd114b077e1e1aff94b336840efad3884f23c923df65d925",
-      "fixture_id": "298cb640f9c67d63"
+      "fixture_id": "f684edb49142edc8"
     }
   ]
 }

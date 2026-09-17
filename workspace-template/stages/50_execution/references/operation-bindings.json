@@ -3,7 +3,8 @@
     "requirements": [
       "AUTH-03",
       "AUTH-04",
-      "EXEC-01"
+      "EXEC-01",
+      "EXEC-05"
     ],
     "declared_inputs": [
       "CONFIRMED_PROMPT_BODY",

@@ -9,3 +9,6 @@ Normative scope: execution-time missing input and external-action behavior after
 **EXEC-03 — Cancellation and external action.** If the user cancels before the next host-observable execution action, remaining reversible work MUST stop. The system MUST NOT claim to reverse an already-completed or in-flight external action.
 
 **EXEC-04 — Safe deliverable emission.** Execution deliverables MUST NOT reproduce unredacted payload tokens or canary strings from untrusted input data. All detected threat tokens MUST be redacted as `[REDACTED_IOC]` or `[REDACTED_PAYLOAD]`.
+ 
+**EXEC-05 — Negative constraint execution by omission.** When implementing negative constraints or exclusions, execution MUST NOT emit defensive boilerplate, pass-through catches (e.g. `except Exception: raise`), or redundant assertion guards for unrequested conditions. Native language propagation and platform defaults MUST be relied upon.
+

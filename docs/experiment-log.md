@@ -504,3 +504,34 @@ To evaluate both hypotheses empirically, we executed a controlled side-by-side p
    - Instruct-native models (e.g., `qwen/qwen3.5-35b-a3b`, Class D) behave as deterministic schema compilers and perform optimally under `reasoning: "none"` without abstracting away implementation code.
    - MoE reasoning models (e.g., `z-ai/glm-4.7`, Class A) require bounded reasoning (`low` on `DRAFT_PROMPT`) to perform the semantic translation between natural language instructions and technical code specifications.
    - **Conclusion**: The proportional reasoning taxonomy (ADR-0006) is empirically verified: reasoning levels must be tiered by model class. GLM-4.7 requires bounded reasoning (`low` on draft/revise) to maintain positive code fidelity.
+
+
+## Pre-Registration: Negative-Constraint Operationalization by Omission (PLAN-10 & EXEC-05) & Certification Battery
+
+**Context & Motivation:**
+In the 13-case fidelity uplift sweep (`runs/fidelity-uplift-1`), GLM-4.7 achieved 1.0 Requirement Recall across all 13 cases, with the sole failure occurring on `MC-06` (`fidelity: 0.0, negative_adherence: 0.0`).
+Stage-trace diagnosis revealed that the failure was not execution stochasticity, but planner over-proceduralization:
+- The task prompt mandated: *"Narrow exception handling ONLY. Catch ONLY TimeoutError and ConnectionError. Never catch broad Exception or BaseException. Ensure any other exceptions propagate immediately."*
+- In `DRAFT_PLAN`, the planner operationalized the negative requirement (*"let them propagate"*) into an active procedural step: `CATCH any other exception -> RAISE caught exception immediately`.
+- `EXECUTE` faithfully emitted `except Exception as e: raise e`. While behaviorally a transparent pass-through, this literal string tripped the naive prohibited regex `"except Exception"`.
+- Meanwhile, unconstrained Control won by minimalism: it emitted only the narrow tuple and relied on Python's native runtime exception propagation.
+
+**Mechanism Under Test (Protocol-Native Fix):**
+Rather than loosening or retrofitting the standing Scorer of Record (which would violate Decision D8), we resolve this at the normative protocol layer:
+1. **`RESPONSE_PLAN_STANDARD.md` (`PLAN-10 — Negative constraint operationalization by omission`)**:
+   Negative constraints, exclusions, and unhandled conditions MUST be operationalized as structural omission rather than active assertions, catch-all wrappers, or redundant re-raises. In programming deliverables, native platform propagation and runtime defaults MUST be relied upon without generating active procedural steps for unrequested conditions.
+2. **`EXECUTION_STANDARD.md` (`EXEC-05 — Negative constraint execution by omission`)**:
+   When implementing negative constraints or exclusions, execution MUST NOT emit defensive boilerplate, pass-through catches (`except Exception: raise`), or redundant assertion guards for unrequested conditions.
+3. **Contract Bindings**: Bound `PLAN-10` to `DRAFT_PLAN` and `REVISE_PLAN`; bound `EXEC-05` to `EXECUTE` in `contracts/EXECUTION_CONTRACT.json` and `workspace-template/stages/`.
+4. **Scorer of Record Invariance**: `scripts/fidelity_scan.py` remains completely UNMODIFIED.
+
+**Certification Battery Objectives & Falsifiable Predictions:**
+1. **Defensive Boilerplate Resolution (`MC-06`)**:
+   - Re-run `MC-06` under the updated standard with GLM-4.7.
+   - **Prediction 1**: `MC-06` negative adherence moves from 0.0 -> 1.0 (0 prohibited pattern violations, literal `except Exception` absent), achieving 1.0 Fidelity under the standing, unmodified `fidelity_scan.py`.
+2. **Certification Gate D25 Closure (ACTOR-02 & DISAMB-03 $n=3$)**:
+   - Complete $n=3$ protocol runs on `ACTOR-02` and `DISAMB-03` under the live task-entity channel (`4522fe9`) and bounded reasoning (`DRAFT_PROMPT: low`).
+   - **Prediction 2**: Both `ACTOR-02` and `DISAMB-03` achieve 3/3 clean trials (100% Fidelity, Recall = 1.0), verifying that the mechanical entity channel and stdlib prompt grounding completely resolve the prior 2/3 trial slips.
+3. **Negative Containment Regression Gate (27-case Adversarial Battery)**:
+   - Run the 27-case adversarial battery (`runs/adversarial/`) on the protocol arm under GLM-4.7 with the entity channel active.
+   - **Prediction 3**: Protocol achieves 27/27 clean trials (0 egress leaks, 0 decision hijacks, 0 raw canary echoes in threat analysis), proving the entity preservation channel does not create an egress leak path.

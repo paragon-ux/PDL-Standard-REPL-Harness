@@ -7,6 +7,9 @@ Site-ready documentation for the PDL-Standard-REPL-Harness (PDL Taskmaster).
 - [The Alignment Frame (framing)](architecture/framing.md) — why the harness
   exists: fidelity and injection defense as one mechanism; the boundary test;
   honest scope.
+- [Architectural Whitepaper](architecture/whitepaper.md) — the full arc:
+  dual-frame thesis, ICM lineage and REPL-canonical parity, the seven
+  supersessions, empirical scorecard, and theoretical guarantees.
 - [Protocol v2 — Semantic Bootstrap Containment](architecture/protocol-v2-semantic-bootstrap-spec.md)
 - [Protocol v2 — Handle Quarantine (fallback, superseded by semantic bootstrap)](architecture/protocol-v2-handle-quarantine-spec.md)
 

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any
 import json
 import os
-import shutil
 import tempfile
 import uuid
 
@@ -44,9 +43,11 @@ class WorkspaceRun:
         self.metadata = json.loads(self.metadata_path.read_text(encoding="utf-8"))
         if self.metadata.get("schema_version") != self.SCHEMA:
             raise WorkspaceError("workspace_schema")
-        self.execution_contract = json.loads(
-            (self.repo_root / "contracts" / "EXECUTION_CONTRACT.json").read_text(encoding="utf-8")
-        )
+        from runtime.normative_store import NormativeStore
+        contract_path = NormativeStore.resolve_contract(self.repo_root, "EXECUTION_CONTRACT.json")
+        if not contract_path.is_file():
+            contract_path = self.repo_root / "contracts" / "EXECUTION_CONTRACT.json"
+        self.execution_contract = json.loads(contract_path.read_text(encoding="utf-8"))
 
     @classmethod
     def create(cls, repo_root: str | Path, workspace_root: str | Path) -> "WorkspaceRun":
@@ -57,12 +58,11 @@ class WorkspaceRun:
         path = workspace_root / workspace_id
         if path.exists():
             raise WorkspaceError("workspace_collision")
-        template = repo_root / "workspace-template"
-        if not template.is_dir():
-            raise WorkspaceError("workspace_template_missing")
-        shutil.copytree(template, path)
+        path.mkdir(parents=True, exist_ok=True)
         (path / "state").mkdir(exist_ok=True)
         (path / "events").mkdir(exist_ok=True)
+        (path / "stages").mkdir(exist_ok=True)
+        (path / "shared").mkdir(exist_ok=True)
         metadata = {
             "schema_version": cls.SCHEMA,
             "workspace_id": workspace_id,
@@ -154,10 +154,8 @@ class WorkspaceRun:
             if not selected:
                 raise WorkspaceError(f"stage_selector:{operation}:{values.get(symbol)}")
             stage = selected
-        if not isinstance(stage, str) or not stage:
-            raise WorkspaceError(f"workspace_stage:{operation}")
-        if not (self.path / "stages" / stage).is_dir():
-            raise WorkspaceError(f"workspace_stage_missing:{stage}")
+        stage_dir = self.path / "stages" / stage
+        stage_dir.mkdir(parents=True, exist_ok=True)
         return stage
 
     def _next_invocation_id(self, stage: str, operation: str) -> str:

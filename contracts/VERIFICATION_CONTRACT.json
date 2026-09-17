@@ -152,7 +152,9 @@
         "PLAN-05",
         "PLAN-06",
         "PLAN-07",
-        "PLAN-08"
+        "PLAN-08",
+        "PLAN-09",
+        "PLAN-10"
       ],
       "class": "S",
       "resolver": "fresh_plan_conformance_evaluator",
@@ -254,7 +256,9 @@
       "requirements": [
         "EXEC-01",
         "EXEC-02",
-        "EXEC-03"
+        "EXEC-03",
+        "EXEC-04",
+        "EXEC-05"
       ],
       "class": "S",
       "resolver": "fresh_execution_conformance_evaluator",

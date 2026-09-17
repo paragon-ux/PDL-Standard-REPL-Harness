@@ -228,7 +228,7 @@ def classify_model(
     )
 
 
-def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str]:
+def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str | int]:
     """Return the normative operational reasoning mapping per model class (ADR-0006).
 
     Operational intent:
@@ -243,6 +243,16 @@ def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str]:
             "BOOTSTRAP_ANALYSIS": "high",
             "DRAFT_PROMPT": "low",
             "REVISE_PROMPT": "low",
+            "DRAFT_PLAN": "none",
+            "REVISE_PLAN": "none",
+            "EXECUTE": "none",
+        }
+    elif "claude" in mid or "anthropic" in mid:
+        # Class B: Explicit thinking budget (Anthropic Claude 3.5/3.7 Sonnet, Haiku 4.5)
+        return {
+            "BOOTSTRAP_ANALYSIS": 4096,
+            "DRAFT_PROMPT": 1024,
+            "REVISE_PROMPT": 1024,
             "DRAFT_PLAN": "none",
             "REVISE_PLAN": "none",
             "EXECUTE": "none",

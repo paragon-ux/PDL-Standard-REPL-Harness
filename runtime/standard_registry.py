@@ -17,9 +17,13 @@ class StandardClause:
 
 
 class StandardRegistry:
-    def __init__(self, repo_root: str | Path):
+    def __init__(self, repo_root: str | Path, standards_root: str | Path | None = None):
         self.repo_root = Path(repo_root)
-        manifest_path = self.repo_root / "contracts" / "CONTRACT_MANIFEST.json"
+        from runtime.normative_store import NormativeStore
+        self.standards_root = Path(standards_root) if standards_root else NormativeStore.resolve_standards_root(self.repo_root)
+        manifest_path = self.standards_root / "CONTRACT_MANIFEST.json"
+        if not manifest_path.is_file():
+            manifest_path = self.repo_root / "contracts" / "CONTRACT_MANIFEST.json"
         self.manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         self.requirement_index: dict[str, str] = dict(self.manifest["requirement_index"])
         self._clauses = self._load()
@@ -27,7 +31,12 @@ class StandardRegistry:
     def _load(self) -> dict[str, StandardClause]:
         result: dict[str, StandardClause] = {}
         for requirement_id, relative in self.requirement_index.items():
-            path = self.repo_root / relative
+            path = self.standards_root.parent / relative
+            if not path.is_file():
+                rel_clean = relative.removeprefix("contracts/").removeprefix("contracts\\")
+                path = self.standards_root / rel_clean
+            if not path.is_file():
+                path = self.repo_root / relative
             text = path.read_text(encoding="utf-8")
             matches = [line for line in text.splitlines() if line.startswith(f"**{requirement_id} ")]
             if len(matches) != 1:

@@ -67,7 +67,13 @@ class ApiWorker:
         self.timeout = timeout
         self.capture_tokens = capture_tokens
         self.reasoning_effort = reasoning_effort
-        self.reasoning_by_operation = dict(reasoning_by_operation or {})
+        if reasoning_by_operation:
+            self.reasoning_by_operation = dict(reasoning_by_operation)
+        elif reasoning_effort is None:
+            from runtime.model_classification import get_proportional_reasoning_mapping
+            self.reasoning_by_operation = get_proportional_reasoning_mapping(self.model)
+        else:
+            self.reasoning_by_operation = {}
         self.model_by_operation = dict(model_by_operation or {})
         self.reorder_keys_for_cache = reorder_keys_for_cache
         self.structured_output = structured_output
@@ -119,7 +125,7 @@ class ApiWorker:
             raise TransportError(f"could not resolve {self.api_key_env}: {detail}")
         return key
 
-    def _reasoning_for(self, operation: str | None) -> str | None:
+    def _reasoning_for(self, operation: str | None) -> str | int | None:
         """Per-operation effort wins over the global default; 'none' disables reasoning."""
         if operation is not None and operation in self.reasoning_by_operation:
             return self.reasoning_by_operation[operation]
@@ -233,8 +239,11 @@ class ApiWorker:
         effort = self._reasoning_for(getattr(request, "operation", None))
         if effort == "none":
             body["reasoning"] = {"enabled": False}
-        elif effort:
-            body["reasoning"] = {"effort": effort}
+        elif effort is not None:
+            if isinstance(effort, int) or (isinstance(effort, str) and effort.isdigit()):
+                body["reasoning"] = {"max_tokens": int(effort)}
+            else:
+                body["reasoning"] = {"effort": effort}
 
         if self.provider_pinning:
             body["provider"] = self.provider_pinning

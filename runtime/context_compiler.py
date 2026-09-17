@@ -36,12 +36,15 @@ class CompiledProjection:
 
 
 class ContextCompiler:
-    def __init__(self, repo_root: str | Path):
+    def __init__(self, repo_root: str | Path, standards_root: str | Path | None = None):
         self.repo_root = Path(repo_root)
-        self.execution_contract = json.loads(
-            (self.repo_root / "contracts" / "EXECUTION_CONTRACT.json").read_text(encoding="utf-8")
-        )
-        self.registry = StandardRegistry(self.repo_root)
+        from runtime.normative_store import NormativeStore
+        self.standards_root = Path(standards_root) if standards_root else NormativeStore.resolve_standards_root(self.repo_root)
+        contract_path = NormativeStore.resolve_contract(self.repo_root, "EXECUTION_CONTRACT.json")
+        if not contract_path.is_file():
+            contract_path = self.repo_root / "contracts" / "EXECUTION_CONTRACT.json"
+        self.execution_contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        self.registry = StandardRegistry(self.repo_root, standards_root=self.standards_root)
 
     def compile(
         self,

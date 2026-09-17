@@ -25,7 +25,10 @@ def _ordered_recorded_calls(workspaces: list[Path]) -> list[dict[str, Any]]:
     calls: list[dict[str, Any]] = []
     for workspace in workspaces:
         workspace_calls: list[dict[str, Any]] = []
-        for response_path in workspace.glob("stages/*/output/*/model-response.txt"):
+        response_paths = list(workspace.glob("stages/*/output/*/model-response.txt")) + list(
+            workspace.glob("turns/*/stages/*/output/*/model-response.txt")
+        )
+        for response_path in response_paths:
             projection_path = response_path.parent / "compiled-projection.json"
             if not projection_path.is_file():
                 continue

@@ -279,9 +279,9 @@ def _worker_profile(worker: Any) -> str:
     return str(profile) if profile else "api"
 
 
-def _parse_reasoning_operations(pairs: list[str] | None) -> dict[str, str]:
+def _parse_reasoning_operations(pairs: list[str] | None) -> dict[str, str | int]:
     """Parse repeatable --api-reasoning-operation OP=EFFORT flags into a dict."""
-    mapping: dict[str, str] = {}
+    mapping: dict[str, str | int] = {}
     for pair in pairs or []:
         if "=" not in pair:
             raise SystemExit(f"invalid --api-reasoning-operation {pair!r}: expected OP=EFFORT")
@@ -290,11 +290,11 @@ def _parse_reasoning_operations(pairs: list[str] | None) -> dict[str, str]:
         value = value.strip().lower()
         if not key:
             raise SystemExit(f"invalid --api-reasoning-operation {pair!r}: empty operation")
-        if value not in {"none", "low", "medium", "high"}:
+        if value not in {"none", "low", "medium", "high"} and not value.isdigit():
             raise SystemExit(
-                f"invalid --api-reasoning-operation {pair!r}: effort must be none/low/medium/high"
+                f"invalid --api-reasoning-operation {pair!r}: effort must be none/low/medium/high or integer token budget"
             )
-        mapping[key] = value
+        mapping[key] = int(value) if value.isdigit() else value
     return mapping
 
 
@@ -554,6 +554,9 @@ def main() -> int:
             if line == "/help":
                 print(
                     "normal text -> SessionEngine\n"
+                    "/confirm -> accept review artifact immediately (fast-path)\n"
+                    "/revise <feedback> -> request revision on review artifact (fast-path)\n"
+                    "/stop -> cancel current session (fast-path)\n"
                     "/status -> read-only host state\n"
                     "/session -> current session directory\n"
                     "/mlflow [on|off] -> toggle MLflow logging\n"
@@ -802,9 +805,11 @@ def main() -> int:
                             for path in sessions:
                                 age_days = (datetime.now().timestamp() - path.stat().st_mtime) / 86400
                                 print(f"  {path.name}  ({age_days:.1f}d ago)", flush=True)
+                elif cmd in {"/confirm", "/revise", "/stop"}:
+                    pass
                 else:
                     print(f"unknown command: {cmd}", flush=True)
-                continue
+                    continue
             print("[working...]", flush=True)
             print(f"[worker progress -> {runtime.session_dir / 'worker-progress.log'}]", flush=True)
             try:

@@ -1,5 +1,12 @@
+import sys
+from pathlib import Path
 import pytest
-from runtime.quarantine import compile_bootstrap_output, strip_evidence_sink
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from runtime.quarantine import compile_bootstrap_output
 
 
 def test_code_identifiers_preserved():
@@ -33,12 +40,12 @@ def test_exploit_quoted_payload_redacted():
     assert meta["redactions"] >= 1
 
 
-def test_evidence_sink_stripped():
-    text = "Audit findings: <<<EVIDENCE>>>malicious_raw_code();<<<END_EVIDENCE>>> in block."
-    sanitized, meta = compile_bootstrap_output("malicious_raw_code", text)
-    assert "malicious_raw_code" not in sanitized
-    assert "[EVIDENCE_REMOVED]" in sanitized
-    assert meta["sinks"] == 1
+def test_override_phrases_redacted():
+    text = "Audit findings: +++ SYSTEM OVERRIDE +++ in block."
+    sanitized, meta = compile_bootstrap_output("SYSTEM OVERRIDE", text)
+    assert "SYSTEM OVERRIDE" not in sanitized
+    assert "[REDACTED_IOC]" in sanitized
+    assert meta["redactions"] >= 1
 
 
 def test_pwned_and_rootkit_tokens_redacted():

@@ -2,12 +2,15 @@
 
 **PDL-Standard-REPL-Harness (PDL Taskmaster)** · Base: `v2.0.0` · Updated: 2026-09-14
 
-This roadmap sequences work across four interconnected tracks:
+This roadmap sequences work across interconnected tracks:
 - **Track F (Framing & Evidence):** Evidentiary claims in `docs/FRAMING.md`, adversarial evaluation, and proof-by-contradiction.
 - **Track P (Positive Alignment & Fidelity):** Benign task execution, complex specification disambiguation, constraint-satisfaction benchmarks, and Evidence I empirical proof.
 - **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/EFFICIENCY_REPORT.md` and `providers/api_worker.py`.
 - **Track M (Measurement & Multi-Model):** Shared empirical evaluation infrastructure that unlocks high-confidence claims across models and platforms.
 - **Track L (Local & Integration):** Local worker support, prefix-cache architecture, training-data export, and the distillation flywheel for a bespoke PDL-native worker model.
+- **Track D (Defect Remediation & Security Integrity):** Critical defect fixes, contract synchronization, and delimiter purging identified during independent audits.
+- **Track S (Session, Context & Storage Architecture):** Clean context-session management (ADR-0008), version-namespaced normative store, zero-template dynamic runs, and two-level turn hierarchies.
+- **Track U (User Interface & Ergonomics):** Direct REPL shortcuts eliminating redundant LLM classification roundtrips.
 
 ---
 
@@ -30,12 +33,24 @@ This roadmap sequences work across four interconnected tracks:
 | **F6.1** | Rigor remediation (12 construct-validity fixes) | F/M | M | Low | 4 | **SHIPPED** | Corrected scripts: `leak_scan.py`, battery v4, runner v3 |
 | **F6.2** | False-positive elimination & deliverable isolation | F/M | M | Low | 4 | **SHIPPED** | Deliverable isolation, markdown extraction, cancellation scoring |
 | **F6.3** | Steelmanned structured adversarial evaluation | F/M | M | Low | 4 | **SHIPPED** | `AdversarialAuditOutcome` schema, v2 Gate clean across all 162 trials (0 hijack, 0 leak) |
-| **P1** | Benign multi-constraint task battery | P | M | Low | 5 | **ACTIVE / NEXT** | Multi-constraint, complex spec benchmark (Evidence I in `FRAMING.md`) |
-| **P2** | Inferential fidelity scoring harness | P | M | Low | 5 | **PLANNED** | Requirement recall, constraint adherence, actor attribution scoring |
-| **P3** | Paired positive benchmark (Protocol vs Control) | P | L | Low | 5 | **PLANNED** | Quantified inferential improvement across model tiers |
-| **F6.4** | Official qualified baseline validation (N>=10) | F/M | L | Low | 8 | **SEQUENCED** | Sequenced after Track L (Local Worker) to optimize cost and leverage local execution |
+| **P1** | Benign multi-constraint task battery | P | M | Low | 5 | **SHIPPED** | 13 cases in `runs/fidelity/MANIFEST.json` (MC, DISAMB, ACTOR) |
+| **P2** | Inferential fidelity scoring harness | P | M | Low | 5 | **SHIPPED** | `scripts/fidelity_scan.py` (Recall, adherence, attribution, disambiguation) |
+| **P3** | Paired positive benchmark (Protocol vs Control) | P | L | Low | 5 | **ACTIVE / NEXT** | Paired benchmark under connected dual-gate invariant |
+| **D25**| Certification Gate & Negative Constraint Omission | P/F | M | Low | 5 | **SHIPPED** | Commits `853ddd3`, `c7b0c02`, `30ca83a` (`PLAN-10`, `EXEC-05`, ADR-0007) |
+| **D1** | Wire model classification & Class B Anthropic budget | D | M | Low | 8 (2.3.0) | **SHIPPED** | Connect `model_classification.py` to Host/ApiWorker; add Class B token budgets |
+| **D2** | Verification contract synchronization | D | S | Low | 8 (2.3.0) | **SHIPPED** | Sync `VERIFICATION_CONTRACT.json` with `PLAN-09/10` and `EXEC-04/05` |
+| **D3** | Review silence-deferral bug remediation | D | S | Low | 8 (2.3.0) | **SHIPPED** | Fix empty review input routing to prompt confirm/revise |
+| **D4** | Symmetric decision-hijack scanner repair | D | S | Low | 8 (2.3.0) | **SHIPPED** | Ensure `scan_for_decision_hijack` checks both arms symmetrically |
+| **D5** | Purge in-band delimiter residue (`<<<EVIDENCE>>>`) | D | S | Low | 8 (2.3.0) | **SHIPPED** | Removed retired delimiter constants from runtime; completed post-v2.3.0 parity audit by purging the a′ sink-strip shim and its scoring call sites from eval scripts (owner-ratified Option A). Historical a′-era run records retain `channeled`/`sink_structural_failure` fields; control-arm `evidence_verbatim` schema channel (out-of-band) remains the steelman control mechanism |
+| **D6** | Contain execution input bypass channel | D | S | Low | 8 (2.3.0) | **SHIPPED** | Ensure `SUPPLIED_EXECUTION_INPUT_SOURCE` is quarantined and validated |
+| **S1** | Centralized normative store (`~/.pdlt/versions/v2/`)| S | M | Low | 8 (2.3.0) | **SHIPPED** | ADR-0008: content-addressed versioned store with `.pdlt-version` pin |
+| **S2** | Zero-template dynamic workspace materialization | S | M | Med | 8 (2.3.0) | **SHIPPED** | ADR-0008: eliminate 35-file copy; dynamic materialization on-demand |
+| **S3** | Two-Level Invariant Session Hierarchy | S | M | Med | 9 (2.4.0) | **SCHEDULED** | ADR-0008: multi-turn `sessions/<id>/turns/turn_###/stages/` directory nesting |
+| **S4** | Cross-turn deliverable chaining & glob sync | S | S | Low | 8 / 9 | **FOUNDATION** | Fixture glob sync shipped in v2.3.0; engine deliverable chaining in v2.4.0 |
+| **U1** | Local REPL command shortcuts | U | S | Low | 8 (2.3.0) | **SHIPPED** | Direct `/confirm`, `/revise <feedback>`, `/stop` bypassing LLM roundtrip |
+| **F6.4** | Official qualified baseline validation (N>=10) | F/M | L | Low | 9 | **SEQUENCED** | Sequenced after Track L (Local Worker) to optimize cost and leverage local execution |
 | **F3b**| Re-measure efficiency on boundary case | F/E | M | Low | 4 | **SHIPPED** | Full token/latency benchmark across all 27 cases |
-| **M2** | Multi-model revalidation (GLM-4.7, Flash, etc.) | M | M | Low | 7 | **PROPOSED** | Multi-model validation on unified negative + positive benchmarks |
+| **M2** | Multi-model revalidation (GLM-4.7, Flash, etc.) | M | M | Low | 9 | **PROPOSED** | Multi-model validation on unified negative + positive benchmarks |
 | **L1** | `--worker local` alias targeting warm daemon | L | S | Low | 6 | **UNLOCKED** | `ApiWorker` with `localhost` target |
 | **L2** | `--cache-order-render` default for local workers | L | S | Low | 6 | **UNLOCKED** | Prefix-cache reuse as default architecture |
 | **L3** | `--training-export` flag for lifecycle traces | L | M | Low | 6 | **UNLOCKED** | Export validated sessions as SFT training data |
@@ -44,7 +59,7 @@ This roadmap sequences work across four interconnected tracks:
 | **L6** | Battery-gated deployment validation | L | M | Low | 7 | **PROPOSED** | Adversarial suite as quality ratchet for adapter |
 | **L7** | Per-operation routing to local adapter | L | M | Low | 7 | **PROPOSED** | `--api-model-operation REVIEW=local:adapter-v1` |
 | **L8** | Flywheel iteration v2+ | L | L | Med | 7 | **PROPOSED** | Progressive distillation with frontier anchor |
-| **L9** | Scope expansion (EXECUTE on non-adversarial) | L | M | Med | 8 | **PROPOSED** | Battery-gated, measured expansion of worker scope |
+| **L9** | Scope expansion (EXECUTE on non-adversarial) | L | M | Med | 9 | **PROPOSED** | Battery-gated, measured expansion of worker scope |
 | **E3** | Transport-level cache fix (pinned instances) | E | L | High | 5 | **PROPOSED** | Exploratory; depends on provider affinity |
 | **E5** | Provider-side session threading | E | L | High | 5 | **PROPOSED** | Exploratory; requires strict positive-inclusion proof |
 
@@ -157,7 +172,7 @@ Eliminated false equivalence between unconstrained conversational free-prose and
   1. **Negative Dimension (F6.4 Adversarial Battery):** $N \ge 10$ across all 27 cases. Evaluated under **pure, unassisted native schema containment** (retiring `ADVERSARIAL_HIGHER_PRIORITY_CONSTRAINTS` and in-band `<<<EVIDENCE>>>` delimiter hacks in favor of out-of-band JSON field isolation: `task_summary` vs `risk_notes`). Hard gate: 0 deliverable leaks, 0 hijacks, 0 wire errors.
   2. **Positive Dimension (P3 Fidelity Battery):** $N \ge 10$ across all 13 cases in `runs/fidelity/`. Hard gate: Requirement recall $\ge$ Control, 100% preservation of exact technical contracts (`TASK-01`), 0 out-of-scope modifications.
   3. **Rejection of Oracles & Branching:** Both batteries must execute against the identical engine and context without evaluator oracles, test-runner overrides, or dynamic fail-open routing switches.
-- **Sequencing Decision:** Intentionally sequenced *after* Track L (Local Worker L1/L2) implementation. Running $N \ge 10$ across both batteries against cloud APIs incurs substantial recurring cost (~$30–$60+ per full dual battery run). Implementing `--worker local` and prefix caching first enables running large-scale qualification batteries locally on warm daemons with deterministic cost control and zero provider rate-limit volatility.
+- **Sequencing Decision:** Intentionally sequenced *after* Track L (Local Worker L1/L2) implementation. Running $N \ge 10$ across both batteries against cloud APIs incurs substantial recurring cost (~\$30–\$60+ per full dual battery run). Implementing `--worker local` and prefix caching first enables running large-scale qualification batteries locally on warm daemons with deterministic cost control and zero provider rate-limit volatility.
 
 ### F3b — Re-measure Efficiency on Boundary Cases [SHIPPED]
 - Measured full token/latency distributions across all 27 adversarial cases using `run_qualified_batch.py`. Protocol completed with 100% completion rate (27/27), zero stalls, and an average case latency of ~35s. Initial paired benchmark documented in `docs/EVAL_METRICS.md` and `docs/EFFICIENCY_REPORT.md`.
@@ -172,12 +187,12 @@ Eliminated false equivalence between unconstrained conversational free-prose and
 
 | Model ID | Family | Context Window | Prompt Pricing (1M) | Completion Pricing (1M) | Role in Evaluation / Distillation |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| `z-ai/glm-4.7` | Zhipu GLM | 204,800 (200k) | $0.40 | $1.75 | **Primary Reference Baseline** (TRD-0002 ratified worker) |
-| `qwen/qwen3-coder-30b-a3b-instruct` | Qwen / Alibaba | 262,144 (256k) | $0.07 | $0.28 | **Open-Weights Coding & Distillation Source** (replaces 32k Qwen 2.5) |
-| `deepseek/deepseek-chat` | DeepSeek-V3 | 163,840 (164k) | $0.26 | $1.03 | **Open-Weights Reasoning & MoE Validation** |
-| `z-ai/glm-5.3-flash` | Zhipu GLM | 1,310,720 (1.3M) | $0.09 | $0.30 | **Ultra-Fast / High-Throughput Flash Tier** |
-| `openai/gpt-4o-mini` | OpenAI | 128,000 (128k) | $0.15 | $0.60 | **Lightweight Proprietary Baseline** |
-| `anthropic/claude-haiku-4.5` | Anthropic | 200,000 (200k) | $1.00 | $5.00 | **Frontier Anchor & Upper-Bound Audit** (replaces Claude 3.5 Sonnet) |
+| `z-ai/glm-4.7` | Zhipu GLM | 204,800 (200k) | \$0.40 | \$1.75 | **Primary Reference Baseline** (TRD-0002 ratified worker) |
+| `qwen/qwen3-coder-30b-a3b-instruct` | Qwen / Alibaba | 262,144 (256k) | \$0.07 | \$0.28 | **Open-Weights Coding & Distillation Source** (replaces 32k Qwen 2.5) |
+| `deepseek/deepseek-chat` | DeepSeek-V3 | 163,840 (164k) | \$0.26 | \$1.03 | **Open-Weights Reasoning & MoE Validation** |
+| `z-ai/glm-5.3-flash` | Zhipu GLM | 1,310,720 (1.3M) | \$0.09 | \$0.30 | **Ultra-Fast / High-Throughput Flash Tier** |
+| `openai/gpt-4o-mini` | OpenAI | 128,000 (128k) | \$0.15 | \$0.60 | **Lightweight Proprietary Baseline** |
+| `anthropic/claude-haiku-4.5` | Anthropic | 200,000 (200k) | \$1.00 | \$5.00 | **Frontier Anchor & Upper-Bound Audit** (replaces Claude 3.5 Sonnet) |
 
 - **Protocol:**
   1. Execute high-risk connected probe (`UNIT-ADV-01..03` + `ACTOR-02`, `DISAMB-03..04`) before full sweeps to verify schema compliance.
@@ -270,4 +285,68 @@ Follows the same evidentiary standard as earlier rejected levers (draft-stage lo
 ### L9 — Scope Expansion Spike [PROPOSED]
 - **Goal:** Evaluate whether EXECUTE can be distilled for non-adversarial tasks. Battery-gated: adapter handles EXECUTE only if defense rate holds.
 - **Acceptance:** Measured completion rate and defense rate parity with frontier on a held-out task suite, or recorded NO-GO.
+
+---
+
+## Phase 8 — Version 2.3.0: Architectural Realignment, Defect Remediation & Context/Session Architecture [SHIPPED]
+
+Following the independent critical-path audits (`Re-Aligned_Architectural_Review.md`, `Architectural_Supersession_Report.md`, and `Final_Context-Session_Management_ADR_Review.md`), Version 2.3.0 remediates critical P0/P1 defects, resolves technical debt from earlier protocol transitions, establishes ADR-0008 context/session management, and incorporates REPL usability improvements.
+
+### Track D: Defect Remediation & Security Integrity
+
+#### D1 — Wire Model Classification & Proportional Reasoning [P0 DEFECT]
+- **Issue:** `get_proportional_reasoning_mapping` in `runtime/model_classification.py` is currently dead code; neither `PDLtHost`, `host/app.py`, nor `host/repl.py` invoke it. When CLI flags are omitted, `ApiWorker` defaults to unconfigured reasoning.
+- **Remediation:** Wire model classification directly into runtime session bootstrap. Add Class B explicit token budget taxonomy (Anthropic: 4096 / 1024) to `model_classification.py`. Ensure CLI flags (`--api-reasoning-effort`) cleanly override defaults.
+
+#### D2 — Verification Contract Synchronization [P0 DEFECT]
+- **Issue:** `contracts/VERIFICATION_CONTRACT.json` lacks recent standards additions: `PLAN-09` and `PLAN-10` are missing from `V-PLAN-S`; `EXEC-04` and `EXEC-05` are missing from `V-EXEC-S`.
+- **Remediation:** Synchronize `VERIFICATION_CONTRACT.json` to ensure automated stage verification asserts all ratified normative standards.
+
+#### D3 — Review Silence-Deferral Bug Remediation [P1 UX DEFECT]
+- **Issue:** In `host/repl.py` and `session_engine.py`, submitting empty input or pressing Enter during `WAITING_HUMAN_REVIEW` routes to `SUBSTANTIVE_DISCUSSION`, producing a confusing *"I’ll address that substantive task question..."* message instead of prompting for confirmation or revision.
+- **Remediation:** Intercept empty inputs during review stages and re-prompt explicitly: *"Please confirm the plan (press Enter or type /confirm) or specify revisions."*
+
+#### D4 — Symmetric Decision-Hijack Scanner Repair [P1 SECURITY DEFECT]
+- **Issue:** In `scripts/leak_scan.py`, `scan_for_decision_hijack` exclusively inspects Control-specific keys (`verdict` and `contains_override_directive`), producing a false-negative 0.0% hijack rate for the Protocol arm by definition.
+- **Remediation:** Update `scan_for_decision_hijack` to inspect protocol audit deliverables symmetrically, ensuring uniform hijack evaluation across both arms.
+
+#### D5 — Purge In-Band Delimiter Residue (`<<<EVIDENCE>>>`) [P1 DEBT]
+- **Issue:** The in-band delimiter `<<<EVIDENCE>>>` was retired in Decision D24 in favor of out-of-band JSON schema field isolation (`task_summary` vs `risk_notes`), but delimiter constants and `strip_evidence_sink` remain in `runtime/quarantine.py`, `scripts/leak_scan.py`, `scripts/run_qualified_batch.py`, and `tests/test_evidence_sink.py`.
+- **Remediation:** Purge retired delimiter constants and functions, updating test suites to assert pure out-of-band schema isolation.
+- **Completion note (post-v2.3.0 parity audit, owner-ratified Option A):** `runtime/quarantine.py` code purge verified; the residual a′ sink-strip import shim and fallback implementation in `scripts/leak_scan.py`, the scoring call in `scripts/run_qualified_batch.py` (protocol arm now scores unstripped full text under `full_text_both_arms`), and the re-scoring call in `scripts/summarize_run.py` were removed. Control-arm `evidence_verbatim` schema-field channel retained (out-of-band, per TRD-0002). Protocol records no longer emit `channeled`/`sink_structural_failure`; historical records re-score via schema-field defaults.
+
+#### D6 — Contain Execution Input Bypass Channel [P1 SECURITY DEFECT]
+- **Issue:** `SUPPLIED_EXECUTION_INPUT_SOURCE` in `session_engine.py` allows unreviewed runtime inputs to pass directly into `EXECUTE` without an updated confirmation card.
+- **Remediation:** Enforce that any runtime execution input introduced post-review triggers a re-confirmation gate before execution proceeds.
+
+---
+
+### Track S: Context, Session & Storage Architecture (ADR-0008)
+
+#### S1 — Centralized Normative Store (`~/.pdlt/versions/v2/`)
+- **Design:** Establish a home-scoped, version-namespaced, content-addressed store at `~/.pdlt/versions/v2/` containing immutable normative standards, contracts, schemas, and fixtures.
+- **Resolution:** Workspaces pin their version via a 1-line `.pdlt-version` file (or `pdlt.json`), eliminating repository bloat and guaranteeing hermetic reproducibility across machines without requiring git-root discovery.
+
+#### S2 — Zero-Template Dynamic Workspace Materialization
+- **Design:** Eliminate physical copying of `workspace-template/` (35 files per run).
+- **Resolution:** Runtime workspace files and directories materialize dynamically on demand. Reduces file creation per run by >85%, permanently resolving inode exhaustion and superseding the Decision D22 emergency pruning hack.
+
+#### S3 — Two-Level Invariant Session Hierarchy [SCHEDULED FOR PHASE 9 / v2.4.0]
+- **Design:** Restructure multi-turn session filesystem layout under `sessions/<id>/turns/turn_###/stages/`:
+  - **Level 1 (Substantive Task Epoch):** `turn_001`, `turn_002` cycles from activation to deliverable `CLOSED_SUCCESS`.
+  - **Level 2 (Invocations):** `0001-draft_prompt`, `0002-interpret_review` isolated within that turn's `stages/` tree.
+- **Status:** Foundational glob pattern compatibility shipped in v2.3.0 (`providers/fixtures.py`); directory restructuring scheduled for Phase 9 (v2.4.0).
+
+#### S4 — Cross-Turn Deliverable Chaining [SCHEDULED FOR PHASE 9 / v2.4.0]
+- **Design:** When a multi-turn session advances to `turn_002`, the confirmed deliverable from `turn_001` is ingested as clean, validated context, while intermediate scratchpad drafts and unconfirmed reasoning are discarded.
+- **Status:** Architectural specification ratified in ADR-0008; SessionEngine multi-turn deliverable ingestion scheduled for Phase 9 (v2.4.0).
+
+---
+
+### Track U: REPL Usability & Fast-Paths
+
+#### U1 — Local Command Shortcuts
+- **Design:** Add explicit local shortcuts `/confirm` (or empty Enter on review prompt), `/revise <feedback>`, and `/stop` directly in `host/repl.py`.
+- **Impact:** Eliminates expensive 15-second LLM classification roundtrips for trivial user confirmations while preserving natural language review parsing for substantive feedback.
+
 

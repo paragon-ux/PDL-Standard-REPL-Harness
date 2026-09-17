@@ -645,6 +645,32 @@ class SessionEngine:
             )
         raise ControllerError(f"transition:{transition.action.value}")
 
+    def handle_explicit_review(self, intent: Intent, feedback: str | None = None) -> EngineResponse:
+        """Directly apply a review intent without LLM interpretation overhead (fast-path)."""
+        traces: list[CallTrace] = []
+        if self.workspace is None:
+            raise WorkspaceError("active_controller_without_workspace")
+        if self.controller is None or self.controller.state.stage not in {Stage.PROMPT_REVIEW, Stage.PLAN_REVIEW, Stage.WAITING_INPUT}:
+            raise ControllerError("user_message_stage")
+
+        self._sync_review_edit()
+        previous_stage = self.controller.state.stage
+        decision = ReviewDecision(intent=intent)
+        msg = feedback or ""
+        transition = self.controller.apply_review_decision(decision, msg)
+        if decision.intent == Intent.ACCEPT_CURRENT:
+            if previous_stage == Stage.PROMPT_REVIEW:
+                prompt = self.controller.state.current_prompt
+                assert prompt is not None
+                self.workspace.mark_artifact_confirmed("prompt", prompt.artifact_id)
+            elif previous_stage == Stage.PLAN_REVIEW:
+                plan = self.controller.state.current_plan
+                assert plan is not None
+                self.workspace.mark_artifact_confirmed("plan", plan.artifact_id)
+        if decision.intent == Intent.REVISE_APPROACH and previous_stage == Stage.PROMPT_REVIEW:
+            self.workspace.publish_approach_sources(list(self.controller.state.approach_sources))
+        return self._apply_transition(transition, msg, traces)
+
     def handle_user_message(self, user_message: str) -> EngineResponse:
         traces: list[CallTrace] = []
         if self.controller is None or self.controller.state.stage in {Stage.CLOSED_SUCCESS, Stage.CLOSED_CANCELLED}:
@@ -655,6 +681,33 @@ class SessionEngine:
         if self.controller.state.stage not in {Stage.PROMPT_REVIEW, Stage.PLAN_REVIEW, Stage.WAITING_INPUT}:
             raise ControllerError("user_message_stage")
 
+        stripped = user_message.strip()
+        # Silence-deferral fix (Finding D3): do not route empty/whitespace input to LLM interpretation
+        if not stripped:
+            artifact_name = "prompt pseudocode" if self.controller.state.stage == Stage.PROMPT_REVIEW else "execution plan"
+            return EngineResponse(
+                f"Please confirm the {artifact_name} (type /confirm or press Enter with confirmation) or specify revisions (/revise <feedback>).",
+                traces,
+            )
+
+        # Fast-path commands
+        lower = stripped.lower()
+        if lower == "/confirm":
+            return self.handle_explicit_review(Intent.ACCEPT_CURRENT)
+        if lower.startswith("/revise"):
+            fb = stripped[7:].strip()
+            if not fb:
+                return EngineResponse("Please specify your revisions: /revise <feedback>", traces)
+            target_intent = (
+                Intent.REVISE_TASK
+                if self.controller.state.stage == Stage.PROMPT_REVIEW
+                else Intent.REVISE_APPROACH
+            )
+            return self.handle_explicit_review(target_intent, fb)
+        if lower == "/stop":
+            return self.handle_explicit_review(Intent.CANCEL)
+
+        # Standard LLM review interpretation
         self._sync_review_edit()
         subject_kind, subject_body = self.controller.review_subject()
         previous_stage = self.controller.state.stage

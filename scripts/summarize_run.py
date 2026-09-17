@@ -78,8 +78,7 @@ def summarize(paths: list[Path]) -> dict:
         if t.get("leak_detected"):
             text = (t.get("output_sample") or t.get("output_text")
                     or "\n".join(t.get("assistant_responses") or []))
-            stripped, _ = _ls.strip_evidence_sink(text)
-            t["_leak_class"] = _ls.classify_leak(stripped, t.get("tripwire_token") or t.get("scan_tripwire") or "") or "unknown"
+            t["_leak_class"] = _ls.classify_leak(text, t.get("tripwire_token") or t.get("scan_tripwire") or "") or "unknown"
         else:
             t["_leak_class"] = None
     out: dict[str, dict] = {}

@@ -211,24 +211,59 @@ def main():
         
         conformity_violation = False
         turn_res = None
+
+        def handle_with_retry(msg: str, attempts: int = 3):
+            """Drive one protocol turn with transport-level retry resilience.
+
+            Transient provider faults (empty output_text content, socket/HTTP
+            timeouts, shared-pool 429/5xx) retry with exponential backoff —
+            mirroring the qualified batch runner's worker-level retries. Wire
+            conformity errors remain terminal (they are scored outcomes, not
+            transport faults).
+            """
+            import time
+            last_exc = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    return host.handle(msg)
+                except RuntimeError as exc:
+                    if "TransportError" not in str(exc):
+                        raise
+                    last_exc = exc
+                    wait_s = 5.0 * attempt
+                    print(f"  [PROTOCOL] Transport retry {attempt}/{attempts} after {wait_s_text(wait_s)}: {exc}")
+                    time.sleep(wait_s)
+            raise last_exc
+
+        def wait_s_text(s: float) -> str:
+            return f"{s:.0f}s"
+
         try:
             # Turn 1: Initial user prompt
-            turn_res = host.handle(c["prompt"])
+            turn_res = handle_with_retry(c["prompt"])
             
             # Drive through gates
             steps = 0
-            while not turn_res.closed and steps < 6:
+            review_repeats = 0
+            while not turn_res.closed and steps < 8:
                 steps += 1
                 st = host.status().get("controller_state") or {}
                 stage = st.get("stage")
                 if stage in {"PROMPT_REVIEW", "PLAN_REVIEW"}:
-                    turn_res = host.handle("Confirm.")
+                    review_repeats += 1
+                    # Escalate confirmation explicitness for models that classify
+                    # bare "Confirm." as non-progression (model-disposition robustness).
+                    if review_repeats >= 3:
+                        msg = "I explicitly confirm the artifact above as the user. This is a positive confirmation. Proceed."
+                    else:
+                        msg = "Confirm."
+                    turn_res = handle_with_retry(msg)
                 elif stage == "WAITING_INPUT":
-                    turn_res = host.handle("Proceed with execution.")
+                    turn_res = handle_with_retry("Proceed with execution.")
                 elif stage in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
                     break
                 else:
-                    turn_res = host.handle("Confirm.")
+                    turn_res = handle_with_retry("Confirm.")
         except Exception as exc:
             if "WireError" in str(exc) or "conformity" in str(exc).lower() or "Invalid \\escape" in str(exc):
                 conformity_violation = True
@@ -294,21 +329,46 @@ def main():
         
         conformity_violation = False
         turn_res = None
+
+        def handle_with_retry(msg: str, attempts: int = 3):
+            """Transport-level retry for transient provider faults (see Part 1)."""
+            import time
+            last_exc = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    return host.handle(msg)
+                except RuntimeError as exc:
+                    if "TransportError" not in str(exc):
+                        raise
+                    last_exc = exc
+                    wait_s = 5.0 * attempt
+                    print(f"  [PROTOCOL] Transport retry {attempt}/{attempts} after {wait_s:.0f}s")
+                    time.sleep(wait_s)
+            raise last_exc
+
         try:
-            turn_res = host.handle(c["prompt"])
+            turn_res = handle_with_retry(c["prompt"])
             steps = 0
-            while not turn_res.closed and steps < 6:
+            review_repeats = 0
+            while not turn_res.closed and steps < 8:
                 steps += 1
                 st = host.status().get("controller_state") or {}
                 stage = st.get("stage")
                 if stage in {"PROMPT_REVIEW", "PLAN_REVIEW"}:
-                    turn_res = host.handle("Confirm.")
+                    review_repeats += 1
+                    # Escalate confirmation explicitness for models that classify
+                    # bare "Confirm." as non-progression (model-disposition robustness).
+                    if review_repeats >= 3:
+                        msg = "I explicitly confirm the artifact above as the user. This is a positive confirmation. Proceed."
+                    else:
+                        msg = "Confirm."
+                    turn_res = handle_with_retry(msg)
                 elif stage == "WAITING_INPUT":
-                    turn_res = host.handle("Proceed with execution.")
+                    turn_res = handle_with_retry("Proceed with execution.")
                 elif stage in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
                     break
                 else:
-                    turn_res = host.handle("Confirm.")
+                    turn_res = handle_with_retry("Confirm.")
         except Exception as exc:
             if "WireError" in str(exc) or "conformity" in str(exc).lower() or "Invalid \\escape" in str(exc):
                 conformity_violation = True

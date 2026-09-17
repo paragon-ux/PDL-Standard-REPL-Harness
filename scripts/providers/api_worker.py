@@ -227,6 +227,41 @@ class ApiWorker:
 
         return _clean_node(schema)
 
+    def _send_json_with_retries(self, req: urllib.request.Request) -> dict[str, Any]:
+        """POST with exponential-backoff retries; returns the parsed response.
+
+        Retries transient transport conditions: 429/5xx, URLError, timeouts.
+        Non-retryable HTTP errors (4xx besides 429) raise immediately.
+        """
+        raw = None
+        for attempt in range(5):
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    raw = resp.read().decode("utf-8", errors="replace")
+                break
+            except urllib.error.HTTPError as exc:
+                if exc.code in (429, 502, 503, 504) and attempt < 4:
+                    time.sleep(3.0 * (2 ** attempt))
+                    continue
+                detail = exc.read().decode("utf-8", errors="replace")[:2000]
+                raise TransportError(f"api worker HTTP {exc.code}: {detail}") from exc
+            except urllib.error.URLError as exc:
+                if attempt < 4:
+                    time.sleep(3.0 * (2 ** attempt))
+                    continue
+                raise TransportError(f"api worker transport error: {exc.reason}") from exc
+            except (TimeoutError, socket.timeout) as exc:
+                if attempt < 4:
+                    time.sleep(3.0 * (2 ** attempt))
+                    continue
+                raise TransportError(f"api worker timed out after {self.timeout}s") from exc
+        if raw is None:
+            raise TransportError("api worker failed after retries")
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise TransportError(f"api worker returned non-JSON response: {raw[:500]}") from exc
+
     def call(self, request: Any) -> WorkerResult:
         instructions, input_text = self._split_prompt(request.prompt)
         if self.reorder_keys_for_cache:
@@ -287,30 +322,7 @@ class ApiWorker:
         )
 
         started = time.perf_counter()
-        raw = None
-        for attempt in range(5):
-            try:
-                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                    raw = resp.read().decode("utf-8", errors="replace")
-                break
-            except urllib.error.HTTPError as exc:
-                if exc.code in (429, 502, 503, 504) and attempt < 4:
-                    time.sleep(3.0 * (2 ** attempt))
-                    continue
-                detail = exc.read().decode("utf-8", errors="replace")[:2000]
-                raise TransportError(f"api worker HTTP {exc.code}: {detail}") from exc
-            except urllib.error.URLError as exc:
-                if attempt < 4:
-                    time.sleep(3.0 * (2 ** attempt))
-                    continue
-                raise TransportError(f"api worker transport error: {exc.reason}") from exc
-            except (TimeoutError, socket.timeout) as exc:
-                if attempt < 4:
-                    time.sleep(3.0 * (2 ** attempt))
-                    continue
-                raise TransportError(f"api worker timed out after {self.timeout}s") from exc
-        if raw is None:
-            raise TransportError("api worker failed after retries")
+        data = self._send_json_with_retries(req)
         latency_ms = (time.perf_counter() - started) * 1000.0
 
         if self.on_progress is not None:
@@ -318,11 +330,6 @@ class ApiWorker:
                 self.on_progress(f"response received in {latency_ms:.0f}ms")
             except Exception:
                 pass
-
-        try:
-            data = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise TransportError(f"api worker returned non-JSON response: {raw[:500]}") from exc
 
         if data.get("error"):
             raise TransportError(f"api worker reported an error: {data['error']}")
@@ -332,7 +339,18 @@ class ApiWorker:
 
         text = self._extract_output_text(data)
         if not text:
-            raise TransportError("api worker returned no output_text content")
+            # Empty output with status=completed is a stochastic upstream fault
+            # (output tokens consumed, message dropped — observed on shared-pool
+            # aggregators). It is a transport condition, not model behavior:
+            # retry with the same exponential-backoff treatment as 429/5xx.
+            for retry in range(3):
+                time.sleep(3.0 * (2 ** retry))
+                data = self._send_json_with_retries(req)
+                text = self._extract_output_text(data)
+                if text:
+                    break
+            if not text:
+                raise TransportError("api worker returned no output_text content after empty-output retries")
 
         usage_raw = data.get("usage") or {}
         usage: dict[str, Any] = {}

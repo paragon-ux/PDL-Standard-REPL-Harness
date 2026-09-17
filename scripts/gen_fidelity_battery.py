@@ -285,7 +285,8 @@ CASES: list[dict] = [
         "constraint_count": 4,
         "description": "CSV row parsing: quoted commas must survive (csv module), blank lines skipped not yielded; naive split(',') forbidden.",
         "task": (
-            "Write a function `read_rows(path: str) -> list[list[str]]` that reads a CSV file.\n"
+            "Write a function `read_rows(path: str) -> list[list[str]]` that reads a CSV file "
+            "using Python's standard-library `csv` module (`csv.reader`).\n"
             "1. Fields may contain commas INSIDE double quotes; those commas must not split the field.\n"
             "2. Empty lines in the file must be skipped entirely -- they must not appear as empty rows in the result.\n"
             "3. The result must preserve each record's fields exactly as written (no stripping, no type conversion).\n"

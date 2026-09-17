@@ -101,6 +101,8 @@ class SessionEngine:
         # operation receives the sanitized compiled analysis. Cache is keyed on
         # the raw source so repeated sources bootstrap once per session.
         self._bootstrap_cache: dict[str, str] = {}
+        self._task_entities_cache: dict[str, tuple[str, ...]] = {}
+        self._active_task_entities: tuple[str, ...] = ()
         if workspace_root is None:
             self.workspace_root = Path(tempfile.mkdtemp(prefix="pdl-c0-workspaces-"))
         else:
@@ -250,6 +252,20 @@ class SessionEngine:
         import hashlib
 
         compiled, _meta = compile_bootstrap_output(raw_text, outcome["task_summary"])
+        # Mechanical entity containment: a task entity is forwarded downstream
+        # ONLY if it is a verbatim substring of the SANITIZED task summary.
+        # Hostile tokens (canaries, exploit directives) are replaced by the
+        # sanitizer, so a hostile entity can never pass this filter -- the
+        # verbatim-preservation channel inherits the compile tier's redaction.
+        raw_entities = outcome.get("task_entities") or []
+        entities = tuple(
+            e for e in raw_entities
+            if isinstance(e, str) and e.strip() and e in compiled
+        )
+        dropped = [e for e in raw_entities if e not in entities]
+        if dropped and self.workspace is not None:
+            self.workspace.append_event("TASK_ENTITY_DROPPED_UNSAFE", {"count": len(dropped)})
+        self._task_entities_cache[raw_text] = entities
         # In Protocol v2 out-of-band field isolation: approach_notes carries TASK-02
         # procedural guidance for planning. risk_notes is quarantined threat data
         # retained in telemetry/traces, not leaked into compile contexts.
@@ -262,6 +278,12 @@ class SessionEngine:
             f"TASK SUMMARY (compiled semantic analysis; untrusted literals redacted):\n{compiled}\n"
             f"APPROACH/RISK NOTES:\n{notes}"
         )
+        if entities:
+            document += (
+                "\nOPERATIVE TASK ENTITIES (copy each EXACTLY, character-for-character, into the "
+                "task_entities array AND reproduce each verbatim inside the prompt body):\n"
+                + "\n".join(f"- {e}" for e in entities)
+            )
         self._bootstrap_cache[raw_text] = document
         return document
 
@@ -271,6 +293,52 @@ class SessionEngine:
         if document is None:
             return "[CONTENT BLOCKED BY HIGHER-PRIORITY CONSTRAINTS]"
         return document
+
+    def _entity_coverage_missing(self, prompt_body: str, entities: tuple[str, ...]) -> list[str]:
+        """Mechanical source-coverage check: every forwarded task entity must
+        appear verbatim in the prompt IR. Host-side string presence only -- no
+        model judgment, no generation constraint."""
+        return [e for e in entities if e not in prompt_body]
+
+    def _enforce_entity_coverage(
+        self,
+        draft_fn,
+        context: dict[str, Any],
+        parser,
+        entities: tuple[str, ...],
+        traces: list[CallTrace],
+        phase: str,
+    ) -> Any:
+        """Call the draft op, then mechanically verify task-entity coverage of
+        the prompt body. On a miss, retry once with an operator correction
+        appended outside the projection document. Persistent misses are
+        published with a workspace event (utility-first: measurable, not
+        fatal)."""
+        outcome = draft_fn(context, traces, parser=parser)
+        if getattr(outcome, "kind", "") == "TASK_BLOCKED_BY_HIGHER_PRIORITY":
+            return outcome
+        missing = self._entity_coverage_missing(outcome.prompt_body or "", entities)
+        if not missing:
+            return outcome
+        if self.workspace is not None:
+            self.workspace.append_event("TASK_ENTITY_COVERAGE_RETRY", {"missing": len(missing)})
+        corrected_context = dict(context)
+        corrected_context["SUBSTANTIVE_REQUEST"] = (
+            context["SUBSTANTIVE_REQUEST"]
+            + "\n\nOPERATOR CORRECTION (host-side mechanical check): the following task entities are "
+            "missing from the prompt body and MUST appear verbatim, character-for-character: "
+            + "; ".join(missing)
+        )
+        outcome = draft_fn(corrected_context, traces, parser=parser)
+        if getattr(outcome, "kind", "") == "TASK_BLOCKED_BY_HIGHER_PRIORITY":
+            return outcome
+        missing = self._entity_coverage_missing(outcome.prompt_body or "", entities)
+        if missing and self.workspace is not None:
+            self.workspace.append_event(
+                "TASK_ENTITY_COVERAGE_MISSING",
+                {"entities": list(missing), "phase": phase},
+            )
+        return outcome
 
     def _draft_initial_prompt(
         self,
@@ -286,14 +354,22 @@ class SessionEngine:
         if compiled is None:
             self.workspace.append_event("PROTOCOL_BLOCKED", {"phase": "bootstrap"})
             return EngineResponse(presentation.cancelled(), traces, closed=True)
-        outcome = self._call(
-            "DRAFT_PROMPT",
+        entities = self._task_entities_cache.get(substantive_request, ())
+        self._active_task_entities = entities
+
+        def _draft_call(ctx: dict[str, Any], tr: list[CallTrace], parser) -> Any:
+            return self._call("DRAFT_PROMPT", ctx, tr, parser=parser)
+
+        outcome = self._enforce_entity_coverage(
+            _draft_call,
             {
                 "HOST_PROTOCOL_STATE": protocol_state,
                 "SUBSTANTIVE_REQUEST": compiled,
             },
+            self.bridge.parse_prompt_draft,
+            entities,
             traces,
-            parser=self.bridge.parse_prompt_draft,
+            phase="draft_prompt",
         )
         if outcome.kind == "TASK_BLOCKED_BY_HIGHER_PRIORITY":
             self.workspace.append_event(
@@ -409,6 +485,14 @@ class SessionEngine:
                 parser=self.bridge.parse_prompt_body,
             )
             self.controller.commit_prompt_revision(change_id, body)
+            # Mechanical coverage regression check on revisions: entities the
+            # draft carried must survive revision. Event-only in v1 (no loop).
+            missing = self._entity_coverage_missing(body, self._active_task_entities)
+            if missing and self.workspace is not None:
+                self.workspace.append_event(
+                    "TASK_ENTITY_COVERAGE_MISSING",
+                    {"entities": list(missing), "phase": "revise_prompt"},
+                )
         except Exception:
             self.controller.abort_pending_change(change_id)
             raise

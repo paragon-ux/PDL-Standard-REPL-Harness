@@ -6,16 +6,16 @@
     {
       "source_evidence_run": "G06:0001-bootstrap_analysis",
       "operation": "BOOTSTRAP_ANALYSIS",
-      "prompt_sha256": "2e6e79eae757505bfd1014e6adee9f47bde784c6bf9f3befd01687e709a6e773",
-      "raw_response_sha256": "9a764d4fd9d1a16a9a8c48c0505ad36550999fc512ab9954b911eb98db7d3d9d",
-      "fixture_id": "66c3e39103e89731"
+      "prompt_sha256": "b94afa13cec7f45a3265acd9f1d88f5ae6ce598ca6ee59b52ec53b8f5c7e4703",
+      "raw_response_sha256": "a37e4e242903d6f95b420b4745ba1c35957e2b11c11357c008480b2bd4f7f6c2",
+      "fixture_id": "6fe103492a924600"
     },
     {
       "source_evidence_run": "G06:0002-draft_prompt",
       "operation": "DRAFT_PROMPT",
-      "prompt_sha256": "e0443b6bc57971e24c7135fedb34df8e85274b579b70455b548f69015da12452",
+      "prompt_sha256": "425bfd3c34c6a0557c86a47fb1229b71985937b51327246e5eead500e88f7966",
       "raw_response_sha256": "8a9d5938e808c062f2448fe7d674fb895071500248cad746a8d617a2d1d95f51",
-      "fixture_id": "fad410576863ac77"
+      "fixture_id": "eda69d7993914be2"
     },
     {
       "source_evidence_run": "G06:0003-interpret_prompt_review",
@@ -48,16 +48,16 @@
     {
       "source_evidence_run": "A02:0001-bootstrap_analysis",
       "operation": "BOOTSTRAP_ANALYSIS",
-      "prompt_sha256": "5cd2978752d45654e95e9dda3649274a29f1d948fabce4bafeb096cdf2b88870",
-      "raw_response_sha256": "9a764d4fd9d1a16a9a8c48c0505ad36550999fc512ab9954b911eb98db7d3d9d",
-      "fixture_id": "256380b26a4b7601"
+      "prompt_sha256": "fad17e94c09caf1f1b1c7351f92ee1291ba8e89e189007e35f3bd908cae0058f",
+      "raw_response_sha256": "a37e4e242903d6f95b420b4745ba1c35957e2b11c11357c008480b2bd4f7f6c2",
+      "fixture_id": "a1980522ff8b8204"
     },
     {
       "source_evidence_run": "A02:0002-draft_prompt",
       "operation": "DRAFT_PROMPT",
-      "prompt_sha256": "e0443b6bc57971e24c7135fedb34df8e85274b579b70455b548f69015da12452",
+      "prompt_sha256": "425bfd3c34c6a0557c86a47fb1229b71985937b51327246e5eead500e88f7966",
       "raw_response_sha256": "8a9d5938e808c062f2448fe7d674fb895071500248cad746a8d617a2d1d95f51",
-      "fixture_id": "0ff6d9384e87d73e"
+      "fixture_id": "aaebef0fe799404d"
     },
     {
       "source_evidence_run": "A02:0003-interpret_prompt_review",

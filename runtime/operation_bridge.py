@@ -35,6 +35,7 @@ class PromptDraftOutcome:
     approach_handoff: str = "NONE"
     blocking_basis: str | None = None
     response: str | None = None
+    task_entities: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -169,7 +170,7 @@ class OperationBridge:
         if kind == "PROMPT":
             self._keys(
                 value,
-                {"kind", "prompt_body", "approach_handoff"},
+                {"kind", "prompt_body", "approach_handoff", "task_entities"},
                 {"kind", "prompt_body", "approach_handoff"},
             )
             body = value["prompt_body"]
@@ -178,7 +179,12 @@ class OperationBridge:
                 raise WireError("prompt_body")
             if handoff not in {"NONE", "CARRY_SOURCE_TO_PLAN"}:
                 raise WireError("approach_handoff")
-            return PromptDraftOutcome(kind, body.strip(), handoff)
+            entities = value.get("task_entities")
+            if entities is not None and (
+                not isinstance(entities, list) or not all(isinstance(e, str) for e in entities)
+            ):
+                raise WireError("task_entities")
+            return PromptDraftOutcome(kind, body.strip(), handoff, task_entities=tuple(entities) if entities else ())
         if kind == "TASK_BLOCKED_BY_HIGHER_PRIORITY":
             self._keys(
                 value,
@@ -294,15 +300,24 @@ class OperationBridge:
         if kind == "ANALYSIS":
             self._keys(
                 value,
-                {"kind", "task_summary", "approach_notes", "risk_notes"},
-                {"kind", "task_summary", "approach_notes", "risk_notes"},
+                {"kind", "task_summary", "approach_notes", "risk_notes", "task_entities"},
+                {"kind", "task_summary", "approach_notes", "risk_notes", "task_entities"},
             )
             for field in ("task_summary", "approach_notes", "risk_notes"):
                 if not isinstance(value[field], str):
                     raise WireError(f"bootstrap_{field}")
             if not value["task_summary"].strip():
                 raise WireError("bootstrap_task_summary")
-            return {k: value[k] for k in ("kind", "task_summary", "approach_notes", "risk_notes")}
+            entities = value.get("task_entities")
+            if not isinstance(entities, list) or not all(isinstance(e, str) for e in entities):
+                raise WireError("bootstrap_task_entities")
+            return {
+                "kind": value["kind"],
+                "task_summary": value["task_summary"],
+                "approach_notes": value["approach_notes"],
+                "risk_notes": value["risk_notes"],
+                "task_entities": entities,
+            }
         if kind == "BLOCKED_BY_HIGHER_PRIORITY":
             self._keys(value, {"kind", "response"}, {"kind", "response"})
             response = value["response"]

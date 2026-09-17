@@ -83,7 +83,8 @@
         "prompt_body",
         "approach_handoff",
         "blocking_basis",
-        "response"
+        "response",
+        "task_entities"
       ],
       "output_schema": "controller/schemas/prompt_artifact.schema.json",
       "artifact_kind": "PROMPT_PSEUDOCODE",
@@ -514,7 +515,8 @@
         "kind",
         "task_summary",
         "approach_notes",
-        "risk_notes"
+        "risk_notes",
+        "task_entities"
       ],
       "output_schema": "controller/schemas/bootstrap_analysis.schema.json",
       "workspace_stage": "10_prompt"

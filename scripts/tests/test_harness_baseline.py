@@ -79,7 +79,9 @@ def test_fresh_workspace_lifecycle_and_resume(tmp_path: Path) -> None:
         status = host.status()
         workspace_path = Path(status["workspace_path"])
         assert (status.get("controller_state") or {}).get("stage") == "CLOSED_SUCCESS"
-        assert (workspace_path / "stages" / "50_execution" / "output" / "current.json").is_file()
+        from scripts.runtime.workspace import WorkspaceRun as _WR
+        _stages = _WR.open(ROOT, workspace_path).stages_root()
+        assert (_stages / "50_execution" / "output" / "current.json").is_file()
     finally:
         host.close()
 

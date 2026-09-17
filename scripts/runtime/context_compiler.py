@@ -58,10 +58,15 @@ class ContextCompiler:
             raise ValueError(f"operation:{operation}")
         spec = operations[operation]
         include = tuple(spec["include"])
+        # Optional symbols (Phase 9 S4): supplied by the engine only when the
+        # session provides them (e.g. PREVIOUS_DELIVERABLE on chained turns);
+        # absent optional symbols are omitted from the projection entirely so
+        # single-turn projections stay byte-identical (fixture replay safe).
+        optional = tuple(spec.get("optional_include", ()))
         expected = set(include) - _AUTO_SYMBOLS
         provided = set(values)
         missing = expected - provided
-        extra = provided - expected
+        extra = (provided - expected) - set(optional)
         if missing:
             raise ValueError(f"missing_symbols:{sorted(missing)}")
         if extra:
@@ -81,6 +86,9 @@ class ContextCompiler:
             elif symbol == "HIGHER_PRIORITY_CONSTRAINTS":
                 ordered_inputs[symbol] = higher_priority_constraints
             else:
+                ordered_inputs[symbol] = values[symbol]
+        for symbol in optional:
+            if symbol in provided and values[symbol] is not None:
                 ordered_inputs[symbol] = values[symbol]
 
         schema_relative = spec.get("output_schema")

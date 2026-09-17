@@ -236,8 +236,11 @@ def _fresh_workspace_lifecycle() -> dict[str, object]:
             status = host.status()
             workspace_path = Path(status["workspace_path"])
             final_stage = (status.get("controller_state") or {}).get("stage")
-            result_file = workspace_path / "stages" / "50_execution" / "output" / "current.json"
-            stage_dirs = sorted(p.name for p in (workspace_path / "stages").iterdir() if p.is_dir())
+            from scripts.runtime.workspace import WorkspaceRun as _WR
+            _ws = _WR.open(ROOT, workspace_path)
+            _stages = _ws.stages_root()
+            result_file = _stages / "50_execution" / "output" / "current.json"
+            stage_dirs = sorted(p.name for p in _stages.iterdir() if p.is_dir())
             fresh_ok = "10_prompt" in stage_dirs and "30_plan" in stage_dirs and "50_execution" in stage_dirs
             if final_stage != "CLOSED_SUCCESS":
                 raise AssertionError(f"final stage {final_stage!r} != CLOSED_SUCCESS")

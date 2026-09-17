@@ -522,7 +522,10 @@
         "task_entities"
       ],
       "output_schema": "controller/schemas/bootstrap_analysis.schema.json",
-      "workspace_stage": "10_prompt"
+      "workspace_stage": "10_prompt",
+      "optional_include": [
+        "PREVIOUS_DELIVERABLE"
+      ]
     }
   }
 }

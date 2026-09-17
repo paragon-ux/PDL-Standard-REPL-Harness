@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
+import json
 import re
 import tempfile
 import hashlib
@@ -100,8 +101,11 @@ class SessionEngine:
         # Raw untrusted content is read by BOOTSTRAP_ANALYSIS only; every compile
         # operation receives the sanitized compiled analysis. Cache is keyed on
         # the raw source so repeated sources bootstrap once per session.
-        self._bootstrap_cache: dict[str, str] = {}
-        self._task_entities_cache: dict[str, tuple[str, ...]] = {}
+        self._bootstrap_cache: dict[tuple[str, str | None], str] = {}
+        self._task_entities_cache: dict[tuple[str, str | None], tuple[str, ...]] = {}
+        # S4: confirmed deliverable carried from the prior turn (chaining);
+        # None for first turns and legacy single-turn workspaces.
+        self._previous_deliverable: str | None = None
         self._active_task_entities: tuple[str, ...] = ()
         if workspace_root is None:
             self.workspace_root = Path(tempfile.mkdtemp(prefix="pdl-c0-workspaces-"))
@@ -130,11 +134,52 @@ class SessionEngine:
             render_compact=render_compact,
         )
         workspace = WorkspaceRun.open(repo_root, workspace_path)
-        if workspace.protocol_instance_id is None or not workspace.controller_state_path.is_file():
+        # Pointer may sit on a turn whose controller never committed (e.g. a
+        # turn opened by S4 chaining and then interrupted before any model
+        # call). Fall back to the most recent turn with a committed,
+        # instance-matching state before declaring the session unrestorable.
+        candidates: list[tuple[str | None, Path, str | None]] = []
+        if workspace.turn_id is not None:
+            ordered_ids = [workspace.turn_id]
+            turns_dir = workspace.path / "turns"
+            if turns_dir.is_dir():
+                ordered_ids.extend(
+                    d.name for d in sorted(turns_dir.iterdir(), reverse=True)
+                    if d.is_dir() and re.match(r"^turn_\d+$", d.name) and d.name != workspace.turn_id
+                )
+            for turn_id in ordered_ids:
+                turn_meta = workspace.read_turn_status(turn_id)
+                candidates.append((
+                    turn_id,
+                    workspace.path / "turns" / turn_id / "state" / "controller-state.json",
+                    turn_meta.get("protocol_instance_id") or workspace.protocol_instance_id,
+                ))
+        else:
+            if workspace.protocol_instance_id is None:
+                raise WorkspaceError("restorable_protocol_state_missing")
+            candidates.append((None, workspace.controller_state_path, workspace.protocol_instance_id))
+        restore_state_path: Path | None = None
+        for turn_id, candidate_path, expected_instance in candidates:
+            if not candidate_path.is_file():
+                continue
+            candidate_state = json.loads(candidate_path.read_text(encoding="utf-8"))
+            if candidate_state.get("instance_id") == expected_instance:
+                restore_state_path = candidate_path
+                if turn_id is not None and turn_id != workspace.turn_id:
+                    workspace.metadata["turn_id"] = turn_id
+                    workspace._atomic_write(
+                        workspace.metadata_path,
+                        json.dumps(workspace.metadata, ensure_ascii=False, indent=2) + "\n",
+                    )
+                    workspace.turn_id = turn_id
+                break
+        if restore_state_path is None:
             raise WorkspaceError("restorable_protocol_state_missing")
-        store = AtomicJsonStore(workspace.controller_state_path)
+        store = AtomicJsonStore(restore_state_path)
         state = store.load()
-        if state.instance_id != workspace.protocol_instance_id:
+        if state.instance_id != workspace.protocol_instance_id and workspace.turn_id is None:
+            raise WorkspaceError("restore_instance_binding")
+        if state.instance_id != workspace.protocol_instance_id and workspace.turn_id is None:
             raise WorkspaceError("restore_instance_binding")
         engine.workspace = workspace
         engine.controller = MechanicalController(state, store)
@@ -142,7 +187,11 @@ class SessionEngine:
         return engine
 
     def _new_workspace(self) -> WorkspaceRun:
-        return WorkspaceRun.create(self.repo_root, self.workspace_root)
+        # ADR-0008 / Phase 9 S3: engine sessions are turn-hierarchical by
+        # default. The first turn is turn_001; later turns chain via
+        # _activation (S4). Legacy flat workspaces remain supported for
+        # direct WorkspaceRun.create callers (eval drivers, tests).
+        return WorkspaceRun.create(self.repo_root, self.workspace_root, turn_id="turn_001")
 
     def _bind_new_controller(self, workspace: WorkspaceRun) -> MechanicalController:
         state = ProtocolState.new()
@@ -235,19 +284,26 @@ class SessionEngine:
         untrusted content. Returns the sanitized compiled analysis for compile
         operations, or None when the bootstrap blocks under higher priority.
         """
-        if raw_text in self._bootstrap_cache:
-            return self._bootstrap_cache[raw_text]
+        cache_key = (raw_text, self._previous_deliverable)
+        if cache_key in self._bootstrap_cache:
+            return self._bootstrap_cache[cache_key]
+        bootstrap_values: dict[str, Any] = {
+            "HOST_PROTOCOL_STATE": "SEMANTIC_READ",
+            "RAW_UNTRUSTED_CONTENT": raw_text,
+        }
+        if self._previous_deliverable:
+            # S4: the prior turn's confirmed deliverable is host-published,
+            # gate-passed content (never raw untrusted input). It is compiled
+            # as inactive background context for the new turn.
+            bootstrap_values["PREVIOUS_DELIVERABLE"] = self._previous_deliverable
         outcome = self._call(
             "BOOTSTRAP_ANALYSIS",
-            {
-                "HOST_PROTOCOL_STATE": "SEMANTIC_READ",
-                "RAW_UNTRUSTED_CONTENT": raw_text,
-            },
+            bootstrap_values,
             traces,
             parser=self.bridge.parse_bootstrap_analysis,
         )
         if outcome["kind"] == "BLOCKED_BY_HIGHER_PRIORITY":
-            self._bootstrap_cache[raw_text] = ""
+            self._bootstrap_cache[cache_key] = ""
             return None
         import hashlib
 
@@ -265,7 +321,7 @@ class SessionEngine:
         dropped = [e for e in raw_entities if e not in entities]
         if dropped and self.workspace is not None:
             self.workspace.append_event("TASK_ENTITY_DROPPED_UNSAFE", {"count": len(dropped)})
-        self._task_entities_cache[raw_text] = entities
+        self._task_entities_cache[cache_key] = entities
         # In Protocol v2 out-of-band field isolation: approach_notes carries TASK-02
         # procedural guidance for planning. risk_notes is quarantined threat data
         # retained in telemetry/traces, not leaked into compile contexts.
@@ -284,7 +340,7 @@ class SessionEngine:
                 "task_entities array AND reproduce each verbatim inside the prompt body):\n"
                 + "\n".join(f"- {e}" for e in entities)
             )
-        self._bootstrap_cache[raw_text] = document
+        self._bootstrap_cache[cache_key] = document
         return document
 
     def _compile_context(self, raw_text: str, traces: list[CallTrace]) -> str:
@@ -354,7 +410,7 @@ class SessionEngine:
         if compiled is None:
             self.workspace.append_event("PROTOCOL_BLOCKED", {"phase": "bootstrap"})
             return EngineResponse(presentation.cancelled(), traces, closed=True)
-        entities = self._task_entities_cache.get(substantive_request, ())
+        entities = self._task_entities_cache.get((substantive_request, self._previous_deliverable), ())
         self._active_task_entities = entities
 
         def _draft_call(ctx: dict[str, Any], tr: list[CallTrace], parser) -> Any:
@@ -400,7 +456,36 @@ class SessionEngine:
                 self.controller.replace_current_unconfirmed_body("plan", body)
 
     def _activation(self, user_message: str, traces: list[CallTrace]) -> EngineResponse | None:
-        self.workspace = self._new_workspace()
+        # S4 cross-turn chaining (ADR-0008 §4): when the SAME session's prior
+        # turn reached a terminal stage and the user issues a new command,
+        # continue in the same workspace under the next turn id. Only the prior
+        # turn's confirmed deliverable carries forward; drafts, rejected plans,
+        # and review dialogue are structurally unreachable in the new turn.
+        prior = self.workspace
+        if (
+            prior is not None
+            and prior.turn_id is not None
+            and self.controller is not None
+            and self.controller.state.stage in {Stage.CLOSED_SUCCESS, Stage.CLOSED_CANCELLED}
+        ):
+            prior_status = prior.read_turn_status(prior.turn_id).get("status")
+            if prior_status == "ACTIVE":
+                prior.mark_turn_status(
+                    "CLOSED_SUCCESS"
+                    if self.controller.state.stage == Stage.CLOSED_SUCCESS
+                    else "CLOSED_CANCELLED"
+                )
+            chained_deliverable = prior.previous_deliverable()
+            prior.start_turn(prior.next_turn_id())
+            self.workspace = prior
+            self._previous_deliverable = chained_deliverable
+            self.workspace.append_event(
+                "TURN_CHAINED",
+                {"turn_id": prior.turn_id, "previous_deliverable": chained_deliverable is not None},
+            )
+        else:
+            self.workspace = self._new_workspace()
+            self._previous_deliverable = None
         observation = observe_invocation(user_message)
         if observation.explicit:
             self.workspace.append_event(
@@ -579,6 +664,8 @@ class SessionEngine:
             return EngineResponse(outcome.body, traces, closed=True)
         result_body_hash = hashlib.sha256(outcome.body.encode("utf-8")).hexdigest()
         self.controller.complete_success(result_body_hash)
+        if self.workspace.turn_id is not None:
+            self.workspace.mark_turn_status("CLOSED_SUCCESS", deliverable_sha256=result_body_hash)
         self.workspace.publish_execution_outcome(
             outcome.kind,
             outcome.body,

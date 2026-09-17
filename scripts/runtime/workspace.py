@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 import json
 import os
+import re
 import tempfile
 import uuid
 
@@ -43,6 +44,11 @@ class WorkspaceRun:
         self.metadata = json.loads(self.metadata_path.read_text(encoding="utf-8"))
         if self.metadata.get("schema_version") != self.SCHEMA:
             raise WorkspaceError("workspace_schema")
+        # Session-hierarchy mode (ADR-0008 / Phase 9 S3): when turn_id is set,
+        # turn-scoped state (controller state, events, stages) lives under
+        # turns/<turn_id>/ while shared/ and workspace.json stay session-level.
+        # Legacy single-turn workspaces (turn_id None) keep the flat layout.
+        self.turn_id: str | None = self.metadata.get("turn_id")
         from scripts.runtime.normative_store import NormativeStore
         contract_path = NormativeStore.resolve_contract(self.repo_root, "EXECUTION_CONTRACT.json")
         if not contract_path.is_file():
@@ -50,7 +56,13 @@ class WorkspaceRun:
         self.execution_contract = json.loads(contract_path.read_text(encoding="utf-8"))
 
     @classmethod
-    def create(cls, repo_root: str | Path, workspace_root: str | Path) -> "WorkspaceRun":
+    def create(
+        cls,
+        repo_root: str | Path,
+        workspace_root: str | Path,
+        *,
+        turn_id: str | None = None,
+    ) -> "WorkspaceRun":
         repo_root = Path(repo_root)
         workspace_root = Path(workspace_root)
         workspace_root.mkdir(parents=True, exist_ok=True)
@@ -59,10 +71,16 @@ class WorkspaceRun:
         if path.exists():
             raise WorkspaceError("workspace_collision")
         path.mkdir(parents=True, exist_ok=True)
-        (path / "state").mkdir(exist_ok=True)
-        (path / "events").mkdir(exist_ok=True)
-        (path / "stages").mkdir(exist_ok=True)
-        (path / "shared").mkdir(exist_ok=True)
+        if turn_id is None:
+            (path / "state").mkdir(exist_ok=True)
+            (path / "events").mkdir(exist_ok=True)
+            (path / "stages").mkdir(exist_ok=True)
+            (path / "shared").mkdir(exist_ok=True)
+        else:
+            # Session-hierarchy mode (S3): session-level dirs plus the first
+            # turn's scoped tree. Stage directories materialize on demand.
+            (path / "shared").mkdir(exist_ok=True)
+            cls._scaffold_turn(path, turn_id)
         metadata = {
             "schema_version": cls.SCHEMA,
             "workspace_id": workspace_id,
@@ -72,10 +90,128 @@ class WorkspaceRun:
             "context_flow": "filesystem_stage_handoffs",
             "control_flow": "mechanical_controller",
         }
+        if turn_id is not None:
+            metadata["turn_id"] = turn_id
+            metadata["session_hierarchy"] = True
         cls._atomic_write(path / "workspace.json", json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
         run = cls(repo_root, path)
-        run.append_event("WORKSPACE_CREATED", {"workspace_id": workspace_id})
+        run.append_event("WORKSPACE_CREATED", {"workspace_id": workspace_id, "turn_id": turn_id})
         return run
+
+    @classmethod
+    def _scaffold_turn(cls, path: Path, turn_id: str) -> Path:
+        turn_dir = path / "turns" / turn_id
+        if turn_dir.exists():
+            raise WorkspaceError(f"turn_exists:{turn_id}")
+        (turn_dir / "state").mkdir(parents=True, exist_ok=False)
+        (turn_dir / "events").mkdir(parents=True, exist_ok=False)
+        (turn_dir / "stages").mkdir(parents=True, exist_ok=False)
+        cls._atomic_write(
+            turn_dir / "turn.json",
+            json.dumps(
+                {
+                    "turn_id": turn_id,
+                    "status": "ACTIVE",
+                    "created_at_utc": datetime.now(timezone.utc).isoformat(),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+        )
+        return turn_dir
+
+    # -- Session-hierarchy helpers (S3/S4) ---------------------------------
+
+    def _turn_base(self) -> Path:
+        """Root for turn-scoped state: turns/<turn_id> in hierarchy mode,
+        the workspace root in legacy flat mode."""
+        return self.path / "turns" / self.turn_id if self.turn_id else self.path
+
+    def stages_root(self) -> Path:
+        """Public root for this workspace's stage tree (turn-scoped in
+        hierarchy mode; workspace root in legacy flat mode). Readers that
+        walk stage output must use this instead of path/"stages" so both
+        layouts stay supported."""
+        return self._turn_base() / "stages"
+
+    def start_turn(self, new_turn_id: str) -> None:
+        """Open a new turn in this session workspace and move the pointer.
+
+        The prior turn's scoped state (controller state, events, stages) is
+        preserved verbatim; only the pointer moves. Per ADR-0008 S4, the new
+        turn starts clean: prior drafts, rejected plans, and review dialogue
+        are never carried forward except through previous_deliverable()."""
+        if self.turn_id is None:
+            raise WorkspaceError("session_hierarchy_required")
+        if new_turn_id == self.turn_id:
+            raise WorkspaceError("turn_pointer_unchanged")
+        self._scaffold_turn(self.path, new_turn_id)
+        self.metadata["turn_id"] = new_turn_id
+        self._atomic_write(
+            self.metadata_path,
+            json.dumps(self.metadata, ensure_ascii=False, indent=2) + "\n",
+        )
+        self.turn_id = new_turn_id
+
+    def read_turn_status(self, turn_id: str) -> dict[str, Any]:
+        path = self.path / "turns" / turn_id / "turn.json"
+        if not path.is_file():
+            raise WorkspaceError(f"turn_missing:{turn_id}")
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def mark_turn_status(self, status: str, *, deliverable_sha256: str | None = None) -> None:
+        if self.turn_id is None:
+            raise WorkspaceError("session_hierarchy_required")
+        path = self.path / "turns" / self.turn_id / "turn.json"
+        data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"turn_id": self.turn_id}
+        data["status"] = status
+        if deliverable_sha256 is not None:
+            data["deliverable_sha256"] = deliverable_sha256
+        data["updated_at_utc"] = datetime.now(timezone.utc).isoformat()
+        self._atomic_write(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+        self.append_event("TURN_STATUS", {"turn_id": self.turn_id, "status": status})
+
+    def next_turn_id(self) -> str:
+        """Next free turn identifier (turn_001, turn_002, ...) for this workspace."""
+        turns_dir = self.path / "turns"
+        highest = 0
+        if turns_dir.is_dir():
+            for turn_dir in turns_dir.iterdir():
+                m = re.match(r"^turn_(\d+)$", turn_dir.name)
+                if m:
+                    highest = max(highest, int(m.group(1)))
+        return f"turn_{highest + 1:03d}"
+
+    def closed_turns(self) -> list[dict[str, Any]]:
+        """All turns with a terminal status, in turn order."""
+        turns_dir = self.path / "turns"
+        if not turns_dir.is_dir():
+            return []
+        out = []
+        for turn_dir in sorted(turns_dir.iterdir()):
+            marker = turn_dir / "turn.json"
+            if marker.is_file():
+                data = json.loads(marker.read_text(encoding="utf-8"))
+                if data.get("status") in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
+                    out.append(data)
+        return out
+
+    def previous_deliverable(self) -> str | None:
+        """S4: the confirmed deliverable of the most recent CLOSED_SUCCESS turn.
+
+        Reads ONLY that turn's published execution artifact
+        (turns/<id>/stages/50_execution/output/current.md). Drafts, rejected
+        plans, and review dialogue are structurally unreachable from here.
+        Returns None when no prior turn has closed successfully."""
+        closed = [t for t in self.closed_turns() if t.get("status") == "CLOSED_SUCCESS"]
+        if not closed:
+            return None
+        turn_id = closed[-1].get("turn_id")
+        body = self.path / "turns" / str(turn_id) / "stages" / "50_execution" / "output" / "current.md"
+        if not body.is_file():
+            return None
+        return body.read_text(encoding="utf-8").rstrip("\n")
 
     @classmethod
     def open(cls, repo_root: str | Path, path: str | Path) -> "WorkspaceRun":
@@ -113,7 +249,7 @@ class WorkspaceRun:
             "kind": kind,
             "payload": payload,
         }
-        events = self.path / "events" / "events.jsonl"
+        events = self._turn_base() / "events" / "events.jsonl"
         events.parent.mkdir(parents=True, exist_ok=True)
         with events.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
@@ -122,7 +258,7 @@ class WorkspaceRun:
 
     @property
     def controller_state_path(self) -> Path:
-        return self.path / "state" / "controller-state.json"
+        return self._turn_base() / "state" / "controller-state.json"
 
     @property
     def protocol_instance_id(self) -> str | None:
@@ -131,6 +267,21 @@ class WorkspaceRun:
 
     def bind_protocol(self, instance_id: str) -> None:
         current = self.protocol_instance_id
+        if self.turn_id is not None:
+            # Session-hierarchy mode: each turn runs its own protocol lifecycle,
+            # so re-binding across turns is expected. Record the instance on
+            # the current turn; the root pointer tracks the latest binding.
+            turn_json = self.path / "turns" / self.turn_id / "turn.json"
+            data = json.loads(turn_json.read_text(encoding="utf-8")) if turn_json.is_file() else {"turn_id": self.turn_id}
+            data["protocol_instance_id"] = instance_id
+            self._atomic_write(turn_json, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+            self.metadata["protocol_instance_id"] = instance_id
+            self._atomic_write(
+                self.metadata_path,
+                json.dumps(self.metadata, ensure_ascii=False, indent=2) + "\n",
+            )
+            self.append_event("PROTOCOL_BOUND", {"instance_id": instance_id, "turn_id": self.turn_id})
+            return
         if current is not None and current != instance_id:
             raise WorkspaceError("workspace_already_bound")
         self.metadata["protocol_instance_id"] = instance_id
@@ -154,12 +305,12 @@ class WorkspaceRun:
             if not selected:
                 raise WorkspaceError(f"stage_selector:{operation}:{values.get(symbol)}")
             stage = selected
-        stage_dir = self.path / "stages" / stage
+        stage_dir = self._turn_base() / "stages" / stage
         stage_dir.mkdir(parents=True, exist_ok=True)
         return stage
 
     def _next_invocation_id(self, stage: str, operation: str) -> str:
-        counter_path = self.path / "state" / "invocation-counter.json"
+        counter_path = self._turn_base() / "state" / "invocation-counter.json"
         if counter_path.is_file():
             value = json.loads(counter_path.read_text(encoding="utf-8"))
             counter = int(value.get("counter", 0)) + 1
@@ -177,7 +328,7 @@ class WorkspaceRun:
     ) -> WorkspaceInvocation:
         stage = self._stage_for(operation, values)
         invocation_id = self._next_invocation_id(stage, operation)
-        stage_path = self.path / "stages" / stage
+        stage_path = self._turn_base() / "stages" / stage
         input_dir = stage_path / "input" / invocation_id
         output_dir = stage_path / "output" / invocation_id
         input_dir.mkdir(parents=True, exist_ok=False)
@@ -252,11 +403,11 @@ class WorkspaceRun:
 
     def _artifact_stage(self, kind: str) -> Path:
         if kind == "prompt":
-            return self.path / "stages" / "10_prompt" / "output"
+            return self._turn_base() / "stages" / "10_prompt" / "output"
         if kind == "plan":
-            return self.path / "stages" / "30_plan" / "output"
+            return self._turn_base() / "stages" / "30_plan" / "output"
         if kind == "result":
-            return self.path / "stages" / "50_execution" / "output"
+            return self._turn_base() / "stages" / "50_execution" / "output"
         raise WorkspaceError(f"artifact_kind:{kind}")
 
     def publish_artifact(self, kind: str, artifact_id: str, body: str, *, confirmed: bool, source_prompt_id: str | None = None, confirmed_prompt_hash: str | None = None) -> None:
@@ -336,7 +487,7 @@ class WorkspaceRun:
         return sources
 
     def publish_execution_outcome(self, kind: str, body: str, metadata: dict[str, Any] | None = None) -> None:
-        output = self.path / "stages" / "50_execution" / "output"
+        output = self._turn_base() / "stages" / "50_execution" / "output"
         output.mkdir(parents=True, exist_ok=True)
         self._atomic_write(output / "current.md", body.rstrip() + "\n")
         payload = {"kind": kind}

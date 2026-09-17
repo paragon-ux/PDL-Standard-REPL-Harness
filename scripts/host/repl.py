@@ -222,6 +222,8 @@ def open_session(
         observation_dir=observation_dir,
         render_compact=bool(getattr(args, "render_compact", False)),
     ).start()
+    if getattr(host, "restore_notice", None):
+        print(f"[warn] {host.restore_notice}", flush=True)
     if host.status().get("workspace_path"):
         wp = host.status()["workspace_path"]
         relpath = None

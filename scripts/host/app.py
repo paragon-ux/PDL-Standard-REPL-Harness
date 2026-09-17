@@ -73,16 +73,25 @@ class PDLtHost:
         self._load_candidate()
         from scripts.runtime.session_engine import SessionEngine
 
+        self.restore_notice: str | None = None
+        engine: SessionEngine | None = None
         if self.restore_path is not None:
-            engine = SessionEngine.restore(
-                str(self.candidate_repo),
-                lambda request: "",
-                self.restore_path,
-                higher_priority_constraints=self.higher_priority_constraints,
-                available_execution_tools=[],
-                render_compact=self.render_compact,
-            )
-        else:
+            try:
+                engine = SessionEngine.restore(
+                    str(self.candidate_repo),
+                    lambda request: "",
+                    self.restore_path,
+                    higher_priority_constraints=self.higher_priority_constraints,
+                    available_execution_tools=[],
+                    render_compact=self.render_compact,
+                )
+            except Exception as exc:
+                # Graceful degradation: a session with no committed protocol
+                # state (bypass-only, or a chained turn interrupted before any
+                # commit) resumes as a fresh engine rather than crashing the
+                # host. The notice is surfaced by the REPL.
+                self.restore_notice = f"session state not restorable ({exc}); starting fresh protocol state"
+        if engine is None:
             engine = SessionEngine(
                 str(self.candidate_repo),
                 lambda request: "",

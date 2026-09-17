@@ -33,6 +33,8 @@ Historical run ledgers, recorded fixtures, and evaluation archives are kept in a
 
 Requirements: Python 3.11+ (standard library only for the recorded path).
 
+> **Setting up for live runs — or handing this to an autonomous agent?** [`INSTALLATION.md`](INSTALLATION.md) is the agent-oriented setup & runbook: environment gates, pre-flight verification, the reusable programmatic pattern for calling the API worker, ready-made probes, troubleshooting, and binding agent etiquette.
+
 ```powershell
 cd PDL-Standard-REPL-Harness
 python -m pip install -r requirements-test.txt      # required to run tests (pytest)

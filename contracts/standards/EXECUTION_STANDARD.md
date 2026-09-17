@@ -2,7 +2,7 @@
 
 Normative scope: execution-time missing input and external-action behavior after the protocol execution gate has been satisfied.
 
-**EXEC-01 — Missing non-semantic input.** If required non-semantic execution input is missing, request only that input, wait for it, and do not create a third confirmation stage.
+**EXEC-01 — Missing non-semantic input.** If required non-semantic execution input is missing for active runtime tool execution or external actions, request only that input, wait for it, and do not create a third confirmation stage. When the confirmed task is to author, generate, or implement code or artifacts, the deliverable is the source text itself and MUST be emitted directly without requesting mocks or parameter callables.
 
 **EXEC-02 — Semantic change while waiting.** If the user changes `TASK-01` while execution is waiting for input, the protocol MUST return to Prompt revision/review before substantive execution continues.
 

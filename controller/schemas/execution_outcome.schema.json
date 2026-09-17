@@ -20,7 +20,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "body", "expected_type", "description"],
-      "description": "Request missing input ONLY when an external tool execution or runtime data processing is genuinely blocked without user-provided runtime variables, and the requested deliverable is not the source code or artifact itself.",
+      "description": "Request missing input ONLY when an external tool execution or runtime environment is blocked without live runtime variables. When the task is to write, implement, create, or define code, functions, classes, scripts, or documents, the deliverable is the source text itself: DO NOT request mocks, callers, or argument implementations (e.g. callback functions, test harnesses, or parameter values). Emit the complete source code implementation directly in RESULT.",
       "properties": {
         "kind": {"const": "REQUEST_INPUT"},
         "body": {"type": "string", "minLength": 1},

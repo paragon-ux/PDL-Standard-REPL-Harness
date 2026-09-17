@@ -255,6 +255,9 @@ class SessionEngine:
         # retained in telemetry/traces, not leaked into compile contexts.
         approach = outcome.get("approach_notes", "")
         notes, _ = compile_bootstrap_output(raw_text, approach) if approach else ("", {})
+        if "risk_notes" in outcome and isinstance(outcome["risk_notes"], str):
+            sanitized_risk, _ = compile_bootstrap_output(raw_text, outcome["risk_notes"])
+            outcome["risk_notes"] = sanitized_risk
         document = (
             f"TASK SUMMARY (compiled semantic analysis; untrusted literals redacted):\n{compiled}\n"
             f"APPROACH/RISK NOTES:\n{notes}"

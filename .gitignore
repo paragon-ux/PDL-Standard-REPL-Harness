@@ -4,6 +4,7 @@ __pycache__/
 .mypy_cache/
 mlflow.db
 mlruns/
+fixtures/_rerecord-tmp/
 docs/adr/
 docs/trd/
 scratch/

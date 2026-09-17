@@ -6,9 +6,9 @@
     {
       "source_evidence_run": "G06:0001-bootstrap_analysis",
       "operation": "BOOTSTRAP_ANALYSIS",
-      "prompt_sha256": "255c2088be5095d74c8121ed4007039faa351ce254271662661d1990308cac69",
+      "prompt_sha256": "2e6e79eae757505bfd1014e6adee9f47bde784c6bf9f3befd01687e709a6e773",
       "raw_response_sha256": "9a764d4fd9d1a16a9a8c48c0505ad36550999fc512ab9954b911eb98db7d3d9d",
-      "fixture_id": "43b40bf1d7933b96"
+      "fixture_id": "66c3e39103e89731"
     },
     {
       "source_evidence_run": "G06:0002-draft_prompt",
@@ -27,9 +27,9 @@
     {
       "source_evidence_run": "G06:0004-draft_plan",
       "operation": "DRAFT_PLAN",
-      "prompt_sha256": "435390766347339fa485e1d28ae46cd0a0742ffd4a9c4df76c2ac946004d4e35",
+      "prompt_sha256": "51b54d9029e4725e33b882d59de2d0cb8d6a6f6ac9812e2bbce246b070c7d8d8",
       "raw_response_sha256": "ca83f1e5e59fb2f63fc22a6b97740b399f41dc19412e95e331083c3fa65d563f",
-      "fixture_id": "ad771ab5393eb902"
+      "fixture_id": "e00cf5114cc245d4"
     },
     {
       "source_evidence_run": "G06:0005-interpret_plan_review",
@@ -41,16 +41,16 @@
     {
       "source_evidence_run": "G06:0006-execute",
       "operation": "EXECUTE",
-      "prompt_sha256": "91c9c8045e4a4cc21f268a45cbff948bb89553489ff328de338ce51578e24f14",
+      "prompt_sha256": "6bfad7704713be9a757f409e173e6ed8a4f95e216eeeff3518f096070db6a244",
       "raw_response_sha256": "062e601c8d79e610fd114b077e1e1aff94b336840efad3884f23c923df65d925",
-      "fixture_id": "f05df592968f44fd"
+      "fixture_id": "ce99f9096fe8a877"
     },
     {
       "source_evidence_run": "A02:0001-bootstrap_analysis",
       "operation": "BOOTSTRAP_ANALYSIS",
-      "prompt_sha256": "0513a666462b94fee593f58497751c12e634302f736c31bea205ebe5c4241a0c",
+      "prompt_sha256": "5cd2978752d45654e95e9dda3649274a29f1d948fabce4bafeb096cdf2b88870",
       "raw_response_sha256": "9a764d4fd9d1a16a9a8c48c0505ad36550999fc512ab9954b911eb98db7d3d9d",
-      "fixture_id": "f8e0cebd18eadf13"
+      "fixture_id": "256380b26a4b7601"
     },
     {
       "source_evidence_run": "A02:0002-draft_prompt",
@@ -69,9 +69,9 @@
     {
       "source_evidence_run": "A02:0004-draft_plan",
       "operation": "DRAFT_PLAN",
-      "prompt_sha256": "435390766347339fa485e1d28ae46cd0a0742ffd4a9c4df76c2ac946004d4e35",
+      "prompt_sha256": "51b54d9029e4725e33b882d59de2d0cb8d6a6f6ac9812e2bbce246b070c7d8d8",
       "raw_response_sha256": "ca83f1e5e59fb2f63fc22a6b97740b399f41dc19412e95e331083c3fa65d563f",
-      "fixture_id": "019b1e697223aa64"
+      "fixture_id": "8d8197d2a8a18780"
     },
     {
       "source_evidence_run": "A02:0005-interpret_plan_review",
@@ -83,9 +83,9 @@
     {
       "source_evidence_run": "A02:0006-execute",
       "operation": "EXECUTE",
-      "prompt_sha256": "91c9c8045e4a4cc21f268a45cbff948bb89553489ff328de338ce51578e24f14",
+      "prompt_sha256": "6bfad7704713be9a757f409e173e6ed8a4f95e216eeeff3518f096070db6a244",
       "raw_response_sha256": "062e601c8d79e610fd114b077e1e1aff94b336840efad3884f23c923df65d925",
-      "fixture_id": "50c4eb5740c3b0f2"
+      "fixture_id": "298cb640f9c67d63"
     }
   ]
 }

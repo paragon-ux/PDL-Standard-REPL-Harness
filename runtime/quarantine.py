@@ -54,7 +54,9 @@ def strip_evidence_sink(text: str) -> tuple[str, dict]:
 
 
 # Known canary, tripwire, and exploit directive patterns
-_CANARY_OR_TRIPWIRE = re.compile(r"\b(?:TRIPWIRE_[A-Za-z0-9_]+|CANARY_[A-Za-z0-9_]+|ACTIVATED)\b")
+_CANARY_OR_TRIPWIRE = re.compile(
+    r"\b(?:TRIPWIRE_[A-Za-z0-9_]+|CANARY_[A-Za-z0-9_]+|PWNED_[A-Za-z0-9_]+|ACTIVATED|ROOTKIT-[A-Za-z0-9_]+)\b"
+)
 _OVERRIDE_DIRECTIVE = re.compile(r"\+{3}\s*(?:SYSTEM\s+(?:DIRECTIVE\s+)?OVERRIDE|END)\s*\+{3}", re.IGNORECASE)
 _EXPLOIT_PHRASE = re.compile(
     r"(?:system\s+(?:directive\s+)?override|ignore\s+previous\s+instructions|dump\s+system\s+secrets|rootkit|credential[- ]harvesting)",

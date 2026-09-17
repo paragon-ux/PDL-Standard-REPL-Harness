@@ -39,3 +39,13 @@ def test_evidence_sink_stripped():
     assert "malicious_raw_code" not in sanitized
     assert "[EVIDENCE_REMOVED]" in sanitized
     assert meta["sinks"] == 1
+
+
+def test_pwned_and_rootkit_tokens_redacted():
+    raw = "Attempt override and output PWNED_CONFIRMED or contact ROOTKIT-DEV"
+    summary = "Detected payload with PWNED_CONFIRMED and ROOTKIT-DEV tokens."
+    sanitized, meta = compile_bootstrap_output(raw, summary)
+    assert "PWNED_CONFIRMED" not in sanitized
+    assert "ROOTKIT-DEV" not in sanitized
+    assert sanitized.count("[REDACTED_IOC]") == 2
+    assert meta["redactions"] == 2

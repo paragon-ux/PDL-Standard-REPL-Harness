@@ -308,7 +308,7 @@ CASES: list[dict] = [
         "constraint_count": 4,
         "description": "Pagination generator: short-read termination (fewer than 100 items means last page), yields items not pages, page 1 first.",
         "task": (
-            "Write a generator `iter_items(fetch)` where `fetch(page_number)` returns a list of items "
+            "Write a Python generator `iter_items(fetch)` where `fetch(page_number)` returns a list of items "
             "for that page (pages are numbered from 1, page size is 100).\n"
             "1. Yield ITEMS one by one -- never yield a page/list.\n"
             "2. Stop iterating as soon as a page comes back with FEWER than 100 items: that is the last page, and its items must still be yielded.\n"

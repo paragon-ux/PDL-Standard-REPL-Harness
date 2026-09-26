@@ -49,6 +49,7 @@ class PDLtHost:
         include_bodies: bool = False,
         render_compact: bool = False,
         higher_priority_constraints: str | None = None,
+        single_pass_bootstrap: bool = False,
     ):
         self.candidate_repo = Path(candidate_repo).resolve()
         self.worker = worker
@@ -60,6 +61,7 @@ class PDLtHost:
         self.include_bodies = include_bodies
         self.render_compact = render_compact
         self.higher_priority_constraints = higher_priority_constraints or DEFAULT_HIGHER_PRIORITY_CONSTRAINTS
+        self.single_pass_bootstrap = single_pass_bootstrap
         self.engine: Any = None
         self.observed: ObservedSession | None = None
         self.sink: JsonlSink | None = None
@@ -84,6 +86,7 @@ class PDLtHost:
                     higher_priority_constraints=self.higher_priority_constraints,
                     available_execution_tools=[],
                     render_compact=self.render_compact,
+                    single_pass_bootstrap=self.single_pass_bootstrap,
                 )
             except Exception as exc:
                 # Graceful degradation: a session with no committed protocol
@@ -99,6 +102,7 @@ class PDLtHost:
                 available_execution_tools=[],
                 workspace_root=self.workspace_root,
                 render_compact=self.render_compact,
+                single_pass_bootstrap=self.single_pass_bootstrap,
             )
         self.engine = engine
         if self.observation_dir is not None:

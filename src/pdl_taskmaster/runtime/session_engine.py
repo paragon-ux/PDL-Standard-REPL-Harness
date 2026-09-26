@@ -98,11 +98,13 @@ class SessionEngine:
         available_execution_tools: Any = None,
         workspace_root: str | Path | None = None,
         render_compact: bool = False,
+        single_pass_bootstrap: bool = False,
     ):
         self.repo_root = Path(repo_root)
         self.model_call = model_call
         self.higher_priority_constraints = higher_priority_constraints
         self.available_execution_tools = available_execution_tools
+        self.single_pass_bootstrap = single_pass_bootstrap
         self.bridge = OperationBridge(self.repo_root, render_compact=render_compact)
         self.controller: Optional[MechanicalController] = None
         self.workspace: Optional[WorkspaceRun] = None
@@ -132,6 +134,7 @@ class SessionEngine:
         higher_priority_constraints: Any = None,
         available_execution_tools: Any = None,
         render_compact: bool = False,
+        single_pass_bootstrap: bool = False,
     ) -> "SessionEngine":
         workspace_path = Path(workspace_path)
         engine = cls(
@@ -141,6 +144,7 @@ class SessionEngine:
             available_execution_tools=available_execution_tools,
             workspace_root=workspace_path.parent,
             render_compact=render_compact,
+            single_pass_bootstrap=single_pass_bootstrap,
         )
         workspace = MemoryWorkspaceRun.open(repo_root, workspace_path)
         # Pointer may sit on a turn whose controller never committed (e.g. a
@@ -318,6 +322,17 @@ class SessionEngine:
         cache_key = (raw_text, self._previous_deliverable)
         if cache_key in self._bootstrap_cache:
             return self._bootstrap_cache[cache_key]
+        if self.single_pass_bootstrap:
+            # Single-pass interactive optimization: bypass remote BOOTSTRAP_ANALYSIS round-trip.
+            # Perform immediate mechanical regex sanitization over raw untrusted content.
+            compiled, _meta = compile_bootstrap_output(raw_text, raw_text)
+            self._task_entities_cache[cache_key] = ()
+            document = (
+                f"TASK SUMMARY (compiled semantic analysis; untrusted literals redacted):\n{compiled}\n"
+                "APPROACH/RISK NOTES:\n"
+            )
+            self._bootstrap_cache[cache_key] = document
+            return document
         bootstrap_values: dict[str, Any] = {
             "HOST_PROTOCOL_STATE": "SEMANTIC_READ",
             "RAW_UNTRUSTED_CONTENT": raw_text,
@@ -489,6 +504,8 @@ class SessionEngine:
             )
             return EngineResponse(outcome.response, traces, closed=True)
         assert outcome.prompt_body is not None
+        if self.single_pass_bootstrap and outcome.task_entities:
+            self._active_task_entities = tuple(outcome.task_entities)
         self.controller = self._bind_new_controller(self.workspace)
         approach_source = substantive_request if outcome.approach_handoff == "CARRY_SOURCE_TO_PLAN" else None
         self.controller.commit_initial_prompt(outcome.prompt_body, approach_source)
@@ -988,8 +1005,6 @@ class SessionEngine:
             return EngineResponse(outcome.body, traces, closed=True)
         result_body_hash = hashlib.sha256(final_body.encode("utf-8")).hexdigest()
         self.controller.complete_success(result_body_hash)
-        if self.workspace.turn_id is not None:
-            self.workspace.mark_turn_status("CLOSED_SUCCESS", deliverable_sha256=result_body_hash)
         self.workspace.publish_execution_outcome(
             outcome.kind,
             final_body,
@@ -1001,6 +1016,8 @@ class SessionEngine:
                 "confirmed_plan_hash": hashlib.sha256(plan.body.encode("utf-8")).hexdigest(),
             },
         )
+        if self.workspace.turn_id is not None:
+            self.workspace.mark_turn_status("CLOSED_SUCCESS", deliverable_sha256=result_body_hash)
         return EngineResponse(final_body, traces, closed=True)
 
     def _answer_protocol(self, user_message: str, traces: list[CallTrace]) -> EngineResponse:

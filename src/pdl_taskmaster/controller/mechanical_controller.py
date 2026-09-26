@@ -234,18 +234,25 @@ class AtomicJsonStore:
 class MemoryAtomicJsonStore(AtomicJsonStore):
     """In-memory cached AtomicJsonStore (ADR-0011).
 
-    Bypasses blocking fsync during active state transitions.
+    Bypasses blocking fsync and disk writes during active state transitions.
     """
 
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, sync_disk: bool = True):
         super().__init__(path)
         self._cached_state: Optional[ProtocolState] = None
+        self._sync_disk = sync_disk
 
     def save(self, state: ProtocolState) -> None:
         state.validate()
         self._cached_state = state
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(json.dumps(state.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if self._sync_disk:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps(state.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def flush(self) -> None:
+        if self._cached_state is not None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps(self._cached_state.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def load(self) -> ProtocolState:
         if self._cached_state is not None:
@@ -263,6 +270,8 @@ class MechanicalController:
         self.state.validate()
         if self.store:
             self.store.save(self.state)
+            if self.state.stage in {Stage.CLOSED_SUCCESS, Stage.CLOSED_CANCELLED} and hasattr(self.store, "flush"):
+                self.store.flush()
 
     def _next_prompt_id(self) -> str:
         self.state.prompt_highwater += 1

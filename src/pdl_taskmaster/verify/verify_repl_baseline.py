@@ -142,10 +142,13 @@ def _failures() -> list[str]:
     repl_path = ROOT / "src" / "pdl_taskmaster" / "host" / "repl.py"
     if repl_path.is_file():
         repl_text = repl_path.read_text(encoding="utf-8")
-        for match in re.findall(r'-m",\s*"([^"]+)"', repl_text):
+        import importlib.util
+        for match in sorted(set(re.findall(r'-m",\s*"([^"]+)"', repl_text))):
             try:
-                __import__(match)
-            except ImportError:
+                spec = importlib.util.find_spec(match)
+                if spec is None or spec.origin is None:
+                    problems.append(f"missing_repl_subprocess_module:{match}")
+            except (ValueError, ModuleNotFoundError):
                 problems.append(f"missing_repl_subprocess_module:{match}")
 
     # 2. Broken imports.

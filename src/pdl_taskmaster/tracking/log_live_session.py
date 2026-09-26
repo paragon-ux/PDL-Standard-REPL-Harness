@@ -13,8 +13,12 @@ if str(ROOT / "src") not in sys.path:
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import mlflow
-from pdl_taskmaster.tracking.mlflow_sink import log_experiment_run
+try:
+    import mlflow
+    from pdl_taskmaster.tracking.mlflow_sink import log_experiment_run
+except ImportError:
+    mlflow = None  # type: ignore[assignment]
+    log_experiment_run = None  # type: ignore[assignment]
 
 
 def _default_tracking_db() -> Path:
@@ -41,6 +45,10 @@ def main() -> int:
     parser.add_argument("--run-name", default=None)
     parser.add_argument("--worker-profile", default="api", help="worker identity to record (api|codex|recorded)")
     args = parser.parse_args()
+    if mlflow is None or log_experiment_run is None:
+        raise SystemExit(
+            "MLflow is not installed. Run `pip install pdl-taskmaster[tracking]` to enable live session tracking."
+        )
 
     session_dir = args.session_dir.resolve()
     session_json = session_dir / "session.json"

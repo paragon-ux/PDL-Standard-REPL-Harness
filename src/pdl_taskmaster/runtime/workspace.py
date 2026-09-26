@@ -156,7 +156,7 @@ class WorkspaceRun:
 
     def read_turn_status(self, turn_id: str) -> dict[str, Any]:
         path = self.path / "turns" / turn_id / "turn.json"
-        if not path.is_file():
+        if not self._is_file(path):
             raise WorkspaceError(f"turn_missing:{turn_id}")
         return json.loads(self._read(path))
 
@@ -164,7 +164,7 @@ class WorkspaceRun:
         if self.turn_id is None:
             raise WorkspaceError("session_hierarchy_required")
         path = self.path / "turns" / self.turn_id / "turn.json"
-        data = json.loads(self._read(path)) if path.is_file() else {"turn_id": self.turn_id}
+        data = json.loads(self._read(path)) if self._is_file(path) else {"turn_id": self.turn_id}
         data["status"] = status
         if deliverable_sha256 is not None:
             data["deliverable_sha256"] = deliverable_sha256
@@ -191,8 +191,8 @@ class WorkspaceRun:
         out = []
         for turn_dir in sorted(turns_dir.iterdir()):
             marker = turn_dir / "turn.json"
-            if marker.is_file():
-                data = json.loads(marker.read_text(encoding="utf-8"))
+            if self._is_file(marker):
+                data = json.loads(self._read(marker))
                 if data.get("status") in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
                     out.append(data)
         return out
@@ -209,13 +209,16 @@ class WorkspaceRun:
             return None
         turn_id = closed[-1].get("turn_id")
         body = self.path / "turns" / str(turn_id) / "stages" / "50_execution" / "output" / "current.md"
-        if not body.is_file():
+        if not self._is_file(body):
             return None
-        return body.read_text(encoding="utf-8").rstrip("\n")
+        return self._read(body).rstrip("\n")
 
     @classmethod
     def open(cls, repo_root: str | Path, path: str | Path) -> "WorkspaceRun":
         return cls(Path(repo_root), Path(path))
+
+    def _is_file(self, path: Path) -> bool:
+        return path.is_file()
 
     def _write(self, path: Path, content: str) -> None:
         self._atomic_write(path, content)
@@ -321,7 +324,7 @@ class WorkspaceRun:
 
     def _next_invocation_id(self, stage: str, operation: str) -> str:
         counter_path = self._turn_base() / "state" / "invocation-counter.json"
-        if counter_path.is_file():
+        if self._is_file(counter_path):
             value = json.loads(self._read(counter_path))
             counter = int(value.get("counter", 0)) + 1
         else:
@@ -439,11 +442,15 @@ class WorkspaceRun:
             {"kind": kind, "artifact_id": artifact_id, "confirmed": confirmed},
         )
 
+    def _unlink(self, path: Path) -> None:
+        if path.is_file():
+            path.unlink()
+
     def invalidate_artifact(self, kind: str, reason: str) -> None:
         output = self._artifact_stage(kind)
         meta_path = output / "current.json"
         body_path = output / "current.md"
-        if not meta_path.is_file() or not body_path.is_file():
+        if not self._is_file(meta_path) or not self._is_file(body_path):
             return
         meta = json.loads(self._read(meta_path))
         artifact_id = meta.get("artifact_id")
@@ -453,8 +460,8 @@ class WorkspaceRun:
             invalidated / f"{artifact_id}.json",
             json.dumps({**meta, "status": "invalidated", "reason": reason}, ensure_ascii=False, indent=2) + "\n",
         )
-        meta_path.unlink()
-        body_path.unlink()
+        self._unlink(meta_path)
+        self._unlink(body_path)
         self.append_event("ARTIFACT_INVALIDATED", {"kind": kind, "artifact_id": artifact_id, "reason": reason})
 
     def mark_artifact_confirmed(self, kind: str, artifact_id: str) -> None:
@@ -471,7 +478,7 @@ class WorkspaceRun:
         output = self._artifact_stage(kind)
         meta_path = output / "current.json"
         body_path = output / "current.md"
-        if not meta_path.is_file() or not body_path.is_file():
+        if not self._is_file(meta_path) or not self._is_file(body_path):
             raise WorkspaceError(f"artifact_missing:{kind}")
         return (
             json.loads(self._read(meta_path)),
@@ -488,7 +495,7 @@ class WorkspaceRun:
 
     def read_approach_sources(self) -> list[str]:
         path = self.path / "shared" / "approach-sources.json"
-        if not path.is_file():
+        if not self._is_file(path):
             return []
         value = json.loads(self._read(path))
         sources = value.get("sources", [])
@@ -539,20 +546,31 @@ class WorkspaceRun:
 class MemoryWorkspaceRun(WorkspaceRun):
     """Software-defined In-Memory VFS WorkspaceRun (ADR-0011).
 
-    Eliminates blocking fsync and mkstemp latency on Windows NTFS during
-    active turn materialization by maintaining stage symbols in memory buffers
-    and performing fast, unjournaled writes to disk without synchronous fsync.
+    Eliminates blocking fsync, directory creation, and file writes on Windows NTFS during
+    active turn materialization by maintaining stage symbols in memory buffers (RAM VFS).
+    Intermediate symbols are never written to disk during the active turn.
+    Persistence to host storage occurs strictly upon task epoch completion via flush_turn_archive().
     """
 
-    def __init__(self, repo_root: Path, path: Path):
+    def __init__(self, repo_root: Path, path: Path, *, sync_disk: bool = True):
         super().__init__(repo_root, path)
         self._vfs: dict[Path, str] = {}
         self._events: list[dict[str, Any]] = []
+        self._sync_disk = sync_disk
+
+    def _is_file(self, path: Path) -> bool:
+        return path in self._vfs or path.is_file()
+
+    def _unlink(self, path: Path) -> None:
+        self._vfs.pop(path, None)
+        if path.is_file():
+            path.unlink()
 
     def _write(self, path: Path, content: str) -> None:
         self._vfs[path] = content
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8", newline="\n")
+        if self._sync_disk:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8", newline="\n")
 
     def _read(self, path: Path) -> str:
         if path in self._vfs:
@@ -561,12 +579,12 @@ class MemoryWorkspaceRun(WorkspaceRun):
 
     def _record_event(self, event: dict[str, Any]) -> None:
         self._events.append(event)
-        events = self._turn_base() / "events" / "events.jsonl"
-        events.parent.mkdir(parents=True, exist_ok=True)
-        with events.open("a", encoding="utf-8", newline="\n") as handle:
-            handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
-            handle.flush()
-            # Bypasses blocking os.fsync(handle.fileno()) per ADR-0011 §1
+        if self._sync_disk:
+            events = self._turn_base() / "events" / "events.jsonl"
+            events.parent.mkdir(parents=True, exist_ok=True)
+            with events.open("a", encoding="utf-8", newline="\n") as handle:
+                handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+                handle.flush()
 
     def start_turn(self, new_turn_id: str) -> None:
         super().start_turn(new_turn_id)
@@ -578,7 +596,21 @@ class MemoryWorkspaceRun(WorkspaceRun):
             self.flush_turn_archive()
 
     def flush_turn_archive(self, turn_id: str | None = None) -> Path:
-        """Atomic turn flush: persist turn state and events to a single archive record (ADR-0011 §2)."""
+        """Atomic turn flush: persist turn state and events to disk upon completion (ADR-0011 §2)."""
+        # Batch-persist all buffered in-memory VFS files to disk upon turn epoch completion
+        for vfs_path, content in list(self._vfs.items()):
+            try:
+                vfs_path.parent.mkdir(parents=True, exist_ok=True)
+                vfs_path.write_text(content, encoding="utf-8", newline="\n")
+            except OSError:
+                pass
+
+        events_path = self._turn_base() / "events" / "events.jsonl"
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        with events_path.open("w", encoding="utf-8", newline="\n") as handle:
+            for ev in self._events:
+                handle.write(json.dumps(ev, ensure_ascii=False, separators=(",", ":")) + "\n")
+
         tid = turn_id or self.turn_id
         if tid:
             turn_dir = self.path / "turns" / tid
@@ -597,6 +629,7 @@ class MemoryWorkspaceRun(WorkspaceRun):
             "events": list(self._events),
             "flushed_at_utc": datetime.now(timezone.utc).isoformat(),
         }
+        archive_path.parent.mkdir(parents=True, exist_ok=True)
         archive_path.write_text(json.dumps(archive_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return archive_path
 

@@ -221,6 +221,7 @@ def open_session(
         run_id=args.run_id,
         observation_dir=observation_dir,
         render_compact=bool(getattr(args, "render_compact", False)),
+        single_pass_bootstrap=_resolve_single_pass_bootstrap(args),
     ).start()
     if getattr(host, "restore_notice", None):
         print(f"[warn] {host.restore_notice}", flush=True)
@@ -267,10 +268,14 @@ def switch_session(
 ) -> SessionRuntime:
     """Close the active host and open another session in one operation."""
     if log_mlflow:
-        subprocess.run(
-            [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
-            cwd=ROOT,
-        )
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
+                cwd=ROOT,
+                check=False,
+            )
+        except KeyboardInterrupt:
+            print("\n[MLflow logging cancelled by user]", flush=True)
     runtime.close()
     return open_session(args, session_base, worker, session_id)
 
@@ -327,6 +332,19 @@ def _resolve_render_compact(args) -> bool:
     if getattr(args, "render_compact", None) is not None:
         return bool(args.render_compact)
     return args.worker == "api"
+
+
+def _resolve_single_pass_bootstrap(args) -> bool:
+    """Single-pass bootstrap default: on for live workers (api/codex), disabled for recorded fixtures.
+
+    Recorded-fixture replay hashes the full rendered prompt, so the recorded
+    worker always keeps two-pass bootstrap to match recorded prompt_sha256 values.
+    """
+    if getattr(args, "single_pass_bootstrap", None) is not None:
+        if getattr(args, "worker", "") == "recorded":
+            return False
+        return bool(args.single_pass_bootstrap)
+    return getattr(args, "worker", "") != "recorded"
 
 
 PASTE_START = "\x1b[200~"
@@ -572,10 +590,42 @@ def main() -> int:
     parser.add_argument(
         "--cache-order-render",
         action="store_true",
+        default=True,
         help="api worker only: reorder projection keys on the wire (schema/clauses "
         "first, volatile binds and operation id last) so same-shape calls share a "
         "byte-identical prompt prefix for provider prefix caching; parsed content "
-        "is identical",
+        "is identical (default: True)",
+    )
+    parser.add_argument(
+        "--no-cache-order-render",
+        dest="cache_order_render",
+        action="store_false",
+        help="disable cache-order key reordering on the wire",
+    )
+    parser.add_argument(
+        "--use-jev",
+        action="store_true",
+        default=True,
+        help="enable Sovereign System 1 routing via TypeSafe Jev Decisions API for INTERPRET_* operations (default: True)",
+    )
+    parser.add_argument(
+        "--no-jev",
+        dest="use_jev",
+        action="store_false",
+        help="disable Jev Decisions API routing and fall back to System 2 model for INTERPRET_*",
+    )
+    parser.add_argument(
+        "--single-pass-bootstrap",
+        dest="single_pass_bootstrap",
+        action="store_true",
+        default=None,
+        help="interactive optimization: single-pass ingestion for human prompts (bypasses remote BOOTSTRAP_ANALYSIS round-trip; default: True for live workers)",
+    )
+    parser.add_argument(
+        "--two-pass-bootstrap",
+        dest="single_pass_bootstrap",
+        action="store_false",
+        help="force strict two-pass semantic bootstrap analysis containment (benchmark mode)",
     )
     parser.add_argument(
         "--api-structured-output",
@@ -656,7 +706,8 @@ def main() -> int:
             reasoning_effort=args.api_reasoning_effort,
             reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
             model_by_operation=_parse_model_operations(args.api_model_operation),
-            reorder_keys_for_cache=bool(getattr(args, "cache_order_render", False)),
+            reorder_keys_for_cache=bool(getattr(args, "cache_order_render", True)),
+            use_jev=bool(getattr(args, "use_jev", True)),
             structured_output=bool(getattr(args, "api_structured_output", False)),
             max_tokens=getattr(args, "max_tokens", 4096),
             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
@@ -670,6 +721,7 @@ def main() -> int:
             "replay hashes the full pretty-rendered prompt"
         )
     args.render_compact = _resolve_render_compact(args)
+    args.single_pass_bootstrap = _resolve_single_pass_bootstrap(args)
     runtime = open_session(args, session_base, worker, session_id, restore_path=args.restore)
 
     def _write_transcript(text: str) -> None:
@@ -969,6 +1021,10 @@ def main() -> int:
             print(f"[worker progress -> {runtime.session_dir / 'worker-progress.log'}]", flush=True)
             try:
                 turn = runtime.handle(line)
+            except KeyboardInterrupt:
+                print("\n[operation interrupted by user]", flush=True)
+                _write_transcript("USER_INTERRUPTED")
+                continue
             except Exception as exc:
                 message = f"{type(exc).__name__}: {exc}"
                 print(f"[error] {message}", flush=True)
@@ -982,20 +1038,28 @@ def main() -> int:
                 _write_transcript("PROTOCOL_CLOSED")
     finally:
         _disable_bracketed_paste()
-        runtime.close()
+        try:
+            runtime.close()
+        except KeyboardInterrupt:
+            pass
         if log_mlflow:
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pdl_taskmaster.tracking.log_live_session",
-                    "--session-dir",
-                    str(runtime.session_dir),
-                    "--worker-profile",
-                    _worker_profile(worker),
-                ],
-                cwd=ROOT,
-            )
+            try:
+                print("[logging session to MLflow... (press Ctrl+C to cancel)]", flush=True)
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pdl_taskmaster.tracking.log_live_session",
+                        "--session-dir",
+                        str(runtime.session_dir),
+                        "--worker-profile",
+                        _worker_profile(worker),
+                    ],
+                    cwd=ROOT,
+                    check=False,
+                )
+            except KeyboardInterrupt:
+                print("\n[MLflow logging cancelled by user]", flush=True)
     # Headless fail-closed invariant (ADR-0012):
     # In non-interactive mode, if execution terminates while sitting at an unconfirmed
     # review gate or non-terminal stage, exit with code 2 rather than falsely signalling success.
@@ -1015,4 +1079,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        print("\n[session terminated by user]", file=sys.stderr, flush=True)
+        raise SystemExit(130)

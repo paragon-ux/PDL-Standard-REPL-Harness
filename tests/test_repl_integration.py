@@ -113,3 +113,17 @@ def test_repl_headless_exit_fail_closed_on_unconfirmed_stage(tmp_path: Path) -> 
     out = proc.stdout + proc.stderr
     assert proc.returncode == 2, out[-2000:]
     assert "[headless halt] Session ended at non-terminal stage" in proc.stderr
+
+
+def test_cli_keyboard_interrupt_clean_exit(monkeypatch, capsys) -> None:
+    """CLI intercepts KeyboardInterrupt, prints user notice, and exits 130 cleanly without tracebacks."""
+    from pdl_taskmaster.host import cli
+
+    def mock_raise(*args, **kwargs):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(cli, "_main_impl", mock_raise)
+    code = cli.main([])
+    assert code == 130
+    captured = capsys.readouterr()
+    assert "[session terminated by user]" in captured.err

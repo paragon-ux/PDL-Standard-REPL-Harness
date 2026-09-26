@@ -64,7 +64,8 @@ class ApiWorker:
         reasoning_effort: str | None = "low",
         reasoning_by_operation: dict[str, str] | None = None,
         model_by_operation: dict[str, str] | None = None,
-        reorder_keys_for_cache: bool = False,
+        reorder_keys_for_cache: bool = True,
+        use_jev: bool = True,
         structured_output: bool = False,
         provider_pinning: dict[str, Any] | None = None,
         safety_settings: list[dict[str, str]] | None = None,
@@ -86,6 +87,7 @@ class ApiWorker:
             self.reasoning_by_operation = mapping if mapping else {}
         self.model_by_operation = dict(model_by_operation or {})
         self.reorder_keys_for_cache = reorder_keys_for_cache
+        self.use_jev = use_jev
         self.structured_output = structured_output
         self.provider_pinning = provider_pinning if provider_pinning is not None else dict(DEFAULT_PROVIDER_PINNING)
         self.safety_settings = safety_settings if safety_settings is not None else list(DEFAULT_SAFETY_SETTINGS)
@@ -276,7 +278,97 @@ class ApiWorker:
         except json.JSONDecodeError as exc:
             raise TransportError(f"api worker returned non-JSON response: {raw[:500]}") from exc
 
+    def _should_use_jev_for(self, operation: str | None) -> bool:
+        if not operation or operation not in {"INTERPRET_ACTIVATION", "INTERPRET_PROMPT_REVIEW", "INTERPRET_PLAN_REVIEW"}:
+            return False
+        model = self._model_for(operation)
+        if "jev" in model.lower():
+            return True
+        return self.use_jev or os.environ.get("PDLT_USE_JEV", "0") == "1"
+
+    def _try_jev_decisions(self, request: Any, operation: str) -> WorkerResult | None:
+        from pdl_taskmaster.providers.jev_client import (
+            build_activation_question,
+            build_review_question,
+            call_jev_decisions,
+            map_activation_result,
+            map_review_result,
+        )
+        try:
+            api_key = self._resolve_api_key()
+            if not api_key:
+                return None
+
+            projection = getattr(request, "projection", None)
+            document = getattr(projection, "document", {}) if projection else {}
+            op_inputs = document.get("operation_inputs", {})
+
+            if operation == "INTERPRET_ACTIVATION":
+                state = op_inputs.get("RAW_USER_MESSAGE") or getattr(request, "prompt", "")
+                questions = build_activation_question()
+                map_fn = map_activation_result
+            elif operation in {"INTERPRET_PROMPT_REVIEW", "INTERPRET_PLAN_REVIEW"}:
+                subject_kind = op_inputs.get("BOUND_REVIEW_SUBJECT_KIND", "")
+                subject_body = op_inputs.get("BOUND_REVIEW_SUBJECT_BODY", "")
+                user_msg = op_inputs.get("RAW_USER_REVIEW_MESSAGE", "")
+                state = f"REVIEW SUBJECT ({subject_kind}):\n{subject_body}\n\nUSER REVIEW FEEDBACK:\n{user_msg}"
+                questions = build_review_question()
+                map_fn = map_review_result
+            else:
+                return None
+
+            jev_model = self._model_for(operation)
+            if "jev" not in jev_model.lower():
+                jev_model = "typesafe/jev-1.13"
+
+            resp_body, latency = call_jev_decisions(
+                state=state,
+                questions=questions,
+                api_key=api_key,
+                base_url=self.base_url,
+                model=jev_model,
+                timeout=min(self.timeout, 15.0),
+            )
+            mapped = map_fn(resp_body)
+            raw_text = json.dumps(mapped, ensure_ascii=False)
+            if self.on_progress:
+                try:
+                    self.on_progress(f"TypeSafe Jev System 1 routed in {latency * 1000.0:.0f}ms")
+                except Exception:
+                    pass
+            usage_raw = resp_body.get("usage") or {}
+            usage = {
+                "input_tokens": usage_raw.get("input_tokens", 0),
+                "output_tokens": usage_raw.get("output_tokens", 0),
+                "total_tokens": usage_raw.get("input_tokens", 0) + usage_raw.get("output_tokens", 0),
+            }
+            return WorkerResult(
+                raw_text,
+                {
+                    "worker": "jev",
+                    "model": jev_model,
+                    "provider": "TypeSafe",
+                    "latency_ms": round(latency * 1000.0, 3),
+                    "jev_latency_s": latency,
+                    "jev_decision": mapped,
+                    "usage": usage,
+                },
+            )
+        except Exception as exc:
+            if self.on_progress:
+                try:
+                    self.on_progress(f"TypeSafe Jev fallback to System 2 ({exc})")
+                except Exception:
+                    pass
+            return None
+
     def call(self, request: Any) -> WorkerResult:
+        operation_name = getattr(request, "operation", None)
+        if self._should_use_jev_for(operation_name):
+            jev_res = self._try_jev_decisions(request, operation_name)
+            if jev_res is not None:
+                return jev_res
+
         instructions, input_text = self._split_prompt(request.prompt)
         if self.reorder_keys_for_cache:
             input_text = self._reorder_for_cache(input_text.lstrip())

@@ -44,17 +44,24 @@ class ApiWorker:
     content, not a coding-agent's scaffold.
     """
 
+    @staticmethod
+    def _normalize_model_name(name: str) -> str:
+        s = name.strip()
+        if s.lower() in {"gpt-oss-120b", "openai/gpt-oss-120b"}:
+            return "openai/gpt-oss-120b"
+        return s
+
     def __init__(
         self,
         *,
-        model: str = "z-ai/glm-4.7",
+        model: str = "openai/gpt-oss-120b",
         repo_root: str | Path,
         base_url: str = "https://openrouter.ai/api/v1",
         api_key_env: str = "OPENROUTER_API_KEY",
         api_key_command: list[str] | None = None,
         timeout: float = 600.0,
         capture_tokens: bool = True,
-        reasoning_effort: str | None = None,
+        reasoning_effort: str | None = "low",
         reasoning_by_operation: dict[str, str] | None = None,
         model_by_operation: dict[str, str] | None = None,
         reorder_keys_for_cache: bool = False,
@@ -64,7 +71,7 @@ class ApiWorker:
         max_tokens: int = 4096,
         on_progress: Any = None,
     ):
-        self.model = model
+        self.model = self._normalize_model_name(model)
         self.max_tokens = int(max_tokens)
         self.base_url = base_url.rstrip("/")
         self.api_key_env = api_key_env
@@ -73,11 +80,10 @@ class ApiWorker:
         self.reasoning_effort = reasoning_effort
         if reasoning_by_operation:
             self.reasoning_by_operation = dict(reasoning_by_operation)
-        elif reasoning_effort is None:
-            from pdl_taskmaster.runtime.model_classification import get_proportional_reasoning_mapping
-            self.reasoning_by_operation = get_proportional_reasoning_mapping(self.model)
         else:
-            self.reasoning_by_operation = {}
+            from pdl_taskmaster.runtime.model_classification import get_proportional_reasoning_mapping
+            mapping = get_proportional_reasoning_mapping(self.model)
+            self.reasoning_by_operation = mapping if mapping else {}
         self.model_by_operation = dict(model_by_operation or {})
         self.reorder_keys_for_cache = reorder_keys_for_cache
         self.structured_output = structured_output
@@ -142,7 +148,7 @@ class ApiWorker:
     def _model_for(self, operation: str | None) -> str:
         """Per-operation model wins over the global default."""
         if operation is not None and operation in self.model_by_operation:
-            return self.model_by_operation[operation]
+            return self._normalize_model_name(self.model_by_operation[operation])
         return self.model
 
     def _split_prompt(self, prompt: str) -> tuple[str, str]:

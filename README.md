@@ -88,12 +88,12 @@ Fast-path review commands: `/confirm`, `/revise <feedback>`, `/stop`.
 ## Live model worker (default)
 
 ```powershell
-# Default worker is 'api' with model 'z-ai/glm-4.7'
+# Default worker is 'api' with model 'openai/gpt-oss-120b'
 pdlt --new-session
 # or: python -m pdl_taskmaster.host.repl --candidate-repo . --new-session
 ```
 
-> **System 1 / System 2 Architecture Note**: Production default is `--worker api` (System 2, e.g. `z-ai/glm-4.7`). Local fast System 1 classification models are undergoing contrastive RLCD fine-tuning (ADR-0012) and fail-closed to System 2 via the confidence ladder if threshold ($0.85$) or top-2 margin ($0.40$) are unmet.
+> **System 1 / System 2 Architecture Note**: Production default is `--worker api` (System 2: `openai/gpt-oss-120b` with reasoning effort `low`; benchmarks evaluated on `z-ai/glm-4.7`). Local fast System 1 classification models are undergoing contrastive RLCD fine-tuning (ADR-0012) and fail-closed to System 2 via the confidence ladder if threshold ($0.85$) or top-2 margin ($0.40$) are unmet.
 
 `--worker api` sends the compiled interpretation/plan directly to an OpenAI-compatible `/responses` endpoint (instructions bundled in `src/pdl_taskmaster/runtime/worker-bootstrap.txt`), with no tool definitions, sandbox, or agentic system prompt attached — deliberately; see the "instruction-lightness" finding in the whitepaper (§3).
 

@@ -8,7 +8,7 @@
 
 ## Context
 
-In earlier iterations of the harness, model responses from semantic worker invocations (`scripts/runtime/operation_bridge.py`) were validated via ad-hoc, placement-tolerant JSON extraction (`_object()`) and manual dictionary inspection (`_keys()`). Each operation parser manually asserted key presence, checked primitive types, and raised string-keyed `WireError` exceptions (e.g. `WireError("extra_fields")`, `WireError("invalid_json")`).
+In earlier iterations of the harness, model responses from semantic worker invocations (`src/pdl_taskmaster/runtime/operation_bridge.py`) were validated via ad-hoc, placement-tolerant JSON extraction (`_object()`) and manual dictionary inspection (`_keys()`). Each operation parser manually asserted key presence, checked primitive types, and raised string-keyed `WireError` exceptions (e.g. `WireError("extra_fields")`, `WireError("invalid_json")`).
 
 This approach has reached its maintainability and reliability limit:
 1. **Validation Fragmentation:** Output schemas are maintained redundantly across `contracts/EXECUTION_CONTRACT.json`, `contracts/VERIFICATION_CONTRACT.json`, provider grammar sanitizers (`_sanitize_schema_for_grammar`), and runtime parser functions in `operation_bridge.py`.
@@ -49,7 +49,7 @@ Every semantic operation output SHALL be modeled as a Pydantic `BaseModel` with 
 ## Consequences
 
 ### Positive
-- Replaces hundreds of lines of fragile manual dict/type assertion boilerplate in `scripts/runtime/operation_bridge.py`.
+- Replaces hundreds of lines of fragile manual dict/type assertion boilerplate in `src/pdl_taskmaster/runtime/operation_bridge.py`.
 - Eliminates schema drift between runtime Python code and static JSON contract definitions.
 - Generates precise, automated operator retry instructions that increase recovery rates on sampling glitches.
 

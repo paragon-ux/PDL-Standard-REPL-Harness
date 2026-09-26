@@ -18,20 +18,20 @@ Both mandates are enforced by **one unified mechanism**: compiling immutable nor
 
 ```mermaid
 graph TD
-    User([User Request / Shell]) --> REPL["Host & REPL Loop<br/>(scripts/host/app.py)"]
+    User([User Request / Shell]) --> REPL["Host & REPL Loop<br/>(src/pdl_taskmaster/host/app.py)"]
     REPL --> FastPath{Fast-Path / Command?<br/>/confirm, /revise, /stop}
     FastPath -- Yes --> ManualReview["Direct Intent Transition<br/>(Zero LLM Overhead)"]
-    FastPath -- No --> Engine["SessionEngine Orchestrator<br/>(scripts/runtime/session_engine.py)"]
+    FastPath -- No --> Engine["SessionEngine Orchestrator<br/>(src/pdl_taskmaster/runtime/session_engine.py)"]
 
     subgraph Governance ["Deterministic Control Plane"]
-        Engine <--> Controller["MechanicalController State Machine<br/>(scripts/controller/mechanical_controller.py)"]
-        Engine <--> NormStore["Normative Store & Compiler<br/>(scripts/runtime/context_compiler.py)"]
-        Engine <--> Bridge["OperationBridge Wire Deserializer<br/>(scripts/runtime/operation_bridge.py)"]
+        Engine <--> Controller["MechanicalController State Machine<br/>(src/pdl_taskmaster/controller/mechanical_controller.py)"]
+        Engine <--> NormStore["Normative Store & Compiler<br/>(src/pdl_taskmaster/runtime/context_compiler.py)"]
+        Engine <--> Bridge["OperationBridge Wire Deserializer<br/>(src/pdl_taskmaster/runtime/operation_bridge.py)"]
     end
 
     subgraph DataPlane ["Context Flow & Storage Substrate"]
         Engine <--> VFS["WorkspaceRun / In-Memory VFS<br/>(turns/turn_###/stages/)"]
-        Engine <--> Redaction["Quarantine & Redaction Pass<br/>(scripts/runtime/quarantine.py)"]
+        Engine <--> Redaction["Quarantine & Redaction Pass<br/>(src/pdl_taskmaster/runtime/quarantine.py)"]
     end
 
     subgraph Workers ["Semantic Execution Plane"]
@@ -56,7 +56,8 @@ PDL-Standard-REPL-Harness/
 │   ├── architecture/                 # Whitepapers & framing specifications
 │   ├── governance/                   # Roadmap, experiment logs, and release plans
 │   └── trd/                          # Technical Requirement Documents (TRD-0001..0003)
-├── scripts/                          # Executable runtime implementation
+├── src/pdl_taskmaster/               # Packaged Python distribution root
+│   ├── contracts/                    # Bundled normative contracts (Tier 4 store)
 │   ├── controller/                   # Deterministic state machine & transition rules
 │   │   └── mechanical_controller.py  # Stage, Intent, Transition, MechanicalController
 │   ├── eval/                         # Adversarial and fidelity qualification suites
@@ -64,24 +65,28 @@ PDL-Standard-REPL-Harness/
 │   │   ├── fidelity_scan.py          # Track P requirement recall and adherence scorer
 │   │   ├── leak_scan.py              # Strict full-text deliverable & metadata scanner
 │   │   └── run_qualified_batch.py    # Paired A/B execution harness with Wilson escalation
-│   ├── host/                         # User-facing terminal REPL and application loop
+│   ├── host/                         # User-facing terminal REPL, pdlt CLI, and host loop
 │   │   ├── app.py                    # PDLtHost process and turn lifecycle manager
+│   │   ├── cli.py                    # pdlt umbrella command line entry point
 │   │   └── repl.py                   # Terminal loop, fast paths, and argument parsing
 │   ├── observation/                  # Structured telemetry sinks and event schemas
 │   ├── providers/                    # Execution worker backends (API, Codex, Stubs)
 │   │   ├── api_worker.py             # OpenAI-compatible API client with tiering & caching
 │   │   ├── fixtures.py               # Fixture builder for deterministic test replay
 │   │   └── live_stub.py              # Offline deterministic test worker
-│   └── runtime/                      # Core protocol orchestrator and data plane
-│       ├── context_compiler.py       # Per-operation prompt projection compiler
-│       ├── operation_bridge.py       # Wire serializer, deserializer, and schema parser
-│       ├── quarantine.py             # D29 generalized canary and IOC redaction pass
-│       ├── result_ir.py              # TRD-0003 Result IR decomposition and verifier
-│       ├── session_engine.py         # SessionEngine 5-stage orchestrator
-│       └── workspace.py              # Context-flow workspace and turn hierarchy (S3/S4)
-└── runs/                             # Offline evaluation manifests and test batteries
-    ├── adversarial/                  # 27 F6 adversarial test cases (BND, DRIP, ENC, STACK)
-    └── fidelity/                     # 13 Track P positive multi-constraint test cases
+│   ├── runtime/                      # Core protocol orchestrator and data plane
+│   │   ├── context_compiler.py       # Per-operation prompt projection compiler
+│   │   ├── normative_store.py        # 4-tier precedence standards resolver
+│   │   ├── operation_bridge.py       # Wire serializer, deserializer, and schema parser
+│   │   ├── quarantine.py             # D29 generalized canary and IOC redaction pass
+│   │   ├── result_ir.py              # TRD-0003 Result IR decomposition and verifier
+│   │   ├── session_engine.py         # SessionEngine 5-stage orchestrator
+│   │   ├── wire_payloads.py          # Pydantic v2 wire models (ADR-0010)
+│   │   └── workspace.py              # Context-flow workspace and turn hierarchy (S3/S4)
+│   └── tracking/                     # Optional MLflow tracking sink
+├── tests/                            # Offline test suite (87 passed, 1 skipped)
+│   └── fixtures/                     # Self-contained recorded cases & battery manifests
+└── runs/                             # External evaluation manifests and run ledgers
 ```
 
 ---
@@ -147,9 +152,9 @@ stateDiagram-v2
 
 ## 4. Subsystem Deep-Dives
 
-### 4.1 Host & REPL Loop Subsystem (`scripts/host/`)
+### 4.1 Host & REPL Loop Subsystem (`src/pdl_taskmaster/host/`)
 * **Role**: Owns the OS process lifetime, terminal I/O loop, configuration resolution, and telemetry sink initialization.
-* **Fast-Path Engine (`U1`, `scripts/host/repl.py`)**: Intercepts `/confirm`, `/revise <feedback>`, and `/stop` directly in the REPL, applying review intents straight to `SessionEngine.handle_explicit_review()`. This bypasses expensive 15-second LLM classification round-trips for unambiguous user actions.
+* **Fast-Path Engine (`U1`, `src/pdl_taskmaster/host/repl.py`)**: Intercepts `/confirm`, `/revise <feedback>`, and `/stop` directly in the REPL, applying review intents straight to `SessionEngine.handle_explicit_review()`. This bypasses expensive 15-second LLM classification round-trips for unambiguous user actions.
 * **Non-Interactive Mode**: Fully headless support (`--non-interactive`) with portable POSIX key resolution for SSH relays and automated qualification drivers.
 
 ```mermaid
@@ -179,7 +184,7 @@ sequenceDiagram
 
 ---
 
-### 4.2 Quarantine & Redaction Data Plane (`scripts/runtime/quarantine.py`)
+### 4.2 Quarantine & Redaction Data Plane (`src/pdl_taskmaster/runtime/quarantine.py`)
 * **Role**: Enforces the semantic-bootstrap containment boundary established in Protocol v2 (ADR-0003, TRD-0002, Decision D20).
 * **Primary Control — Architectural Isolation**: Raw untrusted user content is read exclusively by `BOOTSTRAP_ANALYSIS`. Compile operations (`DRAFT_PROMPT`, `DRAFT_PLAN`, `EXECUTE`) **never** receive raw user text; they operate strictly on compiled context projections.
 * **Secondary Control — DLP & Canary Redaction Pass (`D29`)**: Acts as a defense-in-depth data loss prevention backstop:
@@ -197,7 +202,7 @@ flowchart LR
     Split --> ApproachNotes[approach_notes]
     Split --> RiskNotes[risk_notes<br/>Quarantined Threat Telemetry]
     
-    TaskSummary --> Sanitizer[DLP & Canary Redaction Pass<br/>scripts/runtime/quarantine.py]
+    TaskSummary --> Sanitizer[DLP & Canary Redaction Pass<br/>src/pdl_taskmaster/runtime/quarantine.py]
     Sanitizer --> Entities[Entity Channel Filter<br/>Verbatim Substring Inheritance]
     Sanitizer --> CompileContext[Compiled Context Document]
     Entities --> CompileContext
@@ -209,7 +214,7 @@ flowchart LR
 
 ---
 
-### 4.3 Context Compilation & Projections (`scripts/runtime/context_compiler.py`)
+### 4.3 Context Compilation & Projections (`src/pdl_taskmaster/runtime/context_compiler.py`)
 * **Role**: Compiles immutable, content-addressed prompt projections per operation.
 * **Mechanism**:
   1. Inspects `contracts/EXECUTION_CONTRACT.json` to identify required input symbols and normative standard clauses for the target operation.
@@ -220,7 +225,7 @@ flowchart LR
 
 ---
 
-### 4.4 Result IR Decomposition & Verification (`scripts/runtime/result_ir.py`)
+### 4.4 Result IR Decomposition & Verification (`src/pdl_taskmaster/runtime/result_ir.py`)
 * **Role**: Enforces structured result-decomposition per ADR-0009 and TRD-0003 (`RS-01` through `RS-10`).
 * **Mechanism**:
   - `derive_requirements`: Extracts numbered requirements from confirmed prompt pseudocode.
@@ -230,7 +235,7 @@ flowchart LR
 
 ---
 
-### 4.5 Storage Architecture & Turn Hierarchy (`scripts/runtime/workspace.py`)
+### 4.5 Storage Architecture & Turn Hierarchy (`src/pdl_taskmaster/runtime/workspace.py`)
 * **Role**: Manages multi-turn workspace hierarchies and deliverable chaining (ADR-0008 S3/S4).
 * **Two-Level Directory Invariant**:
   - **Level 1 (Substantive Task Epoch)**: `turns/turn_###/` encapsulates an entire protocol cycle from user intent to `CLOSED_SUCCESS`.
@@ -267,7 +272,7 @@ graph TD
 Recent architectural reviews identified critical bottlenecks in the `v2.3.0` baseline, now codified into three active Architecture Decision Records:
 
 ### ADR-0010: Pydantic Schema Enforcement
-* **Target Subsystem**: `scripts/runtime/operation_bridge.py`
+* **Target Subsystem**: `src/pdl_taskmaster/runtime/operation_bridge.py`
 * **Defect Remedied**: Manual JSON parsing via `_object()`, ad-hoc key checks (`_keys()`), and coarse string-based `WireError`s.
 * **Modernization**:
   - Strongly typed Pydantic v2 `BaseModel`s for all operation outputs (`ActivationDecisionPayload`, `BootstrapAnalysisPayload`, `PromptDraftPayload`, `ReviewFactsPayload`, `ExecutionDraftPayload`, `ExecutionOutcomePayload`).
@@ -275,7 +280,7 @@ Recent architectural reviews identified critical bottlenecks in the `v2.3.0` bas
   - Precision operator corrections generated from `ValidationError.errors()` injected into the retry-once loop in `SessionEngine._call`.
 
 ### ADR-0011: Software-Defined In-Memory VFS & Ephemeral Sandboxing
-* **Target Subsystem**: `scripts/runtime/workspace.py` and `scripts/controller/mechanical_controller.py`
+* **Target Subsystem**: `src/pdl_taskmaster/runtime/workspace.py` and `src/pdl_taskmaster/controller/mechanical_controller.py`
 * **Defect Remedied**: High I/O latency and file bloat on Windows NTFS caused by 60–100 synchronous `os.fsync()` calls and directory creations per turn.
 * **Modernization**:
   - **Shipped Substrate (v2.4.0)**: In-memory Virtual Filesystem (`MemoryWorkspaceRun`) and cached state store (`MemoryAtomicJsonStore`) executing stage handoffs in RAM buffers with fast unjournaled disk writes, dropping workspace I/O from **~3,000ms to $<1\text{ms}$**. Single-artifact turn persistence on terminal status (`flush_turn_archive`).
@@ -323,13 +328,13 @@ The repository maps executable contracts to immutable specifications in `contrac
 pytest
 
 # Execute F6 adversarial battery (qualification sweep)
-python scripts/eval/run_qualified_batch.py --trials 3 --out-dir runs/adversarial/
+python -m pdl_taskmaster.eval.run_qualified_batch --trials 3 --out-dir runs/adversarial/
 
 # Run paired A/B comparison report (Evidence II format)
-python scripts/eval/compare_eval_runs.py --summary-a runs/adversarial/summary.json
+python -m pdl_taskmaster.eval.compare_eval_runs --summary-a runs/adversarial/summary.json
 
 # Launch interactive terminal REPL with API worker
-python -m scripts.host.repl --candidate-repo . --worker api --model z-ai/glm-4.7
+pdlt --worker api --model z-ai/glm-4.7
 
 # Query Waymark architectural consensus memory
 waymark ask "Full repository architecture, state machine, and call flow in PDL Taskmaster" --plain

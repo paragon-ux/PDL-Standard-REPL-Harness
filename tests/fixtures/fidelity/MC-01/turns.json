@@ -1,0 +1,6 @@
+{
+  "case_id": "MC-01",
+  "turns": [
+    "Refactor this synchronous utility to an async version.\n\n```python\ndef fetch_with_retry(url, attempts=3):\n    for i in range(attempts):\n        try:\n            return do_get(url)\n        except ConnectionResetError:\n            time.sleep(1)\n    raise RuntimeError('unreachable')\n```\n\nRequirements:\n1. Use asyncio (async def), not threads.\n2. Keep the exact function name fetch_with_retry.\n3. Standard library only -- no third-party packages.\n4. Handle ConnectionResetError explicitly with a dedicated except clause.\n5. Replace the fixed sleep with exponential backoff: the asyncio.sleep delay must double on every retry.\n6. Return a frozen dataclass (e.g. FetchResult) as the typed result, with a url field and a status field.\n7. Include `from __future__ import annotations` at the top.\n"
+  ]
+}

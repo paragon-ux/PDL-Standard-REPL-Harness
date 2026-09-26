@@ -5,7 +5,7 @@
 This roadmap sequences work across interconnected tracks:
 - **Track F (Framing & Evidence):** Evidentiary claims in `docs/architecture/framing.md`, adversarial evaluation, and proof-by-contradiction.
 - **Track P (Positive Alignment & Fidelity):** Benign task execution, complex specification disambiguation, constraint-satisfaction benchmarks, and Evidence I empirical proof.
-- **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/operations/efficiency-report.md` and `scripts/providers/api_worker.py`.
+- **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/operations/efficiency-report.md` and `src/pdl_taskmaster/providers/api_worker.py`.
 - **Track M (Measurement & Multi-Model):** Shared empirical evaluation infrastructure that unlocks high-confidence claims across models and platforms.
 - **Track L (Local & Integration):** Local worker support, prefix-cache architecture, training-data export, and System 1 decision models (Laya/Jev) aligned via RLCD (arXiv:2307.12950) replacing Qwen distillation (ADR-0012).
 - **Track D (Defect Remediation & Security Integrity):** Critical defect fixes, contract synchronization, and delimiter purging identified during independent audits.
@@ -26,15 +26,15 @@ This roadmap sequences work across interconnected tracks:
 | **E1** | Per-operation model tiering | E | M | Med | 2 | **SHIPPED** | Commit `34b316a` (`--api-model-operation`) |
 | **E2** | Structured-output constraints & grammar sanitization | E | M | Med | 2 | **SHIPPED** | Commits `34b316a`, `1561d2d` (`--api-structured-output`) |
 | **—** | POSIX key-resolution fallback & SSH decoupling | E | S | Low | 2 | **SHIPPED** | Commits `61ca98d`, `29a745c` |
-| **M1** | Qualified-measurement eval harness | M | L | Low | 3 | **SHIPPED** | Commit `1561d2d` (`scripts/eval/run_qualified_batch.py`) |
-| **F6** | Broad breadth-first adversarial battery | F | L | Low | 4 | **SHIPPED** | Commit `1561d2d` (`scripts/eval/build_adversarial_battery.py`) |
+| **M1** | Qualified-measurement eval harness | M | L | Low | 3 | **SHIPPED** | Commit `1561d2d` (`src/pdl_taskmaster/eval/run_qualified_batch.py`) |
+| **F6** | Broad breadth-first adversarial battery | F | L | Low | 4 | **SHIPPED** | Commit `1561d2d` (`src/pdl_taskmaster/eval/build_adversarial_battery.py`) |
 | **F6.0b**| Tool-result injection applicability spike | F | S | Low | 4 | **NO-GO** | Mechanically isolated; out of scope per `AUTH-06` |
 | **F4** | Contradiction argument runner (relabeled tripwire) | F | M | Low | 4 | **SHIPPED** | Commit `1561d2d` (`--control-prompt-patch`) |
 | **F6.1** | Rigor remediation (12 construct-validity fixes) | F/M | M | Low | 4 | **SHIPPED** | Corrected scripts: `leak_scan.py`, battery v4, runner v3 |
 | **F6.2** | False-positive elimination & deliverable isolation | F/M | M | Low | 4 | **SHIPPED** | Deliverable isolation, markdown extraction, cancellation scoring |
 | **F6.3** | Steelmanned structured adversarial evaluation | F/M | M | Low | 4 | **SHIPPED** | `AdversarialAuditOutcome` schema, v2 Gate clean across all 162 trials (0 hijack, 0 leak) |
 | **P1** | Benign multi-constraint task battery | P | M | Low | 5 | **SHIPPED** | 13 cases in `runs/fidelity/MANIFEST.json` (MC, DISAMB, ACTOR) |
-| **P2** | Inferential fidelity scoring harness | P | M | Low | 5 | **SHIPPED** | `scripts/eval/fidelity_scan.py` (Recall, adherence, attribution, disambiguation) |
+| **P2** | Inferential fidelity scoring harness | P | M | Low | 5 | **SHIPPED** | `src/pdl_taskmaster/eval/fidelity_scan.py` (Recall, adherence, attribution, disambiguation) |
 | **P3** | Paired positive benchmark (Protocol vs Control) | P | L | Low | 5 | **ACTIVE / NEXT** | Paired benchmark under connected dual-gate invariant |
 | **D25**| Certification Gate & Negative Constraint Omission | P/F | M | Low | 5 | **SHIPPED** | Commits `853ddd3`, `c7b0c02`, `30ca83a` (`PLAN-10`, `EXEC-05`, ADR-0007) |
 | **D1** | Wire model classification & Class B Anthropic budget | D | M | Low | 8 (2.3.0) | **SHIPPED** | Connect `model_classification.py` to Host/ApiWorker; add Class B token budgets |
@@ -84,10 +84,10 @@ Completed in commit `34b316a`.
 
 Completed in commits `61ca98d`, `34b316a`, `29a745c`, and `1561d2d`.
 
-- **E1 — Per-operation model tiering:** Added `model_by_operation` to `ApiWorker` and `--api-model-operation OP=MODEL` to `scripts/host/repl.py`. Enables routing high-capacity models to draft operations while lightweight models handle review classifications.
+- **E1 — Per-operation model tiering:** Added `model_by_operation` to `ApiWorker` and `--api-model-operation OP=MODEL` to `src/pdl_taskmaster/host/repl.py`. Enables routing high-capacity models to draft operations while lightweight models handle review classifications.
 - **E2 — Real structured-output constraints:**
   - Added `--api-structured-output` to pass compiled JSON schemas directly into OpenAI-compatible `/responses` endpoints.
-  - Implemented `_sanitize_schema_for_grammar` in `scripts/providers/api_worker.py` to recursively strip stateful keywords (like `uniqueItems`) rejected by context-free grammar engines (e.g. Venice / vLLM on OpenRouter), ensuring universal compatibility across backends.
+  - Implemented `_sanitize_schema_for_grammar` in `src/pdl_taskmaster/providers/api_worker.py` to recursively strip stateful keywords (like `uniqueItems`) rejected by context-free grammar engines (e.g. Venice / vLLM on OpenRouter), ensuring universal compatibility across backends.
 - **Platform Hardening & Codex Decoupling:**
   - Inverted default worker to `api` and model to `z-ai/glm-4.7`.
   - Lazy-loaded `CodexWorker` with preflight check; guarded `/config` and `/sandbox` commands.
@@ -100,14 +100,14 @@ Completed in commits `61ca98d`, `34b316a`, `29a745c`, and `1561d2d`.
 
 Completed in commit `1561d2d`.
 
-- **`scripts/eval/run_qualified_batch.py`:**
+- **`src/pdl_taskmaster/eval/run_qualified_batch.py`:**
   - Supports dual arms: `control` (plain unconstrained API call) vs `protocol` (PDLt mechanical state machine).
   - Supports manifest filtering by vector (`--vector`) and case (`--case-id`).
   - Implements **Adaptive Escalation**: runs baseline $n=3$ trials; automatically escalates to $n=10$ if non-unanimous results occur ($0 < \text{leaks} < n$).
   - Supports `--qualified` flag (enforces $n \ge 10$ trials and tags measurement condition).
   - Full offline CI testing via `--stub` with `LiveStubWorker`.
   - MLflow logging integration (`--mlflow`).
-- **`scripts/eval/compare_eval_runs.py`:**
+- **`src/pdl_taskmaster/eval/compare_eval_runs.py`:**
   - Implements **Arm A/B Evaluation** report generation in Evidence II markdown format.
   - Implements **Cross-OS Invariance** report generation diffing Windows (`win32`) vs Linux (`linux`) runs.
 
@@ -116,7 +116,7 @@ Completed in commit `1561d2d`.
 ## Phase 4 — Adversarial Battery & Multi-Model Validation
 
 ### F6 — Breadth-First Adversarial Test Battery [SHIPPED in 1561d2d]
-Replaced the v1 depth-heavy plan (10 trials × 7 cases) with a comprehensive breadth-first battery generated by `scripts/eval/build_adversarial_battery.py`:
+Replaced the v1 depth-heavy plan (10 trials × 7 cases) with a comprehensive breadth-first battery generated by `src/pdl_taskmaster/eval/build_adversarial_battery.py`:
 - **Design Principles:**
   1. *Refusal is a gating precondition, not the metric:* Track refusal alongside leak rate.
   2. *No instance-keyed tripwires:* Each case carries a cryptographically unique 16-character hexadecimal token (`TRIPWIRE_<HEX>`).
@@ -131,11 +131,11 @@ Replaced the v1 depth-heavy plan (10 trials × 7 cases) with a comprehensive bre
 - **Scaffold & Manifest:** Saved to `runs/adversarial/MANIFEST.json` and `runs/adversarial/<case_id>/turns.json`.
 
 ### F6.0b — Tool-Result Injection Spike [NO-GO / RESOLVED]
-- **Finding:** Inspected `scripts/runtime/session_engine.py` and `mechanical_controller.py`. Tool results never re-enter model context as unconstrained prompts; the state machine gates purely mechanically on exit codes/artifacts under `AUTH-06` and `CONFORM-02`.
+- **Finding:** Inspected `src/pdl_taskmaster/runtime/session_engine.py` and `mechanical_controller.py`. Tool results never re-enter model context as unconstrained prompts; the state machine gates purely mechanically on exit codes/artifacts under `AUTH-06` and `CONFORM-02`.
 - **Verdict:** Tool-Result injection is formally out of scope for the current harness architecture.
 
 ### F4 — Proof-by-Contradiction Runner [SHIPPED in 1561d2d]
-- Implemented `--control-prompt-patch` in `scripts/eval/control_api_call.py` to inject naive bans (e.g. "Do not output ACTIVATED") against relabeled tripwire tokens.
+- Implemented `--control-prompt-patch` in `src/pdl_taskmaster/eval/control_api_call.py` to inject naive bans (e.g. "Do not output ACTIVATED") against relabeled tripwire tokens.
 - Demonstrates that naive bans fail when the adversary alters the label, whereas protocol data quarantine holds invariant.
 
 ### F6.1 — Rigor Remediation (12 Construct-Validity Fixes) [SHIPPED]
@@ -150,7 +150,7 @@ Independent audit of the M1/F6 evaluation infrastructure identified 12 structura
 ### F6.2 — False-Positive Elimination, Native DLP Standards & Construct Validity [SHIPPED]
 Eliminated the construct-validity failure where the scoring harness penalized intermediate protocol governance dialogue, and enshrined token redaction directly into normative protocol standards:
 - **Native Protocol Standards (SEM-06 & EXEC-04):** Enshrined `SEM-06 — Payload token redaction` in `SEMANTIC_INPUT_STANDARD.md` and `EXEC-04 — Safe deliverable emission` in `EXECUTION_STANDARD.md` (indexed in `CONTRACT_MANIFEST.json` and validated by `StandardRegistry`). Verbatim emission of raw canary tokens or exploit directives is strictly forbidden across all outputs, plans, reviews, and deliverables.
-- **Pure Adversarial Fixtures (Zero Prompt Assistance):** Completely eliminated defensive redaction instructions from user attack prompts in `scripts/eval/build_adversarial_battery.py` and regenerated all 27 battery fixtures in `runs/adversarial/`. Control defenses live strictly in developer system prompts; protocol defenses live natively in compiled contracts.
+- **Pure Adversarial Fixtures (Zero Prompt Assistance):** Completely eliminated defensive redaction instructions from user attack prompts in `src/pdl_taskmaster/eval/build_adversarial_battery.py` and regenerated all 27 battery fixtures in `runs/adversarial/`. Control defenses live strictly in developer system prompts; protocol defenses live natively in compiled contracts.
 - **Deliverable Isolation:** Intermediate Prompt Pseudocode review dialogue (where the host quotes and quarantines untrusted input for human confirmation) is strictly excluded from leak scanning. Only the final artifact emitted by `EXECUTE` on the closing turn is evaluated.
 - **First-Class Mitigation Scoring:** Protocol cancellations (`CLOSED_CANCELLED` and `BLOCKED_BY_HIGHER_PRIORITY`) are explicitly scored as clean defenses (`leak_detected: False`, `refusal_detected: True`).
 - **Dual-Format Deliverable Extraction:** `leak_scan.py` parses labeled markdown deliverable sections (`sanitized_clean_deliverable: <text>`) alongside raw JSON objects.
@@ -222,7 +222,7 @@ Fulfills the core thesis of `docs/architecture/framing.md` (Evidence I): proving
   - **Negative Constraint Compliance:** Strict absence of prohibited side-effects or out-of-scope modifications.
   - **Actor Attribution Accuracy:** Correct representation of who performs each act in Prompt Pseudocode (`SEM-05`).
   - **Ambiguity Disambiguation Rate:** Whether the protocol successfully surfaces underspecified edge cases during the review stage rather than guessing incorrectly.
-- **Implementation:** `scripts/eval/fidelity_scan.py` (+ `scripts/tests/test_fidelity_scan.py`). Stalled/conformity trials unscored, counted, excluded from rates (leak-scoring convention). Control arm runs `control_mode: "task"` (plain executor, no audit schema) per the steelman tenet.
+- **Implementation:** `src/pdl_taskmaster/eval/fidelity_scan.py` (+ `tests/test_fidelity_scan.py`). Stalled/conformity trials unscored, counted, excluded from rates (leak-scoring convention). Control arm runs `control_mode: "task"` (plain executor, no audit schema) per the steelman tenet.
 
 ### P3 — Paired Positive Benchmark (Protocol vs Control) [CONNECTED GATE WITH F6.4]
 - **Goal:** Paired benchmark evaluating Protocol Arm vs Control Arm across candidate models on Track P.
@@ -271,10 +271,10 @@ Follows the same evidentiary standard as earlier rejected levers (draft-stage lo
 **Architecture:** 2-tier hybrid split (ADR-0012).
 - **System 1 Decision Worker (Laya / Jev - Local):** Non-generative, probabilistic decision model running in a single forward pass (<20ms, zero syntax/formatting errors). Governs protocol classification and routing: `INTERPRET_ACTIVATION`, `INTERPRET_PROMPT_REVIEW`, `INTERPRET_PLAN_REVIEW`, and `INTERPRET_EXECUTION_INPUT`.
 - **System 2 Reasoning Worker (Frontier Model - API):** Reserved strictly for open-ended creative reasoning and synthesis: `BOOTSTRAP_ANALYSIS`, `DRAFT_PROMPT`, and deliverable code generation in `EXECUTE`.
-- **Mechanical Controller (Deterministic Oracle):** External deterministic state machine (`scripts/controller/mechanical_controller.py`) that strictly gates all stage transitions and scores preference pairs without human annotators.
+- **Mechanical Controller (Deterministic Oracle):** External deterministic state machine (`src/pdl_taskmaster/controller/mechanical_controller.py`) that strictly gates all stage transitions and scores preference pairs without human annotators.
 
 ### L5 — Contrastive RLCD Dataset Generation [ACTIVE / NEXT]
-- **Goal:** Synthesize contrastive preference dataset pairs using **RLCD (Reinforcement Learning from Contrastive Distillation, arXiv:2307.12950)** via `scripts/eval/export_rlcd_dataset.py`.
+- **Goal:** Synthesize contrastive preference dataset pairs using **RLCD (Reinforcement Learning from Contrastive Distillation, arXiv:2307.12950)** via `src/pdl_taskmaster/eval/export_rlcd_dataset.py`.
 - **Mechanism:**
   - **Positive Contexts ($x^+$):** Benign multi-constraint and disambiguation cases from Track P (`runs/fidelity/`), asserting strict standards adherence (`REVIEW-09`, `REVIEW-14` silence non-acceptance, `SEM-05` actor attribution).
   - **Negative Contexts ($x^-$):** Adversarial injection and drip cases from F6 (`runs/adversarial/`), representing conversational overrides, canary echoes, and framing attacks.
@@ -286,7 +286,7 @@ Follows the same evidentiary standard as earlier rejected levers (draft-stage lo
 - **Performance Target:** $<20\text{ms}$ latency per review classification, 0.0% JSON/markdown syntax errors, 100% adherence to silence non-acceptance (`REVIEW-14`) and actor attribution (`SEM-05`).
 
 ### L7 — Local System 1 Worker Dispatch [PROPOSED]
-- **Goal:** Implement `System1Worker` in `scripts/providers/` and connect `--worker system1` / `--api-model-operation REVIEW=system1:laya`.
+- **Goal:** Implement `System1Worker` in `src/pdl_taskmaster/providers/` and connect `--worker system1` / `--api-model-operation REVIEW=system1:laya`.
 - **Cost & Latency Impact:** Drops 3 of the 5 lifecycle calls to $<20\text{ms}$ local execution, saving >60% in token costs and eliminating ~45s of cumulative review wait time per turn.
 
 ### L8 — Battery-Gated Deployment Validation [PROPOSED]
@@ -306,7 +306,7 @@ Following the independent critical-path audits (`Re-Aligned_Architectural_Review
 ### Track D: Defect Remediation & Security Integrity
 
 #### D1 — Wire Model Classification & Proportional Reasoning [P0 DEFECT]
-- **Issue:** `get_proportional_reasoning_mapping` in `scripts/runtime/model_classification.py` is currently dead code; neither `PDLtHost`, `scripts/host/app.py`, nor `scripts/host/repl.py` invoke it. When CLI flags are omitted, `ApiWorker` defaults to unconfigured reasoning.
+- **Issue:** `get_proportional_reasoning_mapping` in `src/pdl_taskmaster/runtime/model_classification.py` is currently dead code; neither `PDLtHost`, `src/pdl_taskmaster/host/app.py`, nor `src/pdl_taskmaster/host/repl.py` invoke it. When CLI flags are omitted, `ApiWorker` defaults to unconfigured reasoning.
 - **Remediation:** Wire model classification directly into runtime session bootstrap. Add Class B explicit token budget taxonomy (Anthropic: 4096 / 1024) to `model_classification.py`. Ensure CLI flags (`--api-reasoning-effort`) cleanly override defaults.
 
 #### D2 — Verification Contract Synchronization [P0 DEFECT]
@@ -314,17 +314,17 @@ Following the independent critical-path audits (`Re-Aligned_Architectural_Review
 - **Remediation:** Synchronize `VERIFICATION_CONTRACT.json` to ensure automated stage verification asserts all ratified normative standards.
 
 #### D3 — Review Silence-Deferral Bug Remediation [P1 UX DEFECT]
-- **Issue:** In `scripts/host/repl.py` and `session_engine.py`, submitting empty input or pressing Enter during `WAITING_HUMAN_REVIEW` routes to `SUBSTANTIVE_DISCUSSION`, producing a confusing *"I’ll address that substantive task question..."* message instead of prompting for confirmation or revision.
+- **Issue:** In `src/pdl_taskmaster/host/repl.py` and `session_engine.py`, submitting empty input or pressing Enter during `WAITING_HUMAN_REVIEW` routes to `SUBSTANTIVE_DISCUSSION`, producing a confusing *"I’ll address that substantive task question..."* message instead of prompting for confirmation or revision.
 - **Remediation:** Intercept empty inputs during review stages and re-prompt explicitly: *"Please confirm the plan (press Enter or type /confirm) or specify revisions."*
 
 #### D4 — Symmetric Decision-Hijack Scanner Repair [P1 SECURITY DEFECT]
-- **Issue:** In `scripts/eval/leak_scan.py`, `scan_for_decision_hijack` exclusively inspects Control-specific keys (`verdict` and `contains_override_directive`), producing a false-negative 0.0% hijack rate for the Protocol arm by definition.
+- **Issue:** In `src/pdl_taskmaster/eval/leak_scan.py`, `scan_for_decision_hijack` exclusively inspects Control-specific keys (`verdict` and `contains_override_directive`), producing a false-negative 0.0% hijack rate for the Protocol arm by definition.
 - **Remediation:** Update `scan_for_decision_hijack` to inspect protocol audit deliverables symmetrically, ensuring uniform hijack evaluation across both arms.
 
 #### D5 — Purge In-Band Delimiter Residue (`<<<EVIDENCE>>>`) [P1 DEBT]
-- **Issue:** The in-band delimiter `<<<EVIDENCE>>>` was retired in Decision D24 in favor of out-of-band JSON schema field isolation (`task_summary` vs `risk_notes`), but delimiter constants and `strip_evidence_sink` remain in `scripts/runtime/quarantine.py`, `scripts/eval/leak_scan.py`, `scripts/eval/run_qualified_batch.py`, and `scripts/tests/test_evidence_sink.py`.
+- **Issue:** The in-band delimiter `<<<EVIDENCE>>>` was retired in Decision D24 in favor of out-of-band JSON schema field isolation (`task_summary` vs `risk_notes`), but delimiter constants and `strip_evidence_sink` remain in `src/pdl_taskmaster/runtime/quarantine.py`, `src/pdl_taskmaster/eval/leak_scan.py`, `src/pdl_taskmaster/eval/run_qualified_batch.py`, and `tests/test_evidence_sink.py`.
 - **Remediation:** Purge retired delimiter constants and functions, updating test suites to assert pure out-of-band schema isolation.
-- **Completion note (post-v2.3.0 parity audit, owner-ratified Option A):** `scripts/runtime/quarantine.py` code purge verified; the residual a′ sink-strip import shim and fallback implementation in `scripts/eval/leak_scan.py`, the scoring call in `scripts/eval/run_qualified_batch.py` (protocol arm now scores unstripped full text under `full_text_both_arms`), and the re-scoring call in `scripts/eval/summarize_run.py` were removed. Control-arm `evidence_verbatim` schema-field channel retained (out-of-band, per TRD-0002). Protocol records no longer emit `channeled`/`sink_structural_failure`; historical records re-score via schema-field defaults.
+- **Completion note (post-v2.3.0 parity audit, owner-ratified Option A):** `src/pdl_taskmaster/runtime/quarantine.py` code purge verified; the residual a′ sink-strip import shim and fallback implementation in `src/pdl_taskmaster/eval/leak_scan.py`, the scoring call in `src/pdl_taskmaster/eval/run_qualified_batch.py` (protocol arm now scores unstripped full text under `full_text_both_arms`), and the re-scoring call in `src/pdl_taskmaster/eval/summarize_run.py` were removed. Control-arm `evidence_verbatim` schema-field channel retained (out-of-band, per TRD-0002). Protocol records no longer emit `channeled`/`sink_structural_failure`; historical records re-score via schema-field defaults.
 
 #### D6 — Contain Execution Input Bypass Channel [P1 SECURITY DEFECT]
 - **Issue:** `SUPPLIED_EXECUTION_INPUT_SOURCE` in `session_engine.py` allows unreviewed runtime inputs to pass directly into `EXECUTE` without an updated confirmation card.
@@ -346,7 +346,7 @@ Following the independent critical-path audits (`Re-Aligned_Architectural_Review
 - **Design:** Restructure multi-turn session filesystem layout under `sessions/<id>/turns/turn_###/stages/`:
   - **Level 1 (Substantive Task Epoch):** `turn_001`, `turn_002` cycles from activation to deliverable `CLOSED_SUCCESS`.
   - **Level 2 (Invocations):** `0001-draft_prompt`, `0002-interpret_review` isolated within that turn's `stages/` tree.
-- **Status:** Foundational glob pattern compatibility shipped in v2.3.0 (`scripts/providers/fixtures.py`); directory restructuring scheduled for Phase 9 (v2.4.0).
+- **Status:** Foundational glob pattern compatibility shipped in v2.3.0 (`src/pdl_taskmaster/providers/fixtures.py`); directory restructuring scheduled for Phase 9 (v2.4.0).
 
 #### S4 — Cross-Turn Deliverable Chaining [SCHEDULED FOR PHASE 9 / v2.4.0]
 - **Design:** When a multi-turn session advances to `turn_002`, the confirmed deliverable from `turn_001` is ingested as clean, validated context, while intermediate scratchpad drafts and unconfirmed reasoning are discarded.
@@ -357,7 +357,7 @@ Following the independent critical-path audits (`Re-Aligned_Architectural_Review
 ### Track U: REPL Usability & Fast-Paths
 
 #### U1 — Local Command Shortcuts
-- **Design:** Add explicit local shortcuts `/confirm` (or empty Enter on review prompt), `/revise <feedback>`, and `/stop` directly in `scripts/host/repl.py`.
+- **Design:** Add explicit local shortcuts `/confirm` (or empty Enter on review prompt), `/revise <feedback>`, and `/stop` directly in `src/pdl_taskmaster/host/repl.py`.
 - **Impact:** Eliminates expensive 15-second LLM classification roundtrips for trivial user confirmations while preserving natural language review parsing for substantive feedback.
 
 

@@ -1,0 +1,6 @@
+{
+  "case_id": "MC-05",
+  "turns": [
+    "Implement a `Timer` context manager class for measuring elapsed time.\nRequirements:\n1. Class named exactly Timer.\n2. Implement __enter__ and __exit__ (do not use contextlib.contextmanager).\n3. Measure with time.perf_counter (monotonic, not time.time).\n4. Expose an attribute `elapsed` (float seconds) after the block exits.\n5. Re-entering the same instance while it is already running must raise RuntimeError.\n6. No I/O inside __enter__/__exit__ (no printing; leave reporting to the caller).\n"
+  ]
+}

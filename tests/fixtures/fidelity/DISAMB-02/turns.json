@@ -1,0 +1,6 @@
+{
+  "case_id": "DISAMB-02",
+  "turns": [
+    "Write `normalize_phone(digits: str) -> str` that normalizes a phone number to E.164.\nRules (the second one is easy to overlook):\n1. If the input already starts with '+', it is considered already normalized: return it exactly unchanged (do not re-validate its content).\n2. A plain 10-digit string is a US number: prefix it with '+1'.\n3. Any other input raises ValueError.\nStrip spaces and dashes before applying the rules.\n"
+  ]
+}

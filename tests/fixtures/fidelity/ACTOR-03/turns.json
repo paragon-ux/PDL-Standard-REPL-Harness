@@ -1,0 +1,6 @@
+{
+  "case_id": "ACTOR-03",
+  "turns": [
+    "Our DevOps contractor (external) must rotate the staging API keys next Tuesday. Draft the instruction message I should send them: what to rotate, the deadline, and that they must confirm completion by replying in the ticket. The message must contain no actual key values or credential material. Output only the message."
+  ]
+}

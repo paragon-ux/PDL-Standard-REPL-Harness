@@ -1,0 +1,6 @@
+{
+  "case_id": "MC-04",
+  "turns": [
+    "Implement a `UserAccount` class.\nRequirements:\n1. It must be a frozen dataclass with fields: username (str), email (str), first_name (str), last_name (str).\n2. Validate the email in __post_init__: it must contain '@' and a '.' after the '@'; otherwise raise ValueError.\n3. Provide a full_name property returning 'first_name last_name' with a single space.\n4. Full type hints on fields and methods.\n5. No I/O anywhere in the module (no print, no input, no file access).\n6. Include at least one doctest example demonstrating full_name.\n"
+  ]
+}

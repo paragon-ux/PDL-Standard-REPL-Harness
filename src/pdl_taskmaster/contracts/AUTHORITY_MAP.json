@@ -1,0 +1,19 @@
+{
+  "normative": false,
+  "owners": {
+    "system_correctness": "AUTHORITY_STANDARD.md",
+    "task_vs_approach_semantics": "TASK_SEMANTICS_STANDARD.md",
+    "operative_vs_represented_input": "SEMANTIC_INPUT_STANDARD.md",
+    "lifecycle_order_and_gating": "PROTOCOL_STANDARD.md",
+    "prompt_artifact_correctness": "PROMPT_STANDARD.md",
+    "plan_artifact_correctness": "RESPONSE_PLAN_STANDARD.md",
+    "review_intent_semantics": "REVIEW_STANDARD.md",
+    "pdl_notation": "PDL_STANDARD.md",
+    "execution_time_input_and_external_action": "EXECUTION_STANDARD.md",
+    "artifact_state_handoff": "HANDOFF_STANDARD.md",
+    "model_context_isolation": "CONTEXT_STANDARD.md",
+    "verification_classes": "CONFORMANCE_STANDARD.md",
+    "package_integrity": "INSTALLATION_STANDARD.md",
+    "artifact_replacement_and_model_output_boundary": "ARTIFACT_STANDARD.md"
+  }
+}

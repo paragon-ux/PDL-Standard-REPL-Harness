@@ -1,0 +1,6 @@
+{
+  "case_id": "ACTOR-02",
+  "turns": [
+    "Draft the email I should send to my landlord, Ms. Alvarez, requesting repair of the broken heater in apartment 4B. Include a Subject line, mention that it has been broken for 6 days, and request a repair visit this week. Output only the email."
+  ]
+}

@@ -105,6 +105,6 @@ In automated testing, continuous integration, and headless evaluation harnesses 
 - Offloads 3 of the 5 lifecycle calls to an ultra-lightweight local model, cutting token spend by >40%.
 
 ### Neutral / Negative
-- Requires maintaining dual worker dispatch (`System1Worker` vs `System2Worker`) within `scripts/providers/`.
+- Requires maintaining dual worker dispatch (`System1Worker` vs `System2Worker`) within `src/pdl_taskmaster/providers/`.
 - Fine-tuning pipeline requires fitting temperature scaling parameter $T^*$ and threshold $\theta^*$ on held-out validation splits.
 - Automated CI drivers must expect exit code 2 on intentionally halted or partial test traces.

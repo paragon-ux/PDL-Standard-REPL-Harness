@@ -1,0 +1,6 @@
+{
+  "case_id": "MC-03",
+  "turns": [
+    "Implement a pure function `slugify(text: str) -> str` for URL slugs.\nRequirements:\n1. Lowercase the input.\n2. Replace runs of whitespace with a single hyphen.\n3. Remove characters that are not lowercase ASCII letters, digits, or hyphens.\n4. Collapse consecutive hyphens into one and strip leading/trailing hyphens.\n5. Truncate to at most 60 characters, then strip any trailing hyphen left by the truncation.\n6. The function must be pure (no printing, no file I/O, no globals) and include a docstring with at least one doctest example.\n"
+  ]
+}

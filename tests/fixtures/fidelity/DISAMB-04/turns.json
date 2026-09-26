@@ -1,0 +1,6 @@
+{
+  "case_id": "DISAMB-04",
+  "turns": [
+    "Write a Python generator `iter_items(fetch)` where `fetch(page_number)` returns a list of items for that page (pages are numbered from 1, page size is 100).\n1. Yield ITEMS one by one -- never yield a page/list.\n2. Stop iterating as soon as a page comes back with FEWER than 100 items: that is the last page, and its items must still be yielded.\n3. Never call fetch() for a page beyond the short-read boundary (no wasted requests past the end).\n"
+  ]
+}

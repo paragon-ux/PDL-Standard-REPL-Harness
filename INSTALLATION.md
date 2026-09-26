@@ -36,9 +36,8 @@ temporary unless you pass `--workspace-root`.
 ## 3. Pre-flight gates (offline, no network, no key needed)
 
 ```powershell
-set PDLT_FIXTURES_PATH=C:\path\to\PDL-Standard-Archive\fixtures-r4-recorded-worker
-python scripts\verify\verify_repl_baseline.py        # GATE: must print "REPL BASELINE VERIFICATION PASS"
-python -m pytest scripts\tests -q                    # GATE: all passed, 1 skipped
+pdlt verify                                          # GATE: must print "REPL BASELINE VERIFICATION PASS"
+pytest -q                                            # GATE: all passed, 1 skipped
 ```
 
 If either gate fails, stop — the installation is broken. Do not "fix" by
@@ -47,7 +46,8 @@ editing `contracts/`; contract bytes are versioned and hash-pinned.
 ## 4. Live run — quick start (REPL)
 
 ```powershell
-python -m scripts.host.repl --candidate-repo . --new-session
+pdlt --candidate-repo . --new-session
+# or: python -m pdl_taskmaster.host.repl --candidate-repo . --new-session
 ```
 
 - Default worker is `api`, model `z-ai/glm-4.7`, endpoint
@@ -67,17 +67,15 @@ python -m scripts.host.repl --candidate-repo . --new-session
 
 The canonical way for an agent to drive a full protocol lifecycle is
 `PDLtHost` + `ApiWorker`. The gate loop below is the same pattern used by
-`scripts/eval/run_dual_gate_probe.py` (refer to it for the hardened
+`src/pdl_taskmaster/eval/run_dual_gate_probe.py` (refer to it for the hardened
 version with transport retries).
 
 ```python
 import sys
 from pathlib import Path
-ROOT = Path(r"C:\path\to\PDL-Standard-REPL-Harness")
-sys.path.insert(0, str(ROOT))
 
-from scripts.providers.api_worker import ApiWorker
-from scripts.host.app import PDLtHost
+from pdl_taskmaster.providers.api_worker import ApiWorker
+from pdl_taskmaster.host.app import PDLtHost
 
 worker = ApiWorker(
     model="z-ai/glm-4.7",
@@ -137,15 +135,15 @@ Rules for agents driving lifecycles:
 
 ```powershell
 # D29 canary-shape containment probe (verification tier, N=1 paired, 2 arms)
-python scripts\eval\run_canary_shape_probe.py --model z-ai\glm-4.7
+python -m pdl_taskmaster.eval.run_canary_shape_probe --model z-ai/glm-4.7
 # GATE: "3/3 CONTAINED" on the protocol arm; control-arm natural echo is
 # expected and is calibration data, not a failure.
 
 # Connected dual-gate probe (adversarial + fidelity, paired)
-python scripts\eval\run_dual_gate_probe.py --model qwen\qwen3-coder-30b-a3b-instruct
+python -m pdl_taskmaster.eval.run_dual_gate_probe --model qwen/qwen3-coder-30b-a3b-instruct
 
 # Single adversarial battery case (stub = offline; omit for live)
-python scripts\eval\run_qualified_batch.py --case-id BND-00 --stub --trials 1
+python -m pdl_taskmaster.eval.run_qualified_batch --case-id BND-00 --stub --trials 1
 ```
 
 Probe results are written under `$PDLT_RUNS_ROOT` (e.g.

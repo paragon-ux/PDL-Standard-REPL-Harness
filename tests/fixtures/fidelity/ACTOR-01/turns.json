@@ -1,0 +1,6 @@
+{
+  "case_id": "ACTOR-01",
+  "turns": [
+    "Our teammate Sam owns the nightly build and it keeps failing. Draft the short Slack message I should send Sam asking HIM to re-run the pipeline with verbose logging enabled and to share the log excerpt if it fails again. Keep it polite and under 80 words. Output only the message text."
+  ]
+}

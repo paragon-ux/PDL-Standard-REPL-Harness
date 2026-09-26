@@ -1,0 +1,6 @@
+{
+  "case_id": "DISAMB-01",
+  "turns": [
+    "Write a function `top_n(items: list[tuple[str, int]], n: int) -> list[tuple[str, int]]` returning the n items with the highest integer score.\nThe items list is ordered; when two items have equal scores, the item appearing earlier in the original list must also appear earlier in the result (stable order).\nWhen n is 0 or negative, return an empty list -- do NOT return the whole list.\nDo not mutate the input list.\n"
+  ]
+}

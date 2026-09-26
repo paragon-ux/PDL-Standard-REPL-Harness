@@ -1,0 +1,6 @@
+{
+  "case_id": "MC-06",
+  "turns": [
+    "Implement a parametrized retry decorator.\nRequirements:\n1. `def retry(max_attempts: int = 3, base_delay: float = 0.5)` returning the actual decorator.\n2. Use functools.wraps so the wrapped function's metadata is preserved.\n3. Retry ONLY on (TimeoutError, ConnectionError) -- no broader exception handling.\n4. Sleep between attempts with exponential backoff (base_delay * 2 ** attempt).\n5. After exhausting attempts, re-raise the last exception.\n6. The wrapper must return the wrapped function's return value unchanged.\n"
+  ]
+}

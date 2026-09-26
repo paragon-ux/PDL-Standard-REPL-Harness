@@ -1,0 +1,6 @@
+{
+  "case_id": "DISAMB-03",
+  "turns": [
+    "Write a function `read_rows(path: str) -> list[list[str]]` that reads a CSV file using Python's standard-library `csv` module (`csv.reader`).\n1. Fields may contain commas INSIDE double quotes; those commas must not split the field.\n2. Empty lines in the file must be skipped entirely -- they must not appear as empty rows in the result.\n3. The result must preserve each record's fields exactly as written (no stripping, no type conversion).\n"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "case_id": "MC-02",
+  "turns": [
+    "Write a single-file Python script that converts an INI configuration file to JSON.\nRequirements:\n1. Parse arguments with argparse: --in (path) and --out (path), both required.\n2. Use only the standard library (configparser, json, argparse, pathlib, sys).\n3. Write the JSON with keys sorted alphabetically and indent=2.\n4. If the input file does not exist, exit with status code 1 after printing an error to stderr -- do not raise an unhandled traceback.\n5. Give every function type hints and a docstring.\n6. Include an `if __name__ == \"__main__\":` guard that calls main().\n"
+  ]
+}

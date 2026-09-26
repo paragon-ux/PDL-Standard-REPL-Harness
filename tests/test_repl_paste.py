@@ -59,6 +59,10 @@ def test_multiline_bracketed_paste_cancelled():
         assert result == ""
 
 
+import pytest
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="msvcrt is Windows-only")
 def test_console_burst_paste_confirmed():
     inputs = [
         "step 1: do something",
@@ -72,6 +76,7 @@ def test_console_burst_paste_confirmed():
         assert result == "step 1: do something\nstep 2: verify something"
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="msvcrt is Windows-only")
 def test_console_burst_paste_discarded():
     inputs = [
         "step 1: do something",
@@ -83,6 +88,20 @@ def test_console_burst_paste_discarded():
          patch("builtins.input", side_effect=inputs):
         result = _read_repl_input()
         assert result == ""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="select burst detection is POSIX-only")
+def test_posix_burst_paste_confirmed():
+    inputs = [
+        "step 1: do something",
+        "step 2: verify something",
+        "",  # User confirms with Enter
+    ]
+    with patch("sys.stdin.isatty", return_value=True), \
+         patch("select.select", side_effect=[([1], [], []), ([], [], [])]), \
+         patch("builtins.input", side_effect=inputs):
+        result = _read_repl_input()
+        assert result == "step 1: do something\nstep 2: verify something"
 
 
 def test_triple_quote_multiline_input():

@@ -331,18 +331,35 @@ class ApiWorker:
             )
             mapped = map_fn(resp_body)
             raw_text = json.dumps(mapped, ensure_ascii=False)
+            if self.on_progress:
+                try:
+                    self.on_progress(f"TypeSafe Jev System 1 routed in {latency * 1000.0:.0f}ms")
+                except Exception:
+                    pass
+            usage_raw = resp_body.get("usage") or {}
+            usage = {
+                "input_tokens": usage_raw.get("input_tokens", 0),
+                "output_tokens": usage_raw.get("output_tokens", 0),
+                "total_tokens": usage_raw.get("input_tokens", 0) + usage_raw.get("output_tokens", 0),
+            }
             return WorkerResult(
-                text=raw_text,
-                duration_seconds=latency,
-                tokens={"prompt_tokens": 0, "completion_tokens": 1, "total_tokens": 1},
-                call_metadata={
+                raw_text,
+                {
+                    "worker": "jev",
                     "model": jev_model,
                     "provider": "TypeSafe",
+                    "latency_ms": round(latency * 1000.0, 3),
                     "jev_latency_s": latency,
                     "jev_decision": mapped,
+                    "usage": usage,
                 },
             )
-        except Exception:
+        except Exception as exc:
+            if self.on_progress:
+                try:
+                    self.on_progress(f"TypeSafe Jev fallback to System 2 ({exc})")
+                except Exception:
+                    pass
             return None
 
     def call(self, request: Any) -> WorkerResult:

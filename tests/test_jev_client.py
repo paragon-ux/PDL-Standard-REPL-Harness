@@ -163,3 +163,51 @@ def test_map_review_result_fail_closed_unresolved():
     mapped = map_review_result(body)
     assert mapped["kind"] == "UNRESOLVED"
     assert mapped["confidence"] <= 0.50
+
+
+def test_api_worker_try_jev_decisions_success(monkeypatch, tmp_path):
+    """ApiWorker successfully delegates to Jev and returns valid WorkerResult."""
+    from pdl_taskmaster.providers.api_worker import ApiWorker
+    from pdl_taskmaster.providers.base import WorkerResult
+    import pdl_taskmaster.providers.jev_client as jc_module
+
+    fake_resp = {
+        "answers": {
+            "route": {
+                "choice": "APPLY_PROTOCOL",
+                "confidence": 0.95,
+                "probabilities": {"APPLY_PROTOCOL": 0.95, "BYPASS": 0.05},
+            }
+        },
+        "usage": {"input_tokens": 100, "output_tokens": 20},
+    }
+
+    monkeypatch.setattr(
+        jc_module,
+        "call_jev_decisions",
+        lambda **kwargs: (fake_resp, 0.042),
+    )
+
+    monkeypatch.setenv("TEST_KEY_ENV", "dummy_key")
+
+    worker = ApiWorker(
+        model="openai/gpt-oss-120b",
+        repo_root=tmp_path,
+        api_key_env="TEST_KEY_ENV",
+        use_jev=True,
+    )
+
+    class FakeProjection:
+        document = {"operation_inputs": {"RAW_USER_MESSAGE": "Test message"}}
+
+    class FakeRequest:
+        operation = "INTERPRET_ACTIVATION"
+        prompt = "test prompt"
+        projection = FakeProjection()
+
+    res = worker._try_jev_decisions(FakeRequest(), "INTERPRET_ACTIVATION")
+    assert isinstance(res, WorkerResult)
+    assert res.metadata["worker"] == "jev"
+    assert res.metadata["latency_ms"] == 42.0
+    assert '"route": "APPLY_PROTOCOL"' in res.text
+

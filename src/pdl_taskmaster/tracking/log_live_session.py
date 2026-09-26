@@ -19,6 +19,8 @@ try:
 except ImportError:
     mlflow = None  # type: ignore[assignment]
     log_experiment_run = None  # type: ignore[assignment]
+except KeyboardInterrupt:
+    sys.exit(130)
 
 
 def _default_tracking_db() -> Path:
@@ -103,4 +105,7 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(130)

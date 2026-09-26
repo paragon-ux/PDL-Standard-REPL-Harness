@@ -268,10 +268,14 @@ def switch_session(
 ) -> SessionRuntime:
     """Close the active host and open another session in one operation."""
     if log_mlflow:
-        subprocess.run(
-            [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
-            cwd=ROOT,
-        )
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
+                cwd=ROOT,
+                check=False,
+            )
+        except KeyboardInterrupt:
+            print("\n[MLflow logging cancelled by user]", flush=True)
     runtime.close()
     return open_session(args, session_base, worker, session_id)
 
@@ -1017,6 +1021,10 @@ def main() -> int:
             print(f"[worker progress -> {runtime.session_dir / 'worker-progress.log'}]", flush=True)
             try:
                 turn = runtime.handle(line)
+            except KeyboardInterrupt:
+                print("\n[operation interrupted by user]", flush=True)
+                _write_transcript("USER_INTERRUPTED")
+                continue
             except Exception as exc:
                 message = f"{type(exc).__name__}: {exc}"
                 print(f"[error] {message}", flush=True)
@@ -1030,20 +1038,28 @@ def main() -> int:
                 _write_transcript("PROTOCOL_CLOSED")
     finally:
         _disable_bracketed_paste()
-        runtime.close()
+        try:
+            runtime.close()
+        except KeyboardInterrupt:
+            pass
         if log_mlflow:
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pdl_taskmaster.tracking.log_live_session",
-                    "--session-dir",
-                    str(runtime.session_dir),
-                    "--worker-profile",
-                    _worker_profile(worker),
-                ],
-                cwd=ROOT,
-            )
+            try:
+                print("[logging session to MLflow... (press Ctrl+C to cancel)]", flush=True)
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pdl_taskmaster.tracking.log_live_session",
+                        "--session-dir",
+                        str(runtime.session_dir),
+                        "--worker-profile",
+                        _worker_profile(worker),
+                    ],
+                    cwd=ROOT,
+                    check=False,
+                )
+            except KeyboardInterrupt:
+                print("\n[MLflow logging cancelled by user]", flush=True)
     # Headless fail-closed invariant (ADR-0012):
     # In non-interactive mode, if execution terminates while sitting at an unconfirmed
     # review gate or non-terminal stage, exit with code 2 rather than falsely signalling success.
@@ -1063,4 +1079,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        print("\n[session terminated by user]", file=sys.stderr, flush=True)
+        raise SystemExit(130)

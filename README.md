@@ -81,7 +81,7 @@ pdlt --worker recorded --case-ids G06 --new-session
 
 Recorded mode is **exact, deterministic replay**: it only responds to the exact interaction sequences captured in the fixture (`G06`: full lifecycle; `A02`: prompt revision). Use `--quit` to exit — there's no `/exit` command.
 
-Commands: `/help`, `/status`, `/session`, `/new`, `/resume`, `/mlflow [on|off]`, `/tokens [on|off]`, `/timeout [seconds]`, `/model [name]`, `/worker [api|codex|recorded]`, `/config` (codex only), `/sandbox` (codex only), `/workdir [path]`, `/transcript [path]`, `/quit`.
+Commands: `/help`, `/status`, `/session`, `/new`, `/resume`, `/mlflow [on|off]`, `/tokens [on|off]`, `/timeout [seconds]`, `/model [name]`, `/worker [api|codex|recorded]`, `/config` (codex only), `/sandbox` (codex only), `/workdir [path]`, `/transcript [path]`, `/paste` (or `"""`), `/quit`.
 
 Fast-path review commands: `/confirm`, `/revise <feedback>`, `/stop`.
 

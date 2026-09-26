@@ -61,9 +61,11 @@ class ApiWorker:
         structured_output: bool = False,
         provider_pinning: dict[str, Any] | None = None,
         safety_settings: list[dict[str, str]] | None = None,
+        max_tokens: int = 4096,
         on_progress: Any = None,
     ):
         self.model = model
+        self.max_tokens = int(max_tokens)
         self.base_url = base_url.rstrip("/")
         self.api_key_env = api_key_env
         self.timeout = timeout
@@ -274,7 +276,11 @@ class ApiWorker:
             input_text = self._reorder_for_cache(input_text.lstrip())
         input_text = input_text.rstrip() + _JSON_ONLY_SUFFIX
 
-        body: dict[str, Any] = {"model": self._model_for(getattr(request, "operation", None)), "input": input_text}
+        body: dict[str, Any] = {
+            "model": self._model_for(getattr(request, "operation", None)),
+            "input": input_text,
+            "max_tokens": self.max_tokens,
+        }
         # ADR-0009 finding: schema enforcement on the semantic-read boundary
         # (BOOTSTRAP_ANALYSIS) degrades interpretation quality — a lazy
         # structured summary classifies substantive tasks as instruction-free,

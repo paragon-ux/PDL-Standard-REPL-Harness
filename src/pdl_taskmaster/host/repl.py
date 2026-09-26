@@ -329,6 +329,146 @@ def _resolve_render_compact(args) -> bool:
     return args.worker == "api"
 
 
+PASTE_START = "\x1b[200~"
+PASTE_END = "\x1b[201~"
+
+
+def _enable_bracketed_paste() -> None:
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        try:
+            sys.stdout.write("\x1b[?2004h")
+            sys.stdout.flush()
+        except Exception:
+            pass
+
+
+def _disable_bracketed_paste() -> None:
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        try:
+            sys.stdout.write("\x1b[?2004l")
+            sys.stdout.flush()
+        except Exception:
+            pass
+
+
+def _read_repl_input(prompt: str = "> ") -> str:
+    """Read a line or multi-line pasted block from user input.
+
+    Prevents pasted multi-line text from auto-submitting on every line break.
+    All lines in a paste bracket or burst are assembled into a single submission,
+    and the user presses Enter to confirm.
+    """
+    raw = input(prompt).strip()
+
+    # 1. Bracketed paste handling (Windows Terminal, VS Code, iTerm, xterm)
+    if PASTE_START in raw:
+        prefix, start_part = raw.split(PASTE_START, 1)
+        chunks = []
+        if PASTE_END in start_part:
+            chunk, suffix = start_part.split(PASTE_END, 1)
+            chunks.append(prefix + chunk + suffix)
+        else:
+            chunks.append(prefix + start_part)
+            while True:
+                try:
+                    sub = input()
+                except (EOFError, KeyboardInterrupt):
+                    break
+                if PASTE_END in sub:
+                    chunk, suffix = sub.split(PASTE_END, 1)
+                    chunks.append(chunk + suffix)
+                    break
+                chunks.append(sub)
+        pasted = "\n".join(chunks).replace("\r", "").strip()
+        if "\n" in pasted:
+            line_count = len(pasted.splitlines())
+            print(f"\n[Pasted {line_count} lines. Press Enter to submit, or type /cancel to discard]")
+            try:
+                confirm = input("> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                return ""
+            if confirm == "/cancel":
+                print("[paste discarded]", flush=True)
+                return ""
+            if confirm:
+                pasted = pasted + "\n" + confirm
+        return pasted
+
+    # 2. Console burst detection (when bracketed paste is not active)
+    lines = [raw]
+    if sys.stdin.isatty():
+        try:
+            if sys.platform == "win32":
+                import msvcrt
+                import time
+                while msvcrt.kbhit():
+                    lines.append(input())
+                    time.sleep(0.02)
+            else:
+                import select
+                r, _, _ = select.select([sys.stdin], [], [], 0.0)
+                if r:
+                    while True:
+                        r, _, _ = select.select([sys.stdin], [], [], 0.02)
+                        if not r:
+                            break
+                        lines.append(input())
+        except Exception:
+            pass
+
+    if len(lines) > 1:
+        pasted = "\n".join(lines).replace("\r", "").strip()
+        line_count = len(pasted.splitlines())
+        print(f"\n[Pasted {line_count} lines. Press Enter to submit, or type /cancel to discard]")
+        try:
+            confirm = input("> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            return ""
+        if confirm == "/cancel":
+            print("[paste discarded]", flush=True)
+            return ""
+        if confirm:
+            pasted = pasted + "\n" + confirm
+        return pasted
+
+    # 3. Explicit multi-line mode (e.g. """ or /paste)
+    if raw in {"/paste", '"""'} or (raw.startswith('"""') and not (raw.endswith('"""') and len(raw) > 5)):
+        lines_buf = []
+        if raw.startswith('"""') and raw != '"""':
+            lines_buf.append(raw[3:])
+        prompt_msg = "Multi-line input (type '\"\"\"' on a new line to finish):" if raw.startswith('"""') else "Paste mode (enter text, then type 'EOF' or a blank line to finish):"
+        print(prompt_msg, flush=True)
+        while True:
+            try:
+                sub = input("... " if raw.startswith('"""') else "")
+            except (EOFError, KeyboardInterrupt):
+                break
+            if raw.startswith('"""') and sub.strip().endswith('"""'):
+                lines_buf.append(sub.strip()[:-3])
+                break
+            if not raw.startswith('"""') and (sub.strip() in {"EOF", "eof", '"""'} or (not sub.strip() and lines_buf)):
+                break
+            lines_buf.append(sub)
+        return "\n".join(lines_buf).strip()
+
+    # 4. Trailing backslash line continuation
+    if raw.endswith("\\"):
+        lines_buf = [raw[:-1].rstrip()]
+        while True:
+            try:
+                sub = input("... ").strip()
+            except (EOFError, KeyboardInterrupt):
+                break
+            if sub.endswith("\\"):
+                lines_buf.append(sub[:-1].rstrip())
+            else:
+                lines_buf.append(sub)
+                break
+        return "\n".join(lines_buf).strip()
+
+    return raw
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -337,11 +477,24 @@ def main() -> int:
         pass
 
     parser = argparse.ArgumentParser(description="PDLt terminal REPL")
-    parser.add_argument("--candidate-repo", type=Path, required=True)
+    parser.add_argument(
+        "--candidate-repo",
+        type=Path,
+        default=Path.cwd(),
+        help="path to candidate repository (default: current working directory)",
+    )
     parser.add_argument("--workspace-root", type=Path, default=None)
     parser.add_argument("--restore", type=Path, default=None)
     parser.add_argument("--run-id", default="repl")
     parser.add_argument("--observation-dir", type=Path, default=None)
+    parser.add_argument(
+        "--max-tokens",
+        "--api-max-tokens",
+        dest="max_tokens",
+        type=int,
+        default=4096,
+        help="maximum output tokens per API worker call (default: 4096; prevents 128k token credit reservation lockout)",
+    )
     parser.add_argument(
         "--worker",
         choices=["recorded", "codex", "api"],
@@ -462,13 +615,8 @@ def main() -> int:
         session_id = _new_session_name()
     session_dir = resolve_session_dir(session_base, session_id)
     log_mlflow = args.mlflow
-    if not log_mlflow and _is_interactive(args):
-        try:
-            choice = input("Log this session to MLflow on exit? [y/N]: ").strip().lower()
-        except EOFError:
-            choice = ""
-        log_mlflow = choice in {"y", "yes"}
-    print(f"MLflow logging: {'on' if log_mlflow else 'off'}", flush=True)
+    if log_mlflow:
+        print("MLflow logging: on", flush=True)
 
     if args.worker == "recorded":
         if not args.eval_root and _is_interactive(args):
@@ -513,6 +661,7 @@ def main() -> int:
             model_by_operation=_parse_model_operations(args.api_model_operation),
             reorder_keys_for_cache=bool(getattr(args, "cache_order_render", False)),
             structured_output=bool(getattr(args, "api_structured_output", False)),
+            max_tokens=getattr(args, "max_tokens", 4096),
             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
         )
     else:
@@ -531,25 +680,43 @@ def main() -> int:
         runtime.transcript.flush()
 
     _write_transcript("=== PDLt session started ===")
-    print("PDLt REPL started. Send normal text to the SessionEngine.", flush=True)
-    print("WORKER: DEVELOPMENT / LIVE DEMONSTRATION; NOT A QUALIFIED R2S MEASUREMENT CONDITION", flush=True)
+    from pdl_taskmaster import __version__
+    print("=" * 68, flush=True)
+    print(f"  PDLt REPL started. (pdl-taskmaster v{__version__})", flush=True)
+    print("=" * 68, flush=True)
+    print("Welcome! PDLt is a protocol-governed autonomous software assistant.\n", flush=True)
+    print("How to get started:", flush=True)
+    print("  1. Enter your request or problem in natural language.", flush=True)
+    print('     e.g. "Use $confirm-with-pseudocode to solve the Schur Triples problem"', flush=True)
+    print("  2. PDLt will interpret your request and propose Prompt Pseudocode.", flush=True)
+    print("  3. Review the proposal:", flush=True)
+    print("     - Type /confirm to approve and proceed to planning", flush=True)
+    print("     - Type /revise <feedback> to refine the interpretation", flush=True)
+    print("     - Type /stop to cancel the active request", flush=True)
+    print("  4. Once confirmed, PDLt will draft a plan, ask for review, then execute.\n", flush=True)
+    print("Tips:", flush=True)
+    print("  - Type /help for all interactive commands, or /quit to exit.", flush=True)
+    print('  - Type /paste or use triple quotes (""") for multi-line messages.', flush=True)
+    print("=" * 68, flush=True)
     if args.allow_bypass:
         print(
             "WARNING: dangerous bypass mode is ON. This condition requires an externally "
             "hardened/disposable environment and is NOT part of the Phase 0-5 seal.",
             flush=True,
         )
-    print("Commands: /status /help /quit", flush=True)
     _write_transcript("WORKER: DEVELOPMENT / LIVE DEMONSTRATION; NOT A QUALIFIED R2S MEASUREMENT CONDITION")
+    _enable_bracketed_paste()
     try:
         while True:
             sys.stdout.flush()
             try:
-                line = input("> ").strip()
+                line = _read_repl_input("> ").strip()
             except (EOFError, KeyboardInterrupt):
                 print("", flush=True)
                 _write_transcript("=== session closed (EOF/interrupted) ===")
                 break
+            if not line:
+                continue
             _write_transcript("USER> " + line)
             if line == "/quit":
                 break
@@ -559,6 +726,7 @@ def main() -> int:
                     "/confirm -> accept review artifact immediately (fast-path)\n"
                     "/revise <feedback> -> request revision on review artifact (fast-path)\n"
                     "/stop -> cancel current session (fast-path)\n"
+                    "/paste -> enter multi-line paste mode (or use \"\"\" ... \"\"\")\n"
                     "/status -> read-only host state\n"
                     "/session -> current session directory\n"
                     "/mlflow [on|off] -> toggle MLflow logging\n"
@@ -830,6 +998,7 @@ def main() -> int:
                 print("[protocol closed]", flush=True)
                 _write_transcript("PROTOCOL_CLOSED")
     finally:
+        _disable_bracketed_paste()
         runtime.close()
         if log_mlflow:
             subprocess.run(

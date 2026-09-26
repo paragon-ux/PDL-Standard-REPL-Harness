@@ -681,23 +681,9 @@ def main() -> int:
 
     _write_transcript("=== PDLt session started ===")
     from pdl_taskmaster import __version__
-    print("=" * 68, flush=True)
-    print(f"  PDLt REPL started. (pdl-taskmaster v{__version__})", flush=True)
-    print("=" * 68, flush=True)
-    print("Welcome! PDLt is a protocol-governed autonomous software assistant.\n", flush=True)
-    print("How to get started:", flush=True)
-    print("  1. Enter your request or problem in natural language.", flush=True)
-    print('     e.g. "Use $confirm-with-pseudocode to solve the Schur Triples problem"', flush=True)
-    print("  2. PDLt will interpret your request and propose Prompt Pseudocode.", flush=True)
-    print("  3. Review the proposal:", flush=True)
-    print("     - Type /confirm to approve and proceed to planning", flush=True)
-    print("     - Type /revise <feedback> to refine the interpretation", flush=True)
-    print("     - Type /stop to cancel the active request", flush=True)
-    print("  4. Once confirmed, PDLt will draft a plan, ask for review, then execute.\n", flush=True)
-    print("Tips:", flush=True)
-    print("  - Type /help for all interactive commands, or /quit to exit.", flush=True)
-    print('  - Type /paste or use triple quotes (""") for multi-line messages.', flush=True)
-    print("=" * 68, flush=True)
+    print(f"PDLt REPL started (v{__version__}).", flush=True)
+    print("Send input to the SessionEngine. Review gates accept /confirm, /revise <feedback>, or /stop.", flush=True)
+    print("Commands: /help (full roster), /paste (multi-line), /status, /quit", flush=True)
     if args.allow_bypass:
         print(
             "WARNING: dangerous bypass mode is ON. This condition requires an externally "

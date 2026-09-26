@@ -52,6 +52,26 @@ class ModelClassification:
 
 # Known model taxonomy registry
 _TAXONOMY: dict[str, dict[str, Any]] = {
+    "openai/gpt-oss-120b": {
+        "display_name": "GPT-OSS-120B",
+        "family": "OpenAI",
+        "capability_tier": CapabilityTier.MID_BALANCED,
+        "tier_rank": 2,
+        "upstream_provider": "OpenAI (via OpenRouter)",
+        "recommended_inter_call_delay_s": 0.5,
+        "comparative_peers": ["z-ai/glm-4.7", "meta-llama/llama-3.3-70b-instruct", "deepseek-flash"],
+        "methodological_notes": "Tier 2 Mid-Tier Balanced MoE (117B total, 5.1B active). Default production System 2 model.",
+    },
+    "gpt-oss-120b": {
+        "display_name": "GPT-OSS-120B",
+        "family": "OpenAI",
+        "capability_tier": CapabilityTier.MID_BALANCED,
+        "tier_rank": 2,
+        "upstream_provider": "OpenAI (via OpenRouter)",
+        "recommended_inter_call_delay_s": 0.5,
+        "comparative_peers": ["z-ai/glm-4.7", "meta-llama/llama-3.3-70b-instruct", "deepseek-flash"],
+        "methodological_notes": "Alias for openai/gpt-oss-120b.",
+    },
     "z-ai/glm-4.7": {
         "display_name": "GLM-4.7",
         "family": "Zhipu GLM",
@@ -237,8 +257,22 @@ def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str | int]:
       - DRAFT_PLAN / REVISE_PLAN / EXECUTE: Zero reasoning (mechanical translation)
     """
     mid = model_id.lower()
-    if "glm-4.7" in mid:
-        # Class A: Native effort tiers (Zhipu GLM-4.7)
+    if "gpt-oss" in mid or "120b" in mid:
+        # OpenAI gpt-oss-120b: System 2 production model (default: reasoning low)
+        return {
+            "BOOTSTRAP_ANALYSIS": "low",
+            "DRAFT_PROMPT": "low",
+            "REVISE_PROMPT": "low",
+            "INTERPRET_PROMPT_REVIEW": "low",
+            "DRAFT_PLAN": "low",
+            "REVISE_PLAN": "low",
+            "INTERPRET_PLAN_REVIEW": "low",
+            "DRAFT_EXECUTE": "low",
+            "EXECUTE": "low",
+            "EMIT_RESULT_IR": "low",
+        }
+    elif "glm-4.7" in mid:
+        # Class A: Native effort tiers (Zhipu GLM-4.7 - benchmark baseline)
         # ADR-0006 as amended by the ADR-0009 benchmark (2026-09-18): EXECUTE
         # is now the primary semantic generation step (deliverable + Result IR
         # emission), so it is priced HIGH; DRAFT_EXECUTE (entity-dense brief
@@ -250,8 +284,10 @@ def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str | int]:
             "BOOTSTRAP_ANALYSIS": "high",
             "DRAFT_PROMPT": "low",
             "REVISE_PROMPT": "low",
+            "INTERPRET_PROMPT_REVIEW": "none",
             "DRAFT_PLAN": "none",
             "REVISE_PLAN": "none",
+            "INTERPRET_PLAN_REVIEW": "none",
             "DRAFT_EXECUTE": "high",
             "EXECUTE": "high",
             "EMIT_RESULT_IR": "low",

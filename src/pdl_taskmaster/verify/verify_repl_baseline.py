@@ -42,6 +42,21 @@ SECRET_PATTERNS = (
     re.compile(r"\b(?:api[_-]?key|openai_api_key|openrouter_api_key)\s*[:=]\s*['\"][^'\"]{8,}['\"]", re.I),
 )
 
+IGNORED_SCAN_PARTS = {
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "env",
+    "dist",
+    "build",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "site-packages",
+    "node_modules",
+}
+
 REQUIRED_FILES = (
     "src/pdl_taskmaster/controller/mechanical_controller.py",
     "src/pdl_taskmaster/runtime/session_engine.py",
@@ -162,7 +177,7 @@ def _failures() -> list[str]:
 
     # 3. External-source-repo leakage.
     for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts or "__pycache__" in path.parts:
+        if any(part in IGNORED_SCAN_PARTS for part in path.parts) or not path.is_file():
             continue
         if path.name == "SOURCE_PROVENANCE.json":
             continue  # provenance must record source repository paths by design
@@ -204,7 +219,7 @@ def _failures() -> list[str]:
 
     # 5. Forbidden terms / secrets (classification; absolute source paths above are fatal).
     for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts or "__pycache__" in path.parts:
+        if any(part in IGNORED_SCAN_PARTS for part in path.parts) or not path.is_file():
             continue
         if path.name == "verify_repl_baseline.py":
             continue  # scanner's own source contains forbidden terms by definition

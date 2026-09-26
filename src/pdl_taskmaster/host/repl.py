@@ -407,12 +407,9 @@ def _read_repl_input(prompt: str = "> ") -> str:
             else:
                 import select
                 r, _, _ = select.select([sys.stdin], [], [], 0.0)
-                if r:
-                    while True:
-                        r, _, _ = select.select([sys.stdin], [], [], 0.02)
-                        if not r:
-                            break
-                        lines.append(input())
+                while r:
+                    lines.append(input())
+                    r, _, _ = select.select([sys.stdin], [], [], 0.02)
         except Exception:
             pass
 
@@ -503,8 +500,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--model",
-        default="z-ai/glm-4.7",
-        help="model name to request from the worker (default: z-ai/glm-4.7)",
+        default="openai/gpt-oss-120b",
+        help="model name to request from the worker (default: openai/gpt-oss-120b)",
     )
     parser.add_argument("--eval-root", type=Path, default=None)
     parser.add_argument("--evidence", type=Path, default=None)
@@ -540,8 +537,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--api-reasoning-effort",
-        default=None,
-        help="optional reasoning effort ('low'/'medium'/'high') for --worker api, if the model supports it",
+        default="low",
+        help="optional reasoning effort ('low'/'medium'/'high') for --worker api (default: low)",
     )
     parser.add_argument(
         "--api-reasoning-operation",

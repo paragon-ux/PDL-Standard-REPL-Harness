@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionDraftOutcome",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "brief_body", "execution_entities"],
+      "description": "Entity-dense execution brief drafted prior to EXECUTE (ADR-0009/TRD-0003 DRAFT_EXECUTE). execution_entities are TYPED, verbatim-critical strings; the host applies kind-appropriate mechanical checks (arithmetic, containment, coverage) and rejects fabrication.",
+      "properties": {
+        "kind": {"const": "RESULT"},
+        "brief_body": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The entity-dense execution brief: file-by-file contract, wire formats, invariants, success criteria. Plain text; no code fences inside."
+        },
+        "execution_entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "value"],
+            "properties": {
+              "kind": {
+                "enum": ["delivery_marker", "api_signature", "constant", "wire_format", "threshold", "meta"],
+                "description": "delivery_marker: section header line (enforced verbatim in brief and deliverable). api_signature: function/class signature (enforced in deliverable). constant: named literal (enforced in deliverable; arithmetic cross-checked when struct_format declared). wire_format: binary layout declaration (arithmetic-checked: calcsize(struct_format) MUST equal declared_size). threshold: numeric policy constant (brief + deliverable). meta: procedural reference (brief only; never enforced against the deliverable)."
+              },
+              "value": {"type": "string", "minLength": 1, "description": "The verbatim-critical string."},
+              "name": {"type": "string", "description": "Optional identifier (e.g. constant name MAGIC)."},
+              "struct_format": {"type": "string", "description": "Optional struct format string for wire_format entities (e.g. '!4sQI')."},
+              "declared_size": {"type": "integer", "description": "Optional declared byte size for wire_format entities; MUST equal struct.calcsize(struct_format)."}
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "brief_body"],
+      "properties": {
+        "kind": {"const": "BLOCKED_BY_HIGHER_PRIORITY"},
+        "brief_body": {"type": "string", "minLength": 1}
+      }
+    }
+  ]
+}

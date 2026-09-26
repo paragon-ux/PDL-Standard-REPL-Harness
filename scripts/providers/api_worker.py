@@ -18,6 +18,8 @@ _JSON_ONLY_SUFFIX = (
 )
 
 
+_SEMANTIC_READ_OPERATIONS = {"BOOTSTRAP_ANALYSIS", "INTERPRET_ACTIVATION"}
+
 DEFAULT_PROVIDER_PINNING: dict[str, Any] = {
     "order": ["Google"],
     "allow_fallbacks": False,
@@ -269,6 +271,14 @@ class ApiWorker:
         input_text = input_text.rstrip() + _JSON_ONLY_SUFFIX
 
         body: dict[str, Any] = {"model": self._model_for(getattr(request, "operation", None)), "input": input_text}
+        # ADR-0009 finding: schema enforcement on the semantic-read boundary
+        # (BOOTSTRAP_ANALYSIS) degrades interpretation quality — a lazy
+        # structured summary classifies substantive tasks as instruction-free,
+        # losing the entire task upstream of every gate. Structured output is
+        # for ops whose SHAPE is the contract (drafts, executions, reviews);
+        # the semantic read must stay free-text.
+        operation_name = getattr(request, "operation", None)
+        schema_enforced = self.structured_output and operation_name not in _SEMANTIC_READ_OPERATIONS
         if instructions:
             body["instructions"] = instructions
         effort = self._reasoning_for(getattr(request, "operation", None))
@@ -285,17 +295,19 @@ class ApiWorker:
         if self.safety_settings:
             body["safety_settings"] = self.safety_settings
 
-        if self.structured_output:
+        if schema_enforced:
             manifest = getattr(request, "manifest", None) or {}
             output_kind = manifest.get("output_kind", "json_object")
-            schema = None
-            projection = getattr(request, "projection", None)
-            if projection is not None and isinstance(getattr(projection, "document", None), dict):
-                schema = projection.document.get("output_schema")
-            if not isinstance(schema, dict) and isinstance(manifest.get("output_schema"), dict):
-                schema = manifest["output_schema"]
-            elif not isinstance(schema, dict) and isinstance(manifest.get("output_schema"), str):
-                schema_path = self.repo_root / manifest["output_schema"]
+            from scripts.runtime.wire_payloads import get_operation_pydantic_schema
+            schema = get_operation_pydantic_schema(operation_name)
+            if not isinstance(schema, dict):
+                projection = getattr(request, "projection", None)
+                if projection is not None and isinstance(getattr(projection, "document", None), dict):
+                    schema = projection.document.get("output_schema")
+                if not isinstance(schema, dict) and isinstance(manifest.get("output_schema"), dict):
+                    schema = manifest["output_schema"]
+                elif not isinstance(schema, dict) and isinstance(manifest.get("output_schema"), str):
+                    schema_path = self.repo_root / manifest["output_schema"]
                 if schema_path.is_file():
                     try:
                         schema = json.loads(schema_path.read_text(encoding="utf-8"))

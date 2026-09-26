@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 import json
+import os
 import re
 import tempfile
 import hashlib
@@ -13,6 +14,7 @@ from scripts.controller.mechanical_controller import (
     ControllerError,
     Intent,
     MechanicalController,
+    MemoryAtomicJsonStore,
     NextAction,
     ProtocolState,
     ReviewDecision,
@@ -21,7 +23,14 @@ from scripts.controller.mechanical_controller import (
 )
 from scripts.runtime.operation_bridge import ActivationRoute, ModelRequest, OperationBridge, WireError
 from scripts.runtime.quarantine import compile_bootstrap_output
-from scripts.runtime.workspace import WorkspaceError, WorkspaceRun
+
+
+def _norm(text: str) -> str:
+    """Whitespace-normalized form for verbatim entity matching: collapses all
+    whitespace runs to single spaces so formatting variance does not cause
+    false entity-miss retries (the 4B check is about content, not layout)."""
+    return " ".join((text or "").split())
+from scripts.runtime.workspace import MemoryWorkspaceRun, WorkspaceError, WorkspaceRun
 from scripts.runtime import presentation
 
 
@@ -133,7 +142,7 @@ class SessionEngine:
             workspace_root=workspace_path.parent,
             render_compact=render_compact,
         )
-        workspace = WorkspaceRun.open(repo_root, workspace_path)
+        workspace = MemoryWorkspaceRun.open(repo_root, workspace_path)
         # Pointer may sit on a turn whose controller never committed (e.g. a
         # turn opened by S4 chaining and then interrupted before any model
         # call). Fall back to the most recent turn with a committed,
@@ -175,28 +184,43 @@ class SessionEngine:
                 break
         if restore_state_path is None:
             raise WorkspaceError("restorable_protocol_state_missing")
-        store = AtomicJsonStore(restore_state_path)
+        store = (
+            MemoryAtomicJsonStore(restore_state_path)
+            if isinstance(workspace, MemoryWorkspaceRun)
+            else AtomicJsonStore(restore_state_path)
+        )
         state = store.load()
-        if state.instance_id != workspace.protocol_instance_id and workspace.turn_id is None:
-            raise WorkspaceError("restore_instance_binding")
         if state.instance_id != workspace.protocol_instance_id and workspace.turn_id is None:
             raise WorkspaceError("restore_instance_binding")
         engine.workspace = workspace
         engine.controller = MechanicalController(state, store)
+        # Cross-epoch deliverable chaining: repopulate the prior confirmed
+        # deliverable on restore. The S4 turn-chaining path sets this field
+        # only when a new user message opens a turn in the same process; a
+        # resumed epoch (e.g. /confirm in a later REPL invocation) must
+        # re-chain it so the execution phase still receives the byte-exact
+        # prior deliverable in REQUIRED_TASK_INPUTS. The active turn's status
+        # is ACTIVE at restore time, so previous_deliverable() correctly
+        # returns the last CLOSED_SUCCESS turn before it.
+        engine._previous_deliverable = workspace.previous_deliverable()
         workspace.append_event("SESSION_RESTORED", {"instance_id": state.instance_id})
         return engine
 
     def _new_workspace(self) -> WorkspaceRun:
-        # ADR-0008 / Phase 9 S3: engine sessions are turn-hierarchical by
-        # default. The first turn is turn_001; later turns chain via
-        # _activation (S4). Legacy flat workspaces remain supported for
-        # direct WorkspaceRun.create callers (eval drivers, tests).
-        return WorkspaceRun.create(self.repo_root, self.workspace_root, turn_id="turn_001")
+        # ADR-0011 / ADR-0008: software-defined in-memory VFS workspace run.
+        # Fast, unjournaled writes bypass Windows NTFS fsync latency.
+        # Legacy flat workspaces remain supported for direct WorkspaceRun.create callers.
+        return MemoryWorkspaceRun.create(self.repo_root, self.workspace_root, turn_id="turn_001")
 
     def _bind_new_controller(self, workspace: WorkspaceRun) -> MechanicalController:
         state = ProtocolState.new()
         workspace.bind_protocol(state.instance_id)
-        controller = MechanicalController(state, AtomicJsonStore(workspace.controller_state_path))
+        store = (
+            MemoryAtomicJsonStore(workspace.controller_state_path)
+            if isinstance(workspace, MemoryWorkspaceRun)
+            else AtomicJsonStore(workspace.controller_state_path)
+        )
+        controller = MechanicalController(state, store)
         workspace.publish_approach_sources([])
         return controller
 
@@ -238,11 +262,18 @@ class SessionEngine:
         try:
             return parser(model_text)
         except WireError as first_error:
-            correction = (
-                "OPERATOR CORRECTION: the previous response failed host-side validation "
-                f"(reason: {first_error}). Emit exactly one JSON object that conforms to the "
-                "declared output_schema for this operation, with no prose or code fences around it."
-            )
+            feedback = getattr(first_error, "operator_feedback", None)
+            if feedback:
+                correction = (
+                    f"OPERATOR CORRECTION: {feedback}. "
+                    "Emit exactly one conforming JSON object matching the declared schema."
+                )
+            else:
+                correction = (
+                    "OPERATOR CORRECTION: the previous response failed host-side validation "
+                    f"(reason: {first_error}). Emit exactly one JSON object that conforms to the "
+                    "declared output_schema for this operation, with no prose or code fences around it."
+                )
             retry_request = self.bridge.request(
                 operation,
                 values,
@@ -308,6 +339,30 @@ class SessionEngine:
         import hashlib
 
         compiled, _meta = compile_bootstrap_output(raw_text, outcome["task_summary"])
+        # Containment-boundary durability: a lazy semantic read that classifies
+        # substantive raw content as instruction-free loses the entire task
+        # upstream of every gate. Detect and retry once before compiling.
+        summary_lowers = (outcome["task_summary"] or "").lower()
+        if len(raw_text) > 500 and (
+            "no operative instructions" in summary_lowers
+            or "no substantive" in summary_lowers
+            or "no requested" in summary_lowers
+            or len((outcome["task_summary"] or "").strip()) < 40
+        ):
+            self.workspace.append_event(
+                "BOOTSTRAP_DEGENERATE_READ_RETRY",
+                {"raw_chars": len(raw_text), "summary_chars": len(outcome["task_summary"] or "")},
+            ) if self.workspace is not None else None
+            outcome = self._call(
+                "BOOTSTRAP_ANALYSIS",
+                bootstrap_values,
+                traces,
+                parser=self.bridge.parse_bootstrap_analysis,
+            )
+            if outcome["kind"] == "BLOCKED_BY_HIGHER_PRIORITY":
+                self._bootstrap_cache[cache_key] = ""
+                return None
+            compiled, _meta = compile_bootstrap_output(raw_text, outcome["task_summary"])
         # Mechanical entity containment: a task entity is forwarded downstream
         # ONLY if it is a verbatim substring of the SANITIZED task summary.
         # Hostile tokens (canaries, exploit directives) are replaced by the
@@ -637,18 +692,287 @@ class SessionEngine:
         # semantic read — compile ops never receive raw content in any symbol.
         supplied_raw = transition.payload.get("execution_input_source")
         supplied_compiled = self._compile_context(supplied_raw, traces) if supplied_raw else None
-        outcome = self._call(
-            "EXECUTE",
-            {
+        # Cross-epoch deliverable chaining (ADR-0008 §4 + ADR-0004): the prior
+        # epoch's confirmed deliverable is host-published, gate-passed content
+        # (see _semantic_read S4 note). Chain it byte-exact into the execution
+        # phase so continuation/revision epochs condition on the actual prior
+        # artifact instead of a pseudocode summary. First epochs have no prior
+        # deliverable and keep the previous null behavior.
+        required_task_inputs = self._previous_deliverable
+        # ADR-0009 / TRD-0003 (RS-09, RS-10): feature-gated Result IR mode.
+        # Adds structured result-decomposition instructions, chains the prior
+        # validated Result IR beside the deliverable, and mechanically
+        # validates the emitted IR (coverage + evidence resolution).
+        result_ir_mode = os.environ.get("PDLT_RESULT_IR") == "1"
+        from scripts.runtime.result_ir import (
+            arithmetic_checks,
+            derive_requirements,
+            entity_enforcement_misses,
+            extract_result_ir,
+            load_ir_from_deliverable,
+            parse_typed_entities,
+            render_execution_brief,
+            render_instructions,
+            render_prior_ir_section,
+            validate_result_ir,
+        )
+        requirements = derive_requirements(prompt_body) if result_ir_mode else []
+        execute_context = {
+            "CONFIRMED_PROMPT_BODY": prompt_body,
+            "CONFIRMED_PLAN_BODY": plan_body,
+            "REQUIRED_TASK_INPUTS": required_task_inputs,
+            "SUPPLIED_EXECUTION_INPUT_SOURCE": supplied_compiled,
+            "AVAILABLE_EXECUTION_TOOLS": self.available_execution_tools,
+        }
+        if result_ir_mode:
+            # TRD-0003: the IR channel rides inside the contract-whitelisted
+            # REQUIRED_TASK_INPUTS symbol (adding new symbols would violate the
+            # EXECUTION_CONTRACT allow-list). Value = instructions + numbered
+            # requirements + (when chained) the prior validated IR.
+            evidence_paths = ["execution://body"]
+            if self._previous_deliverable and self.workspace.closed_turns():
+                closed = [t for t in self.workspace.closed_turns() if t.get("status") == "CLOSED_SUCCESS"]
+                if closed:
+                    evidence_paths.append(
+                        f"turns/{closed[-1]['turn_id']}/stages/50_execution/output/current.md"
+                    )
+            ir_channel = render_instructions(
+                requirements, repo_root=self.repo_root, evidence_paths=evidence_paths
+            )
+            prior_ir = load_ir_from_deliverable(self._previous_deliverable)
+            if prior_ir:
+                ir_channel += render_prior_ir_section(prior_ir)
+                ir_channel += render_execution_brief(prior_ir, requirements)
+            base_inputs = required_task_inputs or ""
+            channel_value = (base_inputs + ir_channel) if base_inputs else ir_channel
+            # Delivery markers are synthesized BEFORE the draft (4B class): the
+            # brief must pin them so the first emission is correctly labeled
+            # and no full re-emission is needed.
+            declared_names = sorted(
+                set(
+                    re.findall(
+                        r"\b[\w-]+\.(?:py|md|json|txt|cfg|toml)\b",
+                        prompt_body + "\n" + plan_body + "\n" + channel_value,
+                    )
+                )
+            )
+            marker_entities = tuple(f"### {n}" for n in declared_names)
+            if marker_entities:
+                channel_value += (
+                    "\nDELIVERY FORMAT: file sections MUST be headed exactly by their marker lines "
+                    "(e.g. a line reading exactly '### cnf.py' immediately followed by that file's code): "
+                    + "; ".join(marker_entities)
+                )
+            # DRAFT_EXECUTE (ADR-0009): entity extraction at the execute
+            # boundary, mirroring DRAFT_PROMPT's task-entity channel. Turns are
+            # structurally lossy; the draft declares the verbatim-critical
+            # entities (wire formats, constants, signatures) before any code is
+            # written, and the host enforces their survival mechanically.
+            draft_context = {
+                "HOST_PROTOCOL_STATE": "EXECUTION_DRAFT",
                 "CONFIRMED_PROMPT_BODY": prompt_body,
                 "CONFIRMED_PLAN_BODY": plan_body,
-                "REQUIRED_TASK_INPUTS": None,
-                "SUPPLIED_EXECUTION_INPUT_SOURCE": supplied_compiled,
-                "AVAILABLE_EXECUTION_TOOLS": self.available_execution_tools,
-            },
+                "REQUIRED_TASK_INPUTS": channel_value,
+            }
+            draft = self._call(
+                "DRAFT_EXECUTE",
+                draft_context,
+                traces,
+                parser=self.bridge.parse_execution_draft,
+            )
+            # Typed entity pipeline (parser over entities, not string filters):
+            # the host classifies, arithmetically validates, and applies
+            # kind-appropriate enforcement. meta entities are never enforced
+            # against the deliverable.
+            typed = parse_typed_entities(draft.execution_entities)
+            arithmetic = arithmetic_checks(typed)
+            if arithmetic:
+                self.workspace.append_event(
+                    "EXECUTE_DRAFT_ARITHMETIC_RETRY", {"errors": arithmetic}
+                )
+                draft_context["REQUIRED_TASK_INPUTS"] = channel_value + (
+                    "\n\n\n\nOPERATOR CORRECTION (host-side mechanical check): the declared wire-format "
+                    "arithmetic is inconsistent and MUST be fixed before execution: "
+                    + " | ".join(arithmetic)
+                )
+                draft = self._call(
+                    "DRAFT_EXECUTE",
+                    draft_context,
+                    traces,
+                    parser=self.bridge.parse_execution_draft,
+                )
+                typed = parse_typed_entities(draft.execution_entities)
+                arithmetic = arithmetic_checks(typed)
+                if arithmetic:
+                    self.workspace.append_event(
+                        "EXECUTE_DRAFT_ARITHMETIC_INVALID",
+                        {"errors": arithmetic, "scored": "model_error"},
+                    )
+            containment_pool = channel_value + prompt_body + plan_body
+            kept = [e for e in typed if _norm(e["value"]) in _norm(containment_pool)]
+            dropped = len(typed) - len(kept)
+            if dropped:
+                self.workspace.append_event(
+                    "EXECUTE_ENTITY_DROPPED_UNSAFE", {"count": dropped}
+                )
+            # Delivery markers are always enforced entities (4B class): the
+            # section headers themselves are lossy across turns.
+            declared_names = sorted(
+                set(
+                    re.findall(
+                        r"[\w-]+\.(?:py|md|json|txt|cfg|toml)",
+                        prompt_body + " " + plan_body + " " + channel_value,
+                    )
+                )
+            )
+            existing_values = {e["value"] for e in kept}
+            kept = kept + [
+                {"kind": "delivery_marker", "value": f"### {n}", "name": None,
+                 "struct_format": None, "declared_size": None}
+                for n in declared_names
+                if f"### {n}" not in existing_values
+            ]
+            brief_misses, _ = entity_enforcement_misses(kept, draft.brief_body, None)
+            if brief_misses:
+                self.workspace.append_event(
+                    "EXECUTE_ENTITY_COVERAGE_RETRY", {"missing": len(brief_misses)}
+                )
+                draft_context["REQUIRED_TASK_INPUTS"] = channel_value + (
+                    "\n\n\n\nOPERATOR CORRECTION (host-side mechanical check): the following execution "
+                    "entities are missing from the brief body and MUST appear verbatim, "
+                    "character-for-character: " + " | ".join(brief_misses)
+                )
+                draft = self._call(
+                    "DRAFT_EXECUTE",
+                    draft_context,
+                    traces,
+                    parser=self.bridge.parse_execution_draft,
+                )
+            entity_block = (
+                "\n## EXECUTION BRIEF (entity-dense; drafted prior to execution)\n"
+                + draft.brief_body
+                + "\nCRITICAL VERBATIM ENTITIES (each MUST appear verbatim in the deliverable; "
+                "the host checks this mechanically):\n"
+                + "\n" + "\n".join(f"- [{e['kind']}] {e['value']}]" for e in kept)
+                + "\nDELIVERY FORMAT: file sections MUST be headed exactly by their marker lines "
+                "(e.g. a line reading exactly '### cnf.py' immediately followed by that file's code)."
+            )
+            execute_context["REQUIRED_TASK_INPUTS"] = (
+                (base_inputs + entity_block + ir_channel) if base_inputs else (entity_block + ir_channel)
+            )
+            execute_entities = kept
+        else:
+            execute_entities = ()
+        outcome = self._call(
+            "EXECUTE",
+            execute_context,
             traces,
             parser=self.bridge.parse_execution,
         )
+        final_body = outcome.body
+        if result_ir_mode and outcome.kind == "RESULT":
+            workspace_path = self.workspace.path
+            attempts = 0
+            repaired = False
+            while True:
+                wire_ir = getattr(outcome, "result_ir", None)
+                if isinstance(wire_ir, dict):
+                    # Option 2 (ADR-0009): the IR arrived as a schema-enforced
+                    # wire field; body scanning is only the recorded-path
+                    # fallback.
+                    ir = wire_ir
+                else:
+                    ir = extract_result_ir(final_body)
+                if ir is not None:
+                    ir_errors, _ = validate_result_ir(
+                        ir, workspace_path, requirements, execution_body=final_body
+                    )
+                else:
+                    ir_errors = ["Result IR missing or not a JSON object (TRD-0003 RS-01)"]
+                _, entity_missing = entity_enforcement_misses(
+                    execute_entities, "", final_body
+                )
+                if entity_missing:
+                    self.workspace.append_event(
+                        "EXECUTE_ENTITY_MISSING", {"count": len(entity_missing)}
+                    )
+                errors = ir_errors + [
+                    f"critical execution entity missing from the deliverable: {e!r}" for e in entity_missing
+                ]
+                if not errors or attempts >= 2:
+                    break
+                attempts += 1
+                if not entity_missing:
+                    # IR-only repair (TRD-0003 RS-08): a dedicated
+                    # schema-enforced repair op re-emits ONLY the corrected
+                    # result_ir, so the retry budget affords multiple cheap
+                    # attempts instead of one full re-emission.
+                    repair_ctx = {
+                        "HOST_PROTOCOL_STATE": "RESULT_IR_REPAIR",
+                        "DELIVERABLE_BODY": final_body,
+                        "RESULT_IR_REQUIREMENTS": render_instructions(
+                            requirements,
+                            repo_root=self.repo_root,
+                            evidence_paths=evidence_paths,
+                        ),
+                        "RESULT_IR_ERRORS": " | ".join(ir_errors),
+                    }
+                    repair = self._call(
+                        "EMIT_RESULT_IR",
+                        repair_ctx,
+                        traces,
+                        parser=self.bridge.parse_result_ir_repair,
+                    )
+                    ir2 = repair.get("result_ir") if isinstance(repair, dict) else None
+                    if ir2 is not None:
+                        e2, _ = validate_result_ir(
+                            ir2, workspace_path, requirements, execution_body=final_body
+                        )
+                        if not e2:
+                            fence_open = "\n\n```json\n"
+                            fence_close = "\n```"
+                            final_body = (
+                                final_body
+                                + "\n\n"
+                                + fence_open
+                                + json.dumps(ir2, indent=2, ensure_ascii=False)
+                                + fence_close
+                            )
+                            repaired = True
+                            self.workspace.append_event(
+                                "RESULT_IR_REPAIRED", {"attempts": attempts}
+                            )
+                            break
+                        ir_errors = e2
+                    self.workspace.append_event(
+                        "RESULT_IR_REPAIR_RETRY", {"attempt": attempts}
+                    )
+                    continue
+                # Code-defect retry: the deliverable itself is wrong; a full
+                # re-emission is unavoidable (option 2: body + IR travel
+                # together under the wire schema).
+                correction_ctx = dict(execute_context)
+                correction_ctx["REQUIRED_TASK_INPUTS"] = execute_context["REQUIRED_TASK_INPUTS"] + (
+                    "\\n\\nRESULT IR VALIDATION ERRORS (host-side mechanical check): fix ONLY these violations and re-emit the FULL response with a corrected result_ir: "
+                    + " | ".join(errors)
+                )
+                outcome = self._call(
+                    "EXECUTE",
+                    correction_ctx,
+                    traces,
+                    parser=self.bridge.parse_execution,
+                )
+                final_body = outcome.body
+            if repaired:
+                self.workspace.append_event(
+                    "RESULT_IR_VALIDATED", {"ir": ir, "repaired": True}
+                )
+            elif errors:
+                self.workspace.append_event(
+                    "RESULT_IR_INVALID", {"errors": errors, "scored": "model_error"}
+                )
+            else:
+                self.workspace.append_event("RESULT_IR_VALIDATED", {"ir": ir})
         if outcome.kind == "REQUEST_INPUT":
             assert outcome.expected_type is not None and outcome.description is not None
             self.controller.request_execution_input(outcome.expected_type, outcome.description)
@@ -662,13 +986,13 @@ class SessionEngine:
             self.controller.cancel()
             self.workspace.publish_execution_outcome(outcome.kind, outcome.body)
             return EngineResponse(outcome.body, traces, closed=True)
-        result_body_hash = hashlib.sha256(outcome.body.encode("utf-8")).hexdigest()
+        result_body_hash = hashlib.sha256(final_body.encode("utf-8")).hexdigest()
         self.controller.complete_success(result_body_hash)
         if self.workspace.turn_id is not None:
             self.workspace.mark_turn_status("CLOSED_SUCCESS", deliverable_sha256=result_body_hash)
         self.workspace.publish_execution_outcome(
             outcome.kind,
-            outcome.body,
+            final_body,
             {
                 "source_prompt_id": prompt.artifact_id,
                 "source_plan_id": plan.artifact_id,
@@ -677,7 +1001,7 @@ class SessionEngine:
                 "confirmed_plan_hash": hashlib.sha256(plan.body.encode("utf-8")).hexdigest(),
             },
         )
-        return EngineResponse(outcome.body, traces, closed=True)
+        return EngineResponse(final_body, traces, closed=True)
 
     def _answer_protocol(self, user_message: str, traces: list[CallTrace]) -> EngineResponse:
         assert self.controller is not None
@@ -737,7 +1061,15 @@ class SessionEngine:
         traces: list[CallTrace] = []
         if self.workspace is None:
             raise WorkspaceError("active_controller_without_workspace")
-        if self.controller is None or self.controller.state.stage not in {Stage.PROMPT_REVIEW, Stage.PLAN_REVIEW, Stage.WAITING_INPUT}:
+        if self.controller is None:
+            raise ControllerError("user_message_stage")
+        # Durability (ADR-0009 workflow): interrupted internal transitions are
+        # re-driven by explicit user input instead of bricking the epoch.
+        if self.controller.state.stage == Stage.PLAN_REQUIRED:
+            return self._draft_plan(Transition(NextAction.DRAFT_PLAN, {}), traces)
+        if self.controller.state.stage == Stage.EXECUTION_READY:
+            return self._execute(Transition(NextAction.EXECUTE, {}), traces)
+        if self.controller.state.stage not in {Stage.PROMPT_REVIEW, Stage.PLAN_REVIEW, Stage.WAITING_INPUT}:
             raise ControllerError("user_message_stage")
 
         self._sync_review_edit()
@@ -765,6 +1097,12 @@ class SessionEngine:
 
         if self.workspace is None:
             raise WorkspaceError("active_controller_without_workspace")
+        # Durability (ADR-0009 workflow): interrupted internal transitions are
+        # re-driven by any user input instead of bricking the epoch.
+        if self.controller.state.stage == Stage.PLAN_REQUIRED:
+            return self._draft_plan(Transition(NextAction.DRAFT_PLAN, {}), traces)
+        if self.controller.state.stage == Stage.EXECUTION_READY:
+            return self._execute(Transition(NextAction.EXECUTE, {}), traces)
         if self.controller.state.stage not in {Stage.PROMPT_REVIEW, Stage.PLAN_REVIEW, Stage.WAITING_INPUT}:
             raise ControllerError("user_message_stage")
 

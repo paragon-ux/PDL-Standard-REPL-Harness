@@ -281,7 +281,7 @@ def main() -> int:
 
     structured_output = args.structured_output and not args.task_mode
 
-    case_ceiling_s = max(180.0, 60.0 * len(turns))
+    case_ceiling_s = max(float(os.environ.get('CONTROL_CASE_CEILING_S', 180.0)), 60.0 * len(turns))
     start_time = time.perf_counter()
 
     for turn_idx, turn_text in enumerate(turns):

@@ -45,6 +45,20 @@ class LiveStubWorker:
             payload = {
                 "neutral_plan_body": "1. Define the topic.\n2. Explain the key mechanisms.\n3. Summarize practical implications."
             }
+        elif operation == "DRAFT_EXECUTE":
+            payload = {
+                "kind": "RESULT",
+                "brief_body": "1. Confirm the file contract.\n2. Use the declared wire format.\n3. Execute and verify.",
+                "execution_entities": [],
+            }
+        elif operation == "EMIT_RESULT_IR":
+            payload = {
+                "result_ir": {
+                    "files": [],
+                    "reconciliation": [],
+                    "open_defects": [],
+                }
+            }
         elif operation == "EXECUTE":
             payload = {"kind": "RESULT", "body": "Completed."}
         else:

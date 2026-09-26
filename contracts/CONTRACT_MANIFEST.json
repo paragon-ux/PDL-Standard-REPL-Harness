@@ -106,7 +106,17 @@
     "SEM-06": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
     "TASK-01": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
     "TASK-02": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
-    "TASK-03": "contracts/standards/TASK_SEMANTICS_STANDARD.md"
+    "TASK-03": "contracts/standards/TASK_SEMANTICS_STANDARD.md",
+    "RS-01": "contracts/standards/RESULT_STANDARD.md",
+    "RS-02": "contracts/standards/RESULT_STANDARD.md",
+    "RS-03": "contracts/standards/RESULT_STANDARD.md",
+    "RS-04": "contracts/standards/RESULT_STANDARD.md",
+    "RS-05": "contracts/standards/RESULT_STANDARD.md",
+    "RS-06": "contracts/standards/RESULT_STANDARD.md",
+    "RS-07": "contracts/standards/RESULT_STANDARD.md",
+    "RS-08": "contracts/standards/RESULT_STANDARD.md",
+    "RS-09": "contracts/standards/RESULT_STANDARD.md",
+    "RS-10": "contracts/standards/RESULT_STANDARD.md"
   },
   "source_provenance": {
     "compact_b3_repository": "paragon-ux/PDL-Standard-DS-Split-B3",

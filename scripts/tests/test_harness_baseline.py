@@ -10,10 +10,20 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 # Recorded fixtures are externalized (repo-restructure-plan §3.1):
-# PDLT_FIXTURES_PATH env override -> repo-relative vendored location.
-FIXTURES_DIR = Path(
-    os.environ.get("PDLT_FIXTURES_PATH", str(ROOT / "fixtures" / "r4-recorded-worker"))
-)
+# PDLT_FIXTURES_PATH env override -> repo-relative vendored location -> sibling PDL-Standard-Archive.
+def _resolve_fixtures_dir() -> Path:
+    env = os.environ.get("PDLT_FIXTURES_PATH", "").strip()
+    if env:
+        return Path(env)
+    local = ROOT / "fixtures" / "r4-recorded-worker"
+    if local.is_dir():
+        return local
+    archive = ROOT.parent / "PDL-Standard-Archive" / "fixtures-r4-recorded-worker"
+    if archive.is_dir():
+        return archive
+    return local
+
+FIXTURES_DIR = _resolve_fixtures_dir()
 
 
 def _fixture() -> dict:

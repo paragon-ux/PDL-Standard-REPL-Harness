@@ -7,7 +7,7 @@ This roadmap sequences work across interconnected tracks:
 - **Track P (Positive Alignment & Fidelity):** Benign task execution, complex specification disambiguation, constraint-satisfaction benchmarks, and Evidence I empirical proof.
 - **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/operations/efficiency-report.md` and `scripts/providers/api_worker.py`.
 - **Track M (Measurement & Multi-Model):** Shared empirical evaluation infrastructure that unlocks high-confidence claims across models and platforms.
-- **Track L (Local & Integration):** Local worker support, prefix-cache architecture, training-data export, and the distillation flywheel for a bespoke PDL-native worker model.
+- **Track L (Local & Integration):** Local worker support, prefix-cache architecture, training-data export, and System 1 decision models (Laya/Jev) aligned via RLCD (arXiv:2307.12950) replacing Qwen distillation (ADR-0012).
 - **Track D (Defect Remediation & Security Integrity):** Critical defect fixes, contract synchronization, and delimiter purging identified during independent audits.
 - **Track S (Session, Context & Storage Architecture):** Clean context-session management (ADR-0008), version-namespaced normative store, zero-template dynamic runs, and two-level turn hierarchies.
 - **Track U (User Interface & Ergonomics):** Direct REPL shortcuts eliminating redundant LLM classification roundtrips.
@@ -55,11 +55,14 @@ This roadmap sequences work across interconnected tracks:
 | **L2** | `--cache-order-render` default for local workers | L | S | Low | 6 | **UNLOCKED** | Prefix-cache reuse as default architecture |
 | **L3** | `--training-export` flag for lifecycle traces | L | M | Low | 6 | **UNLOCKED** | Export validated sessions as SFT training data |
 | **L4** | Training data curation pipeline | L | M | Low | 6 | **PROPOSED** | Filter by validation status, format for Unsloth/PEFT |
-| **L5** | LoRA adapter v1 (REVIEW + DRAFT_PLAN) | L | L | Med | 7 | **PROPOSED** | 3B–7B base, frontier teacher distillation |
-| **L6** | Battery-gated deployment validation | L | M | Low | 7 | **PROPOSED** | Adversarial suite as quality ratchet for adapter |
-| **L7** | Per-operation routing to local adapter | L | M | Low | 7 | **PROPOSED** | `--api-model-operation REVIEW=local:adapter-v1` |
-| **L8** | Flywheel iteration v2+ | L | L | Med | 7 | **PROPOSED** | Progressive distillation with frontier anchor |
-| **L9** | Scope expansion (EXECUTE on non-adversarial) | L | M | Med | 9 | **PROPOSED** | Battery-gated, measured expansion of worker scope |
+| **ADR-10** | Pydantic v2 Wire Refactor & Schema Derivation | D/E | M | Low | 9 (2.4.0) | **SHIPPED** | ADR-0010: Strongly typed payloads, dynamic JSON schemas, precision feedback |
+| **ADR-11** | In-Memory VFS & Ephemeral Sandboxing | S/E | M | Low | 9 (2.4.0) | **SHIPPED** | ADR-0011: Eliminates Windows NTFS fsync/mkstemp latency (<1ms stage handoffs) |
+| **ADR-12** | System 1 Decision Models via RLCD (Laya/Jev) | L | L | Med | 7 / 9 | **ACCEPTED** | ADR-0012: Contrastive distillation (arXiv:2307.12950) replacing Qwen |
+| **L5** | Contrastive RLCD Dataset Generation (F6 vs Track P) | L | M | Low | 7 | **ACTIVE / NEXT** | Oracle-scored preference pairs formatted for DPO/PPO |
+| **L6** | System 1 Model Fine-Tuning (Laya / ModernBERT) | L | L | Med | 7 | **PROPOSED** | Non-generative decision heads; <20ms single-forward-pass routing |
+| **L7** | Local System 1 Worker Dispatch (`--worker system1`) | L | M | Low | 7 | **PROPOSED** | `--api-model-operation REVIEW=system1:laya` |
+| **L8** | Battery-Gated Verification & Quality Ratchet | L | M | Low | 7 | **PROPOSED** | F6 adversarial battery validation (0% hijack, 0% leak on hybrid stack) |
+| **L9** | Scope Expansion (Execution Input & Protocol Q&A) | L | M | Med | 9 | **PROPOSED** | Measured expansion of System 1 classification scope |
 | **E3** | Transport-level cache fix (pinned instances) | E | L | High | 5 | **PROPOSED** | Exploratory; depends on provider affinity |
 | **E5** | Provider-side session threading | E | L | High | 5 | **PROPOSED** | Exploratory; requires strict positive-inclusion proof |
 
@@ -263,30 +266,36 @@ Follows the same evidentiary standard as earlier rejected levers (draft-stage lo
 
 ---
 
-## Phase 7 — Distillation Flywheel & Bespoke Worker Model (Track L)
+## Phase 7 — System 1 Decision Models via Contrastive Distillation (RLCD) (Track L)
 
-**Architecture:** 2-model hybrid split. Frontier model (unmodified, API) handles `DRAFT_PROMPT` and `EXECUTE` (semantic interpretation and reasoning). Bespoke worker model (3B–7B, LoRA-adapted, local) handles `REVIEW` classification and `DRAFT_PLAN` (protocol-mechanical operations requiring reliable format compliance, not deep reasoning). Mechanical harness (external deterministic code) wraps both.
+**Architecture:** 2-tier hybrid split (ADR-0012).
+- **System 1 Decision Worker (Laya / Jev - Local):** Non-generative, probabilistic decision model running in a single forward pass (<20ms, zero syntax/formatting errors). Governs protocol classification and routing: `INTERPRET_ACTIVATION`, `INTERPRET_PROMPT_REVIEW`, `INTERPRET_PLAN_REVIEW`, and `INTERPRET_EXECUTION_INPUT`.
+- **System 2 Reasoning Worker (Frontier Model - API):** Reserved strictly for open-ended creative reasoning and synthesis: `BOOTSTRAP_ANALYSIS`, `DRAFT_PROMPT`, and deliverable code generation in `EXECUTE`.
+- **Mechanical Controller (Deterministic Oracle):** External deterministic state machine (`scripts/controller/mechanical_controller.py`) that strictly gates all stage transitions and scores preference pairs without human annotators.
 
-### L5 — LoRA Adapter v1 [PROPOSED]
-- **Goal:** Train LoRA adapter on a 3B–7B open-weights base (Qwen 2.5 / Phi-4-mini / Llama 3.1) using frontier teacher-generated gold data (bulk of corpus) plus organic harness sessions with mechanical validation labels.
-- **Training format:** Complete lifecycle traces as training units — model learns operation transitions, not isolated tasks.
-- **Distillation strategy:** Progressive distillation with frontier anchor. v1 trains on frontier teacher data. v2 trains on v1's validated successes + frontier-corrected failure cases. Frontier model is the permanent correction signal preventing generational drift.
+### L5 — Contrastive RLCD Dataset Generation [ACTIVE / NEXT]
+- **Goal:** Synthesize contrastive preference dataset pairs using **RLCD (Reinforcement Learning from Contrastive Distillation, arXiv:2307.12950)** via `scripts/eval/export_rlcd_dataset.py`.
+- **Mechanism:**
+  - **Positive Contexts ($x^+$):** Benign multi-constraint and disambiguation cases from Track P (`runs/fidelity/`), asserting strict standards adherence (`REVIEW-09`, `REVIEW-14` silence non-acceptance, `SEM-05` actor attribution).
+  - **Negative Contexts ($x^-$):** Adversarial injection and drip cases from F6 (`runs/adversarial/`), representing conversational overrides, canary echoes, and framing attacks.
+  - **Oracle Scoring:** Deterministic verification by `MechanicalController` and `StandardRegistry` labels chosen ($y_w$) vs rejected ($y_l$) decisions.
+- **Output Format:** Clean DPO/RLCD JSONL preference pairs `(context, chosen, rejected)` for direct fine-tuning ingestion.
 
-### L6 — Battery-Gated Deployment Validation [PROPOSED]
-- **Goal:** Run adversarial suite against LoRA adapter v1; compare defense rate and completion rate against frontier baseline. Adapter ships only if it matches or exceeds frontier on both metrics.
-- **Anti-collapse mechanism:** Mechanical controller + adversarial battery = external deterministic verifier (structurally identical to DeepSeek R1's verified-reasoning approach).
+### L6 — System 1 Model Fine-Tuning (Laya / ModernBERT) [PROPOSED]
+- **Goal:** Fine-tune non-generative classification heads on **Laya** (ModernBERT open weights, CPU/GPU) or **Jev** (TypeSafe AI System 1 API) using the RLCD preference dataset.
+- **Performance Target:** $<20\text{ms}$ latency per review classification, 0.0% JSON/markdown syntax errors, 100% adherence to silence non-acceptance (`REVIEW-14`) and actor attribution (`SEM-05`).
 
-### L7 — Per-Operation Routing to Local Adapter [PROPOSED]
-- **Goal:** Extend E1's `--api-model-operation` to route `INTERPRET_PROMPT_REVIEW`, `INTERPRET_PLAN_REVIEW`, and `DRAFT_PLAN` to the local adapter while `DRAFT_PROMPT` and `EXECUTE` remain on frontier.
-- **Cost impact:** 2 frontier API calls + 3 near-zero-cost local calls per lifecycle.
+### L7 — Local System 1 Worker Dispatch [PROPOSED]
+- **Goal:** Implement `System1Worker` in `scripts/providers/` and connect `--worker system1` / `--api-model-operation REVIEW=system1:laya`.
+- **Cost & Latency Impact:** Drops 3 of the 5 lifecycle calls to $<20\text{ms}$ local execution, saving >60% in token costs and eliminating ~45s of cumulative review wait time per turn.
 
-### L8 — Flywheel Iteration v2+ [PROPOSED]
-- **Goal:** Recursive improvement loop. v(n)'s successes become SFT data for v(n+1). v(n)'s failures are re-run through frontier teacher for gold correction. Adversarial battery is the ratchet.
-- **Frontier dependency trajectory:** Shrinks over time — as the worker model's compliance improves, the boundary between "frontier-required" and "distillable" operations shifts.
+### L8 — Battery-Gated Deployment Validation [PROPOSED]
+- **Goal:** Execute full 27-case F6 adversarial battery against the hybrid System 1 / System 2 stack.
+- **Ratchet:** System 1 model ships to production only if it maintains 0.0% hijack and 0.0% leak across all 162 trials, with 100% adherence on Track P positive multi-constraint benchmarks.
 
 ### L9 — Scope Expansion Spike [PROPOSED]
-- **Goal:** Evaluate whether EXECUTE can be distilled for non-adversarial tasks. Battery-gated: adapter handles EXECUTE only if defense rate holds.
-- **Acceptance:** Measured completion rate and defense rate parity with frontier on a held-out task suite, or recorded NO-GO.
+- **Goal:** Evaluate expanding System 1 classification to `SUPPLIED_EXECUTION_INPUT` validation and automated result IR repair classification.
+- **Acceptance:** Measured zero regression on adversarial defense rate and formal verification contract compliance.
 
 ---
 

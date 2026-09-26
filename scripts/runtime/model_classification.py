@@ -239,13 +239,22 @@ def get_proportional_reasoning_mapping(model_id: str) -> dict[str, str | int]:
     mid = model_id.lower()
     if "glm-4.7" in mid:
         # Class A: Native effort tiers (Zhipu GLM-4.7)
+        # ADR-0006 as amended by the ADR-0009 benchmark (2026-09-18): EXECUTE
+        # is now the primary semantic generation step (deliverable + Result IR
+        # emission), so it is priced HIGH; DRAFT_EXECUTE (entity-dense brief
+        # drafting) is likewise semantic -> HIGH; EMIT_RESULT_IR is mechanical
+        # correction against explicit host-side errors -> LOW. Translation ops
+        # keep the ratified LOW floor (D25: load-bearing); plan drafting stays
+        # NONE (measured: 144-token plans, zero reasoning, no quality loss).
         return {
             "BOOTSTRAP_ANALYSIS": "high",
             "DRAFT_PROMPT": "low",
             "REVISE_PROMPT": "low",
             "DRAFT_PLAN": "none",
             "REVISE_PLAN": "none",
-            "EXECUTE": "none",
+            "DRAFT_EXECUTE": "high",
+            "EXECUTE": "high",
+            "EMIT_RESULT_IR": "low",
         }
     elif "claude" in mid or "anthropic" in mid:
         # Class B: Explicit thinking budget (Anthropic Claude 3.5/3.7 Sonnet, Haiku 4.5)

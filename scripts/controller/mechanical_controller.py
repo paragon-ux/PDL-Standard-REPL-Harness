@@ -231,6 +231,28 @@ class AtomicJsonStore:
         return ProtocolState.from_dict(json.loads(self.path.read_text(encoding="utf-8")))
 
 
+class MemoryAtomicJsonStore(AtomicJsonStore):
+    """In-memory cached AtomicJsonStore (ADR-0011).
+
+    Bypasses blocking fsync during active state transitions.
+    """
+
+    def __init__(self, path: str | Path):
+        super().__init__(path)
+        self._cached_state: Optional[ProtocolState] = None
+
+    def save(self, state: ProtocolState) -> None:
+        state.validate()
+        self._cached_state = state
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(state.to_dict(), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def load(self) -> ProtocolState:
+        if self._cached_state is not None:
+            return self._cached_state
+        return super().load()
+
+
 class MechanicalController:
     def __init__(self, state: Optional[ProtocolState] = None, store: Optional[AtomicJsonStore] = None):
         self.state = state or ProtocolState.new()

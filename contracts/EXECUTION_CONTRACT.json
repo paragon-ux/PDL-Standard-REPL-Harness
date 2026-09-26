@@ -388,7 +388,17 @@
         "AUTH-03",
         "AUTH-04",
         "EXEC-01",
-        "EXEC-05"
+        "EXEC-05",
+        "RS-01",
+        "RS-02",
+        "RS-03",
+        "RS-04",
+        "RS-05",
+        "RS-06",
+        "RS-07",
+        "RS-08",
+        "RS-09",
+        "RS-10"
       ],
       "include": [
         "OPERATION_ID",
@@ -414,10 +424,15 @@
         "kind",
         "body",
         "expected_type",
-        "description"
+        "description",
+        "result_ir"
       ],
       "output_schema": "controller/schemas/execution_outcome.schema.json",
-      "workspace_stage": "50_execution"
+      "workspace_stage": "50_execution",
+      "optional_include": [
+        "RESULT_IR_INSTRUCTIONS",
+        "PRIOR_RESULT_IR"
+      ]
     },
     "ANSWER_PROTOCOL_DISCUSSION": {
       "requirements": [
@@ -526,6 +541,75 @@
       "optional_include": [
         "PREVIOUS_DELIVERABLE"
       ]
+    },
+    "DRAFT_EXECUTE": {
+      "requirements": [
+        "EXEC-01",
+        "EXEC-05",
+        "TASK-02",
+        "SEM-04",
+        "PDL-05"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "HOST_PROTOCOL_STATE",
+        "CONFIRMED_PROMPT_BODY",
+        "CONFIRMED_PLAN_BODY",
+        "REQUIRED_TASK_INPUTS",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "REJECTED_ARTIFACTS",
+        "REVISION_CONVERSATION",
+        "CONFIRMATION_CONVERSATION",
+        "ARTIFACT_GENERATION_EXAMPLES",
+        "GLOBAL_PROTOCOL_PROSE",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "EXECUTION_DRAFT_OUTCOME",
+      "output_fields": [
+        "kind",
+        "brief_body",
+        "execution_entities",
+        "blocking_basis",
+        "response"
+      ],
+      "output_schema": "scripts/controller/schemas/execution_draft.schema.json",
+      "workspace_stage": "50_execution"
+    },
+    "EMIT_RESULT_IR": {
+      "requirements": [
+        "EXEC-01",
+        "RS-01",
+        "RS-03",
+        "RS-08"
+      ],
+      "include": [
+        "OPERATION_ID",
+        "HOST_PROTOCOL_STATE",
+        "DELIVERABLE_BODY",
+        "RESULT_IR_REQUIREMENTS",
+        "RESULT_IR_ERRORS",
+        "APPLICABLE_STANDARD_CLAUSES",
+        "HIGHER_PRIORITY_CONSTRAINTS"
+      ],
+      "exclude": [
+        "REJECTED_ARTIFACTS",
+        "REVISION_CONVERSATION",
+        "CONFIRMATION_CONVERSATION",
+        "ARTIFACT_GENERATION_EXAMPLES",
+        "GLOBAL_PROTOCOL_PROSE",
+        "CALIBRATION_CORPUS",
+        "REPOSITORY_DISCOVERY"
+      ],
+      "output_kind": "RESULT_IR_REPAIR_OUTCOME",
+      "output_fields": [
+        "result_ir"
+      ],
+      "output_schema": "scripts/controller/schemas/result_ir_repair.schema.json",
+      "workspace_stage": "50_execution"
     }
   }
 }

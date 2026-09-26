@@ -7,19 +7,38 @@ from typing import Any
 import json
 import re
 
+from pydantic import TypeAdapter, ValidationError
+
 from scripts.runtime.context_compiler import CompiledProjection, ContextCompiler
 from scripts.runtime.workspace import WorkspaceInvocation, WorkspaceRun
-
-
-class WireError(RuntimeError):
-    pass
-
-
-class ActivationRoute(str, Enum):
-    APPLY_PROTOCOL = "APPLY_PROTOCOL"
-    PROTOCOL_DISCUSSION = "PROTOCOL_DISCUSSION"
-    BYPASS = "BYPASS"
-    BLOCKED_BY_HIGHER_PRIORITY = "BLOCKED_BY_HIGHER_PRIORITY"
+from scripts.runtime.wire_payloads import (
+    ActivationDecisionPayload,
+    ActivationRoute,
+    ApproachChangeDimension,
+    ArtifactReviewPayload,
+    BootstrapAnalysisData,
+    BootstrapAnalysisPayload,
+    ExecutionDraftBlockedData,
+    ExecutionDraftPayload,
+    ExecutionDraftResultData,
+    ExecutionInputPayload,
+    ExecutionInputReviseData,
+    ExecutionOutcomePayload,
+    ExecutionRequestInputData,
+    ExecutionResultData,
+    NeutralPlanBodyPayload,
+    PromptBodyPayload,
+    PromptDraftData,
+    PromptDraftPayload,
+    ProtocolDiscussionPayload,
+    ResultIRRepairPayload,
+    ReviewFactsData,
+    SYSTEM1_CONFIDENCE_FLOOR,
+    TaskChangeDimension,
+    WireError,
+    format_validation_feedback,
+    map_validation_error_to_wire_reason,
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +63,14 @@ class ExecutionOutcome:
     body: str
     expected_type: str | None = None
     description: str | None = None
+    result_ir: dict | None = None
+
+
+@dataclass(frozen=True)
+class ExecutionDraftOutcome:
+    kind: str
+    brief_body: str
+    execution_entities: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -149,58 +176,45 @@ class OperationBridge:
         if not required <= set(value):
             raise WireError("missing_fields")
 
-    def parse_activation(self, model_text: str) -> ActivationDecision:
+    def _validate(self, operation: str, model_type: Any, model_text: str) -> Any:
         value = self._object(model_text)
         try:
-            route = ActivationRoute(value["route"])
-        except (KeyError, ValueError, TypeError) as exc:
-            raise WireError("activation_route") from exc
-        if route == ActivationRoute.BLOCKED_BY_HIGHER_PRIORITY:
-            self._keys(value, {"route", "response"}, {"route", "response"})
-            response = value["response"]
-            if not isinstance(response, str) or not response.strip():
-                raise WireError("blocked_response")
-            return ActivationDecision(route, response.strip())
-        self._keys(value, {"route"}, {"route"})
-        return ActivationDecision(route)
+            adapter = TypeAdapter(model_type)
+            return adapter.validate_python(value)
+        except ValidationError as val_err:
+            reason = map_validation_error_to_wire_reason(
+                operation, val_err, value if isinstance(value, dict) else None
+            )
+            feedback = format_validation_feedback(val_err)
+            raise WireError(reason, operator_feedback=feedback, validation_error=val_err) from val_err
+
+    def parse_activation(self, model_text: str) -> ActivationDecision:
+        payload: ActivationDecisionPayload = self._validate("INTERPRET_ACTIVATION", ActivationDecisionPayload, model_text)
+        if payload.confidence is not None and payload.confidence < SYSTEM1_CONFIDENCE_FLOOR:
+            # ADR-0012 Fail-closed: low-confidence activation classification defaults to protocol application
+            return ActivationDecision(ActivationRoute.APPLY_PROTOCOL)
+        return ActivationDecision(payload.route, payload.response.strip() if payload.response else None)
 
     def parse_prompt_draft(self, model_text: str) -> PromptDraftOutcome:
-        value = self._object(model_text)
-        kind = value.get("kind")
-        if kind == "PROMPT":
-            self._keys(
-                value,
-                {"kind", "prompt_body", "approach_handoff", "task_entities"},
-                {"kind", "prompt_body", "approach_handoff"},
+        payload: PromptDraftPayload = self._validate("DRAFT_PROMPT", PromptDraftPayload, model_text)
+        if isinstance(payload, PromptDraftData):
+            return PromptDraftOutcome(
+                payload.kind,
+                payload.prompt_body.strip(),
+                payload.approach_handoff,
+                task_entities=tuple(payload.task_entities) if payload.task_entities else (),
             )
-            body = value["prompt_body"]
-            handoff = value["approach_handoff"]
-            if not isinstance(body, str) or not body.strip():
-                raise WireError("prompt_body")
-            if handoff not in {"NONE", "CARRY_SOURCE_TO_PLAN"}:
-                raise WireError("approach_handoff")
-            entities = value.get("task_entities")
-            if entities is not None and (
-                not isinstance(entities, list) or not all(isinstance(e, str) for e in entities)
-            ):
-                raise WireError("task_entities")
-            return PromptDraftOutcome(kind, body.strip(), handoff, task_entities=tuple(entities) if entities else ())
-        if kind == "TASK_BLOCKED_BY_HIGHER_PRIORITY":
-            self._keys(
-                value,
-                {"kind", "blocking_basis", "response"},
-                {"kind", "blocking_basis", "response"},
-            )
-            blocking_basis = value["blocking_basis"]
-            if blocking_basis != "PROVIDER_PLATFORM_SAFETY_PRIVACY_PERMISSION_OR_TOOL":
-                raise WireError("blocking_basis")
-            response = value["response"]
-            if not isinstance(response, str) or not response.strip():
-                raise WireError("blocked_response")
-            return PromptDraftOutcome(kind, blocking_basis=blocking_basis, response=response.strip())
-        raise WireError("prompt_draft_kind")
+        return PromptDraftOutcome(
+            payload.kind,
+            blocking_basis=payload.blocking_basis,
+            response=payload.response.strip(),
+        )
 
     def _parse_named_body(self, model_text: str, field: str) -> str:
+        if field == "prompt_body":
+            return self.parse_prompt_body(model_text)
+        if field == "neutral_plan_body":
+            return self.parse_plan_body(model_text)
         value = self._object(model_text)
         self._keys(value, {field}, {field})
         body = value[field]
@@ -209,84 +223,33 @@ class OperationBridge:
         return body.strip()
 
     def parse_prompt_body(self, model_text: str) -> str:
-        return self._parse_named_body(model_text, "prompt_body")
+        payload: PromptBodyPayload = self._validate("REVISE_PROMPT", PromptBodyPayload, model_text)
+        return payload.prompt_body.strip()
 
     def parse_plan_body(self, model_text: str) -> str:
-        return self._parse_named_body(model_text, "neutral_plan_body")
+        payload: NeutralPlanBodyPayload = self._validate("DRAFT_PLAN", NeutralPlanBodyPayload, model_text)
+        return payload.neutral_plan_body.strip()
 
     def _parse_artifact_review(self, model_text: str) -> dict[str, Any]:
-        value = self._object(model_text)
-        kind = value.get("kind")
-        if kind == "REVIEW_FACTS":
-            self._keys(
-                value,
-                {"kind", "task_change_dimensions", "approach_change_dimensions", "progression_requested"},
-                {"kind", "task_change_dimensions", "approach_change_dimensions", "progression_requested"},
-            )
-            task_dimensions = value["task_change_dimensions"]
-            approach_dimensions = value["approach_change_dimensions"]
-            task_allowed = {
-                "ACTION_SUBJECT_OR_OBJECT",
-                "SCOPE_CONSTRAINT_EXCLUSION_OR_PRIORITY",
-                "TIME_FRESHNESS_QUANTITY_OR_CONDITION",
-                "COMPARISON_CRITERION_DEFINITION_OR_RELATIONSHIP",
-                "AUDIENCE_OR_OUTPUT_CHARACTERISTIC",
-                "REQUIRED_CONCLUSION",
-                "OTHER_TASK_OR_RESULT",
-            }
-            approach_allowed = {
-                "RESEARCH_OR_EVIDENCE_SELECTION_METHOD",
-                "COMPARISON_RANKING_OR_SCORING_METHOD",
-                "ANALYSIS_ORDER",
-                "JUSTIFICATION_PROCEDURE",
-                "OTHER_RESPONSE_PROCEDURE",
-            }
-            if (
-                not isinstance(task_dimensions, list)
-                or any(not isinstance(item, str) or item not in task_allowed for item in task_dimensions)
-                or len(task_dimensions) != len(set(task_dimensions))
-            ):
-                raise WireError("task_change_dimensions")
-            if (
-                not isinstance(approach_dimensions, list)
-                or any(not isinstance(item, str) or item not in approach_allowed for item in approach_dimensions)
-                or len(approach_dimensions) != len(set(approach_dimensions))
-            ):
-                raise WireError("approach_change_dimensions")
-            progression = value["progression_requested"]
-            if not isinstance(progression, bool):
-                raise WireError("progression_requested")
-            task_changed = bool(task_dimensions)
-            approach_changed = bool(approach_dimensions)
-            if not (task_changed or approach_changed or progression):
+        payload: ArtifactReviewPayload = self._validate("INTERPRET_PROMPT_REVIEW", ArtifactReviewPayload, model_text)
+        if hasattr(payload, "confidence") and payload.confidence is not None and payload.confidence < SYSTEM1_CONFIDENCE_FLOOR:
+            # ADR-0012 Fail-closed: low-confidence review classification must never progress or silently route.
+            # Escalate to UNRESOLVED to re-prompt human confirmation per REVIEW-09.
+            return {"intent": "UNRESOLVED"}
+        if isinstance(payload, ReviewFactsData):
+            task_changed = bool(payload.task_change_dimensions)
+            approach_changed = bool(payload.approach_change_dimensions)
+            if not (task_changed or approach_changed or payload.progression_requested):
                 # All-empty REVIEW_FACTS: the model reports the message changed
-                # no dimension and requested no progression. Raising a fatal
-                # WireError here disqualified honest models on informational
-                # drip turns ("Here is block 1 for inspection..."). Per
-                # REVIEW-09 (intent is understood, not uncertain -> not
-                # UNRESOLVED), REVIEW-13 (substantive side content is
-                # deferred), and REVIEW-14 (silence MUST NOT confirm -> not
-                # ACCEPT_CURRENT), the host mechanically treats this as
-                # SUBSTANTIVE_DISCUSSION: nothing changes, nothing is
-                # confirmed, the session holds its current stage.
+                # no dimension and requested no progression. Per REVIEW-09/13/14,
+                # mechanically treat this as SUBSTANTIVE_DISCUSSION.
                 return {"intent": "SUBSTANTIVE_DISCUSSION"}
             if task_changed:
                 return {"intent": "REVISE_TASK", "also_changes_approach": approach_changed}
             if approach_changed:
                 return {"intent": "REVISE_APPROACH"}
             return {"intent": "ACCEPT_CURRENT"}
-
-        special = {
-            "NEW_TASK",
-            "CANCEL",
-            "PROTOCOL_DISCUSSION",
-            "SUBSTANTIVE_DISCUSSION",
-            "UNRESOLVED",
-        }
-        if kind not in special:
-            raise WireError("artifact_review_kind")
-        self._keys(value, {"kind"}, {"kind"})
-        return {"intent": kind}
+        return {"intent": payload.kind}
 
     def parse_prompt_review(self, model_text: str) -> dict[str, Any]:
         return self._parse_artifact_review(model_text)
@@ -295,90 +258,76 @@ class OperationBridge:
         return self._parse_artifact_review(model_text)
 
     def parse_bootstrap_analysis(self, model_text: str) -> dict[str, Any]:
-        value = self._object(model_text)
-        kind = value.get("kind")
-        if kind == "ANALYSIS":
-            self._keys(
-                value,
-                {"kind", "task_summary", "approach_notes", "risk_notes", "task_entities"},
-                {"kind", "task_summary", "approach_notes", "risk_notes", "task_entities"},
-            )
-            for field in ("task_summary", "approach_notes", "risk_notes"):
-                if not isinstance(value[field], str):
-                    raise WireError(f"bootstrap_{field}")
-            if not value["task_summary"].strip():
-                raise WireError("bootstrap_task_summary")
-            entities = value.get("task_entities")
-            if not isinstance(entities, list) or not all(isinstance(e, str) for e in entities):
-                raise WireError("bootstrap_task_entities")
+        payload: BootstrapAnalysisPayload = self._validate("BOOTSTRAP_ANALYSIS", BootstrapAnalysisPayload, model_text)
+        if isinstance(payload, BootstrapAnalysisData):
             return {
-                "kind": value["kind"],
-                "task_summary": value["task_summary"],
-                "approach_notes": value["approach_notes"],
-                "risk_notes": value["risk_notes"],
-                "task_entities": entities,
+                "kind": payload.kind,
+                "task_summary": payload.task_summary,
+                "approach_notes": payload.approach_notes,
+                "risk_notes": payload.risk_notes,
+                "task_entities": list(payload.task_entities),
             }
-        if kind == "BLOCKED_BY_HIGHER_PRIORITY":
-            self._keys(value, {"kind", "response"}, {"kind", "response"})
-            response = value["response"]
-            if not isinstance(response, str) or not response.strip():
-                raise WireError("blocked_response")
-            return {"kind": kind, "response": response.strip()}
-        raise WireError("bootstrap_kind")
+        return {"kind": payload.kind, "response": payload.response.strip()}
 
     def parse_execution_input(self, model_text: str) -> dict[str, Any]:
-        value = self._object(model_text)
-        kind = value.get("kind")
-        if kind == "REVISE_TASK":
-            self._keys(
-                value,
-                {"kind", "also_changes_approach"},
-                {"kind", "also_changes_approach"},
-            )
-            if not isinstance(value["also_changes_approach"], bool):
-                raise WireError("execution_input_also_changes_approach")
+        payload: ExecutionInputPayload = self._validate("INTERPRET_EXECUTION_INPUT", ExecutionInputPayload, model_text)
+        if hasattr(payload, "confidence") and payload.confidence is not None and payload.confidence < SYSTEM1_CONFIDENCE_FLOOR:
+            return {"intent": "UNRESOLVED"}
+        if isinstance(payload, ExecutionInputReviseData):
             return {
                 "intent": "REVISE_TASK",
-                "also_changes_approach": value["also_changes_approach"],
+                "also_changes_approach": payload.also_changes_approach,
             }
-        if kind not in {"SUPPLY_EXECUTION_INPUT", "NEW_TASK", "CANCEL", "UNRESOLVED"}:
-            raise WireError("execution_input_kind")
-        self._keys(value, {"kind"}, {"kind"})
-        return {"intent": kind}
+        return {"intent": payload.kind}
 
     def parse_protocol_discussion(self, model_text: str) -> str:
-        value = self._object(model_text)
-        self._keys(value, {"body"}, {"body"})
-        body = value["body"]
-        if not isinstance(body, str) or not body.strip():
-            raise WireError("protocol_body")
-        return body.strip()
+        payload: ProtocolDiscussionPayload = self._validate("ANSWER_PROTOCOL_DISCUSSION", ProtocolDiscussionPayload, model_text)
+        return payload.body.strip()
+
+    def parse_execution_draft(self, model_text: str) -> ExecutionDraftOutcome:
+        payload: ExecutionDraftPayload = self._validate("DRAFT_EXECUTION", ExecutionDraftPayload, model_text)
+        if isinstance(payload, ExecutionDraftBlockedData):
+            return ExecutionDraftOutcome(payload.kind, payload.brief_body.strip(), ())
+        clean: list[dict] = []
+        for e in payload.execution_entities:
+            if isinstance(e, dict) and str(e.get("value", "")).strip():
+                clean.append({
+                    "kind": str(e.get("kind", "meta")),
+                    "value": str(e["value"]).strip(),
+                    "name": e.get("name"),
+                    "struct_format": e.get("struct_format"),
+                    "declared_size": e.get("declared_size"),
+                })
+            elif isinstance(e, str) and e.strip():
+                clean.append({
+                    "kind": "meta",
+                    "value": e.strip(),
+                    "name": None,
+                    "struct_format": None,
+                    "declared_size": None,
+                })
+        return ExecutionDraftOutcome(payload.kind, payload.brief_body.strip(), tuple(clean))
+
+    def parse_result_ir_repair(self, model_text: str) -> dict:
+        payload: ResultIRRepairPayload = self._validate("EMIT_RESULT_IR", ResultIRRepairPayload, model_text)
+        return payload.result_ir.model_dump()
 
     def parse_execution(self, model_text: str) -> ExecutionOutcome:
-        value = self._object(model_text)
-        kind = value.get("kind")
-        if kind == "REQUEST_INPUT":
-            self._keys(
-                value,
-                {"kind", "body", "expected_type", "description"},
-                {"kind", "body", "expected_type", "description"},
+        payload: ExecutionOutcomePayload = self._validate("EXECUTE", ExecutionOutcomePayload, model_text)
+        if isinstance(payload, ExecutionRequestInputData):
+            return ExecutionOutcome(
+                payload.kind,
+                payload.body.strip(),
+                payload.expected_type.strip(),
+                payload.description.strip(),
+                None,
             )
-        elif kind in {"RESULT", "BLOCKED_BY_HIGHER_PRIORITY"}:
-            self._keys(value, {"kind", "body"}, {"kind", "body"})
-        else:
-            raise WireError("execution_kind")
-        body = value["body"]
-        if not isinstance(body, str) or not body.strip():
-            raise WireError("execution_body")
-        expected_type = value.get("expected_type")
-        description = value.get("description")
-        if expected_type is not None and (not isinstance(expected_type, str) or not expected_type.strip()):
-            raise WireError("execution_expected_type")
-        if description is not None and (not isinstance(description, str) or not description.strip()):
-            raise WireError("execution_description")
+        ir_dict = payload.result_ir.model_dump() if payload.result_ir is not None else None
         return ExecutionOutcome(
-            kind,
-            body.strip(),
-            expected_type.strip() if expected_type else None,
-            description.strip() if description else None,
+            payload.kind,
+            payload.body.strip(),
+            None,
+            None,
+            ir_dict,
         )
+

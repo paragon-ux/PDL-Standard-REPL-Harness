@@ -8,14 +8,23 @@ import sys
 from pathlib import Path
 
 import pytest
-
 ROOT = Path(__file__).resolve().parents[2]
-FIXTURE = Path(
-    os.environ.get(
-        "PDLT_FIXTURES_PATH",
-        str(ROOT / "fixtures" / "r4-recorded-worker"),
-    )
-) / "recorded-cases.json"
+
+# Recorded fixtures are externalized (repo-restructure-plan §3.1):
+# PDLT_FIXTURES_PATH env override -> repo-relative vendored location -> sibling PDL-Standard-Archive.
+def _resolve_fixture_file() -> Path:
+    env = os.environ.get("PDLT_FIXTURES_PATH", "").strip()
+    if env:
+        return Path(env) / "recorded-cases.json"
+    local = ROOT / "fixtures" / "r4-recorded-worker" / "recorded-cases.json"
+    if local.is_file():
+        return local
+    archive = ROOT.parent / "PDL-Standard-Archive" / "fixtures-r4-recorded-worker" / "recorded-cases.json"
+    if archive.is_file():
+        return archive
+    return local
+
+FIXTURE = _resolve_fixture_file()
 
 mlflow = pytest.importorskip("mlflow")
 
@@ -94,3 +103,13 @@ def test_new_session_is_lazy_no_fabricated_workspace(tmp_path: Path) -> None:
     assert new_dir.is_dir()
     assert not (new_dir / "session.json").exists(), "pointer must be written lazily after first turn"
     assert not list(new_dir.glob("workspaces/W-*")), "no workspace should be fabricated before a turn"
+
+
+def test_repl_headless_exit_fail_closed_on_unconfirmed_stage(tmp_path: Path) -> None:
+    """ADR-0012 / Kimi pushback: non-interactive runs halting at an unconfirmed stage must exit code 2."""
+    turns = _g06_turns()
+    # Sending only turn 1 halts at PROMPT_REVIEW_WAIT (unconfirmed review gate)
+    proc = _run_repl(tmp_path, turns[:1], "headless_unconfirmed")
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 2, out[-2000:]
+    assert "[headless halt] Session ended at non-terminal stage" in proc.stderr

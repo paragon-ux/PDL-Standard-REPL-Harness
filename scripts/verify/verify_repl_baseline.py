@@ -81,11 +81,18 @@ def _fixture_dir() -> Path:
     Precedence (mirrors the Brain/Hands pattern of S1's NormativeStore):
     1. PDLT_FIXTURES_PATH environment variable (points at the r4-recorded-worker dir).
     2. Repository-relative vendored location (compat with pre-restructure checkouts).
+    3. Sibling PDL-Standard-Archive external fixtures.
     """
     env = os.environ.get("PDLT_FIXTURES_PATH", "").strip()
     if env:
         return Path(env)
-    return ROOT / "fixtures" / "r4-recorded-worker"
+    local = ROOT / "fixtures" / "r4-recorded-worker"
+    if local.is_dir():
+        return local
+    archive = ROOT.parent / "PDL-Standard-Archive" / "fixtures-r4-recorded-worker"
+    if archive.is_dir():
+        return archive
+    return local
 
 
 

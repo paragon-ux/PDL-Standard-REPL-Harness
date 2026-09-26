@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020/12/schema",
+  "title": "ResultIrRepair",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "result_ir"
+  ],
+  "properties": {
+    "result_ir": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files",
+        "reconciliation",
+        "open_defects"
+      ],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "filename",
+              "satisfies",
+              "evidence"
+            ],
+            "properties": {
+              "filename": {
+                "type": "string"
+              },
+              "satisfies": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "evidence": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string"
+                  },
+                  "observed": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "reconciliation": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "requirement",
+              "status",
+              "evidence"
+            ],
+            "properties": {
+              "requirement": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "satisfied",
+                  "partial",
+                  "open"
+                ]
+              },
+              "evidence": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "section": {
+                    "type": "string"
+                  },
+                  "observed": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "open_defects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "description",
+              "evidence"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "evidence": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "path"
+                ],
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "observed": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

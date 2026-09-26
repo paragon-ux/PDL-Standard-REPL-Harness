@@ -5,36 +5,196 @@
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "body"],
+      "required": [
+        "kind",
+        "body",
+        "result_ir"
+      ],
       "description": "Deliverable completing the confirmed task (e.g. source code, implementation, written response, or analysis artifact). When the confirmed task requests writing, creating, or implementing code or functions, emit the complete deliverable implementation in body.",
       "properties": {
-        "kind": {"const": "RESULT"},
+        "kind": {
+          "const": "RESULT"
+        },
         "body": {
           "type": "string",
           "minLength": 1,
           "description": "The complete deliverable content (e.g. full source code, written answer, or output artifact)."
+        },
+        "result_ir": {
+          "type": "object",
+          "description": "Result Pseudocode decomposition IR (TRD-0003): reconciled against the confirmed prompt requirements, with evidence citations. Presence is wire-enforced; citation content is validated host-side.",
+          "additionalProperties": false,
+          "required": [
+            "files",
+            "reconciliation",
+            "open_defects"
+          ],
+          "properties": {
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "filename",
+                  "satisfies",
+                  "evidence"
+                ],
+                "properties": {
+                  "filename": {
+                    "type": "string"
+                  },
+                  "satisfies": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "evidence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "path"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "section": {
+                        "type": "string"
+                      },
+                      "observed": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "reconciliation": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "requirement",
+                  "status",
+                  "evidence"
+                ],
+                "properties": {
+                  "requirement": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "enum": [
+                      "satisfied",
+                      "partial",
+                      "open"
+                    ]
+                  },
+                  "evidence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "path"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "section": {
+                        "type": "string"
+                      },
+                      "observed": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "open_defects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "description",
+                  "evidence"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "evidence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "path"
+                    ],
+                    "properties": {
+                      "path": {
+                        "type": "string"
+                      },
+                      "observed": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "body", "expected_type", "description"],
+      "required": [
+        "kind",
+        "body",
+        "expected_type",
+        "description"
+      ],
       "description": "Request missing input ONLY when an external tool execution or runtime environment is blocked without live runtime variables. When the task is to write, implement, create, or define code, functions, classes, scripts, or documents, the deliverable is the source text itself: DO NOT request mocks, callers, or argument implementations (e.g. callback functions, test harnesses, or parameter values). Emit the complete source code implementation directly in RESULT.",
       "properties": {
-        "kind": {"const": "REQUEST_INPUT"},
-        "body": {"type": "string", "minLength": 1},
-        "expected_type": {"type": "string", "minLength": 1},
-        "description": {"type": "string", "minLength": 1}
+        "kind": {
+          "const": "REQUEST_INPUT"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "body"],
+      "required": [
+        "kind",
+        "body"
+      ],
       "properties": {
-        "kind": {"const": "BLOCKED_BY_HIGHER_PRIORITY"},
-        "body": {"type": "string", "minLength": 1}
+        "kind": {
+          "const": "BLOCKED_BY_HIGHER_PRIORITY"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     }
   ]

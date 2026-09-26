@@ -766,6 +766,7 @@ def main() -> int:
                         runtime, args, session_base, worker, _new_session_name(), log_mlflow=log_mlflow
                     )
                     print(f"new session: {runtime.session_dir}", flush=True)
+                    continue
                 elif cmd == "/resume":
                     if not arg:
                         print("usage: /resume <session-id>", flush=True)
@@ -777,6 +778,7 @@ def main() -> int:
                         continue
                     runtime = switch_session(runtime, args, session_base, worker, safe_id, log_mlflow=log_mlflow)
                     print(f"resumed session: {runtime.session_dir}", flush=True)
+                    continue
                 elif cmd == "/sessions":
                     parts = arg.split() if arg else []
                     if parts and parts[0] == "prune":
@@ -841,6 +843,21 @@ def main() -> int:
                 ],
                 cwd=ROOT,
             )
+    # Headless fail-closed invariant (ADR-0012):
+    # In non-interactive mode, if execution terminates while sitting at an unconfirmed
+    # review gate or non-terminal stage, exit with code 2 rather than falsely signalling success.
+    if not _is_interactive(args):
+        status = runtime.host.status()
+        ctrl = status.get("controller_state")
+        if ctrl is not None:
+            final_stage = ctrl.get("stage")
+            if final_stage not in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
+                print(
+                    f"[headless halt] Session ended at non-terminal stage '{final_stage}'. Exiting fail-closed (code 2).",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                return 2
     return 0
 
 

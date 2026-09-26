@@ -148,7 +148,7 @@ class WorkspaceRun:
             raise WorkspaceError("turn_pointer_unchanged")
         self._scaffold_turn(self.path, new_turn_id)
         self.metadata["turn_id"] = new_turn_id
-        self._atomic_write(
+        self._write(
             self.metadata_path,
             json.dumps(self.metadata, ensure_ascii=False, indent=2) + "\n",
         )
@@ -158,18 +158,18 @@ class WorkspaceRun:
         path = self.path / "turns" / turn_id / "turn.json"
         if not path.is_file():
             raise WorkspaceError(f"turn_missing:{turn_id}")
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(self._read(path))
 
     def mark_turn_status(self, status: str, *, deliverable_sha256: str | None = None) -> None:
         if self.turn_id is None:
             raise WorkspaceError("session_hierarchy_required")
         path = self.path / "turns" / self.turn_id / "turn.json"
-        data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {"turn_id": self.turn_id}
+        data = json.loads(self._read(path)) if path.is_file() else {"turn_id": self.turn_id}
         data["status"] = status
         if deliverable_sha256 is not None:
             data["deliverable_sha256"] = deliverable_sha256
         data["updated_at_utc"] = datetime.now(timezone.utc).isoformat()
-        self._atomic_write(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+        self._write(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
         self.append_event("TURN_STATUS", {"turn_id": self.turn_id, "status": status})
 
     def next_turn_id(self) -> str:
@@ -217,6 +217,12 @@ class WorkspaceRun:
     def open(cls, repo_root: str | Path, path: str | Path) -> "WorkspaceRun":
         return cls(Path(repo_root), Path(path))
 
+    def _write(self, path: Path, content: str) -> None:
+        self._atomic_write(path, content)
+
+    def _read(self, path: Path) -> str:
+        return path.read_text(encoding="utf-8")
+
     @staticmethod
     def _atomic_write(path: Path, content: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -237,11 +243,12 @@ class WorkspaceRun:
             return ".md", value.rstrip() + "\n"
         return ".json", json.dumps(value, ensure_ascii=False, indent=2) + "\n"
 
-    @staticmethod
-    def _deserialize_symbol(path: Path) -> Any:
+    def _deserialize_symbol(self, path: Path) -> Any:
+        content = self._read(path)
         if path.suffix == ".json":
-            return json.loads(path.read_text(encoding="utf-8"))
-        return path.read_text(encoding="utf-8").rstrip("\n")
+            return json.loads(content)
+        return content.rstrip("\n")
+
 
     def append_event(self, kind: str, payload: dict[str, Any]) -> None:
         event = {
@@ -249,6 +256,9 @@ class WorkspaceRun:
             "kind": kind,
             "payload": payload,
         }
+        self._record_event(event)
+
+    def _record_event(self, event: dict[str, Any]) -> None:
         events = self._turn_base() / "events" / "events.jsonl"
         events.parent.mkdir(parents=True, exist_ok=True)
         with events.open("a", encoding="utf-8", newline="\n") as handle:
@@ -272,11 +282,11 @@ class WorkspaceRun:
             # so re-binding across turns is expected. Record the instance on
             # the current turn; the root pointer tracks the latest binding.
             turn_json = self.path / "turns" / self.turn_id / "turn.json"
-            data = json.loads(turn_json.read_text(encoding="utf-8")) if turn_json.is_file() else {"turn_id": self.turn_id}
+            data = json.loads(self._read(turn_json)) if turn_json.is_file() else {"turn_id": self.turn_id}
             data["protocol_instance_id"] = instance_id
-            self._atomic_write(turn_json, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+            self._write(turn_json, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
             self.metadata["protocol_instance_id"] = instance_id
-            self._atomic_write(
+            self._write(
                 self.metadata_path,
                 json.dumps(self.metadata, ensure_ascii=False, indent=2) + "\n",
             )
@@ -285,7 +295,7 @@ class WorkspaceRun:
         if current is not None and current != instance_id:
             raise WorkspaceError("workspace_already_bound")
         self.metadata["protocol_instance_id"] = instance_id
-        self._atomic_write(
+        self._write(
             self.metadata_path,
             json.dumps(self.metadata, ensure_ascii=False, indent=2) + "\n",
         )
@@ -312,11 +322,11 @@ class WorkspaceRun:
     def _next_invocation_id(self, stage: str, operation: str) -> str:
         counter_path = self._turn_base() / "state" / "invocation-counter.json"
         if counter_path.is_file():
-            value = json.loads(counter_path.read_text(encoding="utf-8"))
+            value = json.loads(self._read(counter_path))
             counter = int(value.get("counter", 0)) + 1
         else:
             counter = 1
-        self._atomic_write(counter_path, json.dumps({"counter": counter}, indent=2) + "\n")
+        self._write(counter_path, json.dumps({"counter": counter}, indent=2) + "\n")
         return f"{counter:04d}-{operation.lower()}"
 
     def materialize_operation(
@@ -338,15 +348,15 @@ class WorkspaceRun:
         for symbol, value in values.items():
             suffix, content = self._serialize_symbol(value)
             filename = symbol.lower() + suffix
-            self._atomic_write(input_dir / filename, content)
+            self._write(input_dir / filename, content)
             index[symbol] = filename
         if higher_priority_constraints is not None:
             suffix, content = self._serialize_symbol(higher_priority_constraints)
             filename = "higher_priority_constraints" + suffix
-            self._atomic_write(input_dir / filename, content)
+            self._write(input_dir / filename, content)
             index["HIGHER_PRIORITY_CONSTRAINTS"] = filename
-        self._atomic_write(input_dir / "index.json", json.dumps(index, ensure_ascii=False, indent=2) + "\n")
-        self._atomic_write(
+        self._write(input_dir / "index.json", json.dumps(index, ensure_ascii=False, indent=2) + "\n")
+        self._write(
             input_dir / "invocation.json",
             json.dumps(
                 {
@@ -367,7 +377,7 @@ class WorkspaceRun:
         return WorkspaceInvocation(operation, stage, invocation_id, input_dir, output_dir)
 
     def load_operation_values(self, invocation: WorkspaceInvocation) -> tuple[dict[str, Any], Any]:
-        index = json.loads((invocation.input_dir / "index.json").read_text(encoding="utf-8"))
+        index = json.loads(self._read(invocation.input_dir / "index.json"))
         values: dict[str, Any] = {}
         higher_priority = None
         for symbol, filename in index.items():
@@ -379,24 +389,24 @@ class WorkspaceRun:
         return values, higher_priority
 
     def record_projection(self, invocation: WorkspaceInvocation, manifest: dict[str, Any], document: dict[str, Any]) -> None:
-        self._atomic_write(
+        self._write(
             invocation.output_dir / "projection-manifest.json",
             json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         )
-        self._atomic_write(
+        self._write(
             invocation.output_dir / "compiled-projection.json",
             json.dumps(document, ensure_ascii=False, indent=2) + "\n",
         )
 
     def record_model_output(self, invocation: WorkspaceInvocation, model_text: str) -> None:
-        self._atomic_write(invocation.output_dir / "model-response.txt", model_text.rstrip() + "\n")
+        self._write(invocation.output_dir / "model-response.txt", model_text.rstrip() + "\n")
         self.append_event(
             "MODEL_OUTPUT_RECORDED",
             {"operation": invocation.operation, "stage": invocation.stage, "invocation_id": invocation.invocation_id},
         )
 
     def record_parsed_output(self, invocation: WorkspaceInvocation, value: Any) -> None:
-        self._atomic_write(
+        self._write(
             invocation.output_dir / "parsed-output.json",
             json.dumps(value, ensure_ascii=False, indent=2, default=str) + "\n",
         )
@@ -414,8 +424,8 @@ class WorkspaceRun:
         output = self._artifact_stage(kind)
         versions = output / "versions"
         versions.mkdir(parents=True, exist_ok=True)
-        self._atomic_write(versions / f"{artifact_id}.md", body.rstrip() + "\n")
-        self._atomic_write(output / "current.md", body.rstrip() + "\n")
+        self._write(versions / f"{artifact_id}.md", body.rstrip() + "\n")
+        self._write(output / "current.md", body.rstrip() + "\n")
         payload: dict[str, Any] = {
             "artifact_id": artifact_id,
             "confirmed": confirmed,
@@ -423,7 +433,7 @@ class WorkspaceRun:
         }
         if confirmed_prompt_hash:
             payload["confirmed_prompt_hash"] = confirmed_prompt_hash
-        self._atomic_write(output / "current.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        self._write(output / "current.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         self.append_event(
             "ARTIFACT_PUBLISHED",
             {"kind": kind, "artifact_id": artifact_id, "confirmed": confirmed},
@@ -435,11 +445,11 @@ class WorkspaceRun:
         body_path = output / "current.md"
         if not meta_path.is_file() or not body_path.is_file():
             return
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        meta = json.loads(self._read(meta_path))
         artifact_id = meta.get("artifact_id")
         invalidated = output / "invalidated"
         invalidated.mkdir(parents=True, exist_ok=True)
-        self._atomic_write(
+        self._write(
             invalidated / f"{artifact_id}.json",
             json.dumps({**meta, "status": "invalidated", "reason": reason}, ensure_ascii=False, indent=2) + "\n",
         )
@@ -450,11 +460,11 @@ class WorkspaceRun:
     def mark_artifact_confirmed(self, kind: str, artifact_id: str) -> None:
         output = self._artifact_stage(kind)
         meta_path = output / "current.json"
-        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        meta = json.loads(self._read(meta_path))
         if meta.get("artifact_id") != artifact_id:
             raise WorkspaceError("artifact_confirmation_identity")
         meta["confirmed"] = True
-        self._atomic_write(meta_path, json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+        self._write(meta_path, json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
         self.append_event("ARTIFACT_CONFIRMED", {"kind": kind, "artifact_id": artifact_id})
 
     def read_artifact(self, kind: str) -> tuple[dict[str, Any], str]:
@@ -464,14 +474,14 @@ class WorkspaceRun:
         if not meta_path.is_file() or not body_path.is_file():
             raise WorkspaceError(f"artifact_missing:{kind}")
         return (
-            json.loads(meta_path.read_text(encoding="utf-8")),
-            body_path.read_text(encoding="utf-8").rstrip("\n"),
+            json.loads(self._read(meta_path)),
+            self._read(body_path).rstrip("\n"),
         )
 
     def publish_approach_sources(self, sources: list[str]) -> None:
         shared = self.path / "shared"
         shared.mkdir(exist_ok=True)
-        self._atomic_write(
+        self._write(
             shared / "approach-sources.json",
             json.dumps({"sources": sources}, ensure_ascii=False, indent=2) + "\n",
         )
@@ -480,7 +490,7 @@ class WorkspaceRun:
         path = self.path / "shared" / "approach-sources.json"
         if not path.is_file():
             return []
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(self._read(path))
         sources = value.get("sources", [])
         if not isinstance(sources, list) or any(not isinstance(x, str) or not x.strip() for x in sources):
             raise WorkspaceError("approach_source_file")
@@ -489,11 +499,11 @@ class WorkspaceRun:
     def publish_execution_outcome(self, kind: str, body: str, metadata: dict[str, Any] | None = None) -> None:
         output = self._turn_base() / "stages" / "50_execution" / "output"
         output.mkdir(parents=True, exist_ok=True)
-        self._atomic_write(output / "current.md", body.rstrip() + "\n")
+        self._write(output / "current.md", body.rstrip() + "\n")
         payload = {"kind": kind}
         if metadata:
             payload.update(metadata)
-        self._atomic_write(output / "current.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+        self._write(output / "current.json", json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
         self.append_event("EXECUTION_OUTCOME_PUBLISHED", payload)
 
     def validate_confirmed_artifact(self, kind: str, artifact_id: str, body: str) -> None:
@@ -515,12 +525,78 @@ class WorkspaceRun:
         if workspace_body != controller_body:
             versions = output / "versions"
             versions.mkdir(parents=True, exist_ok=True)
-            self._atomic_write(versions / f"{artifact_id}.md", workspace_body.rstrip() + "\n")
+            self._write(versions / f"{artifact_id}.md", workspace_body.rstrip() + "\n")
             meta["workspace_edited"] = True
-            self._atomic_write(output / "current.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+            self._write(output / "current.json", json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
             self.append_event(
                 "UNCONFIRMED_ARTIFACT_EDIT_DETECTED",
                 {"kind": kind, "artifact_id": artifact_id},
             )
             return workspace_body
         return controller_body
+
+
+class MemoryWorkspaceRun(WorkspaceRun):
+    """Software-defined In-Memory VFS WorkspaceRun (ADR-0011).
+
+    Eliminates blocking fsync and mkstemp latency on Windows NTFS during
+    active turn materialization by maintaining stage symbols in memory buffers
+    and performing fast, unjournaled writes to disk without synchronous fsync.
+    """
+
+    def __init__(self, repo_root: Path, path: Path):
+        super().__init__(repo_root, path)
+        self._vfs: dict[Path, str] = {}
+        self._events: list[dict[str, Any]] = []
+
+    def _write(self, path: Path, content: str) -> None:
+        self._vfs[path] = content
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8", newline="\n")
+
+    def _read(self, path: Path) -> str:
+        if path in self._vfs:
+            return self._vfs[path]
+        return path.read_text(encoding="utf-8")
+
+    def _record_event(self, event: dict[str, Any]) -> None:
+        self._events.append(event)
+        events = self._turn_base() / "events" / "events.jsonl"
+        events.parent.mkdir(parents=True, exist_ok=True)
+        with events.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+            handle.flush()
+            # Bypasses blocking os.fsync(handle.fileno()) per ADR-0011 §1
+
+    def start_turn(self, new_turn_id: str) -> None:
+        super().start_turn(new_turn_id)
+        self._events = []
+
+    def mark_turn_status(self, status: str, *, deliverable_sha256: str | None = None) -> None:
+        super().mark_turn_status(status, deliverable_sha256=deliverable_sha256)
+        if status in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
+            self.flush_turn_archive()
+
+    def flush_turn_archive(self, turn_id: str | None = None) -> Path:
+        """Atomic turn flush: persist turn state and events to a single archive record (ADR-0011 §2)."""
+        tid = turn_id or self.turn_id
+        if tid:
+            turn_dir = self.path / "turns" / tid
+            turn_meta = self.read_turn_status(tid)
+            status = turn_meta.get("status")
+            deliverable_sha256 = turn_meta.get("deliverable_sha256")
+        else:
+            turn_dir = self.path
+            status = self.metadata.get("status")
+            deliverable_sha256 = self.metadata.get("deliverable_sha256")
+        archive_path = turn_dir / "turn_archive.json"
+        archive_data = {
+            "turn_id": tid,
+            "status": status,
+            "deliverable_sha256": deliverable_sha256,
+            "events": list(self._events),
+            "flushed_at_utc": datetime.now(timezone.utc).isoformat(),
+        }
+        archive_path.write_text(json.dumps(archive_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return archive_path
+

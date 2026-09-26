@@ -407,12 +407,9 @@ def _read_repl_input(prompt: str = "> ") -> str:
             else:
                 import select
                 r, _, _ = select.select([sys.stdin], [], [], 0.0)
-                if r:
-                    while True:
-                        r, _, _ = select.select([sys.stdin], [], [], 0.02)
-                        if not r:
-                            break
-                        lines.append(input())
+                while r:
+                    lines.append(input())
+                    r, _, _ = select.select([sys.stdin], [], [], 0.02)
         except Exception:
             pass
 

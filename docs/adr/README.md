@@ -14,6 +14,7 @@
 | [ADR-0010](0010-pydantic-wire-enforcement.md) | Accepted | Pydantic v2 schema enforcement and automated operator retry corrections for wire contracts. |
 | [ADR-0011](0011-in-memory-vfs-and-microvm-sandboxing.md) | Accepted | Software-defined in-memory VFS context flow and ephemeral MicroVM agent sandboxing via MCP. |
 | [ADR-0012](0012-system-1-decision-models-via-rlcd.md) | Accepted | Realign Track L to System 1 decision models (Laya/Jev) aligned via RLCD contrastive distillation. |
+| [ADR-0014](0014-dual-plane-boundary-and-wire-conformance.md) | Accepted | Dual-plane boundary architecture: positive structural guidance, wire-level Pydantic contract enforcement, and tripartite clause governance. |
 
 The records are intentionally separated so UI, context construction, execution
 isolation, output representation, and reasoning policy can evolve without

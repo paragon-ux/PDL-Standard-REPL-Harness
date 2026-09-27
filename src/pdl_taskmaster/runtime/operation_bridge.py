@@ -88,6 +88,92 @@ class ModelRequest:
         return self.projection.manifest
 
 
+def _normalize_body_newlines(body: str) -> str:
+    """Normalize escaped newlines and whitespace from wire payloads.
+
+    Some model/provider combinations (e.g. Groq JSON mode) escape newlines as
+    literal '\\n' in string properties instead of actual linebreaks.
+    """
+    if "\\n" in body:
+        body = body.replace("\\r\\n", "\n").replace("\\n", "\n")
+    if "\\t" in body:
+        body = body.replace("\\t", "\t")
+    return body
+
+
+_META_RULE_PATTERNS = [
+    # Prohibitions on computation/execution/solving/partitioning + describing only:
+    # e.g. "DO NOT perform the partitioning; only describe the required result."
+    # e.g. "Do not perform any computation; only describe the required task."
+    # e.g. "Do not compute; describe only."
+    re.compile(
+        r"(?i)\b(?:do not|never)\s+(?:perform|execute|calculate|compute|solve|partition|do)\s+(?:any\s+|the\s+)?(?:computation|work|calculation|partitioning|task)\b[^.\n]*[.!]?",
+    ),
+    # Standalone "only describe / describe only the required task/result/output":
+    re.compile(
+        r"(?i)\b(?:only\s+describe|describe\s+only)\s+(?:the\s+)?(?:required\s+)?(?:task|result|output|deliverable)\b[^.\n]*[.!]?",
+    ),
+    # "without performing any computation/work/calculation/selection/partitioning"
+    re.compile(
+        r"(?i)\bwithout\s+performing\s+any\s+(?:computation|work|calculation|selection|partitioning)\b[^.\n]*[.!]?",
+    ),
+    # "no actual/algorithmic/substantive computation/work is performed"
+    re.compile(
+        r"(?i)\bno\s+(?:actual|algorithmic|substantive)\s+(?:computation|work|calculation)\s+(?:is\s+)?(?:performed|done)\b[^.\n]*[.!]?",
+    ),
+    # "defer computation to execution stage"
+    re.compile(
+        r"(?i)\bdefer\s+(?:all\s+)?computation\s+to\s+(?:the\s+)?execution\s+stage\b[^.\n]*[.!]?",
+    ),
+    # "INSERT placeholders for (the) substantive results..."
+    re.compile(
+        r"(?im)^\s*(?:(?:STEP\s*\d+|[-*•])\s*[:.-]\s*)?INSERT\s+placeholders?\s+for\s+(?:the\s+)?substantive\s+results?\b.*$",
+    ),
+    # "placeholders without performing any computation"
+    re.compile(
+        r"(?i)\bplaceholders?\s+without\s+performing\s+any\s+computation\b[^.\n]*[.!]?",
+    ),
+    # Legacy line-start bleed pattern
+    re.compile(
+        r"(?i)^\s*[-*•\d\.]*\s*(?:do not perform any computation|do not compute|only describe the required task|no actual computation is performed|defer computation to execution stage|describe only)\b.*$",
+        re.MULTILINE,
+    ),
+]
+
+_FAUX_FIELD_INLINE = re.compile(
+    r"(?<=\S)\s+(?:OUTPUT|INCLUDE|INPUT|CONSTRAINTS?|REQUIREMENTS?|ACTION|RESULT|STATUS|GOAL|OBJECTIVE)\s*:\s*",
+    re.IGNORECASE,
+)
+
+
+def _strip_meta_rule_bleed(body: str) -> str:
+    """Filter out negative meta-constraints hallucinated from PROTO-03 / PROMPT-02.
+
+    If the model includes meta-rules like 'Do not perform any computation; only describe
+    the required task', or 'DO NOT perform the partitioning; only describe the required result',
+    strip them so they do not contaminate downstream execution. Also splits inlined
+    faux-field schemas per PDL-02 / PDL-05.
+    """
+    if not body:
+        return body
+
+    cleaned = body
+    for pattern in _META_RULE_PATTERNS:
+        cleaned = pattern.sub("", cleaned)
+
+    cleaned = _FAUX_FIELD_INLINE.sub("\n", cleaned)
+
+    lines = []
+    for line in cleaned.splitlines():
+        line_s = line.strip()
+        if line_s in ("-", "*", "•", ".", ";", ":", "- .", "* ."):
+            continue
+        lines.append(line_s)
+
+    result = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
+    return result.strip()
+
+
 class OperationBridge:
     def __init__(self, repo_root: str | Path, *, render_compact: bool = False):
         self.repo_root = Path(repo_root)
@@ -203,14 +289,14 @@ class OperationBridge:
         if isinstance(payload, PromptDraftData):
             return PromptDraftOutcome(
                 payload.kind,
-                payload.prompt_body.strip(),
+                _strip_meta_rule_bleed(_normalize_body_newlines(payload.prompt_body.strip())),
                 payload.approach_handoff,
                 task_entities=tuple(payload.task_entities) if payload.task_entities else (),
             )
         return PromptDraftOutcome(
             payload.kind,
             blocking_basis=payload.blocking_basis,
-            response=payload.response.strip(),
+            response=_normalize_body_newlines(payload.response.strip()),
         )
 
     def _parse_named_body(self, model_text: str, field: str) -> str:
@@ -223,18 +309,19 @@ class OperationBridge:
         body = value[field]
         if not isinstance(body, str) or not body.strip():
             raise WireError(field)
-        return body.strip()
+        return _strip_meta_rule_bleed(_normalize_body_newlines(body.strip()))
 
     def parse_prompt_body(self, model_text: str) -> str:
         payload: PromptBodyPayload = self._validate("REVISE_PROMPT", PromptBodyPayload, model_text)
-        return payload.prompt_body.strip()
+        return _strip_meta_rule_bleed(_normalize_body_newlines(payload.prompt_body.strip()))
 
     def parse_plan_body(self, model_text: str) -> str:
         payload: NeutralPlanBodyPayload = self._validate("DRAFT_PLAN", NeutralPlanBodyPayload, model_text)
-        return payload.neutral_plan_body.strip()
+        return _strip_meta_rule_bleed(_normalize_body_newlines(payload.neutral_plan_body.strip()))
 
-    def _parse_artifact_review(self, model_text: str) -> dict[str, Any]:
-        payload: ArtifactReviewPayload = self._validate("INTERPRET_PROMPT_REVIEW", ArtifactReviewPayload, model_text)
+    def _parse_artifact_review(self, model_text: str, is_plan: bool = False) -> dict[str, Any]:
+        op = "INTERPRET_PLAN_REVIEW" if is_plan else "INTERPRET_PROMPT_REVIEW"
+        payload: ArtifactReviewPayload = self._validate(op, ArtifactReviewPayload, model_text)
         if hasattr(payload, "confidence") and payload.confidence is not None and payload.confidence < SYSTEM1_CONFIDENCE_FLOOR:
             # ADR-0012 Fail-closed: low-confidence review classification must never progress or silently route.
             # Escalate to UNRESOLVED to re-prompt human confirmation per REVIEW-09.
@@ -247,6 +334,12 @@ class OperationBridge:
                 # no dimension and requested no progression. Per REVIEW-09/13/14,
                 # mechanically treat this as SUBSTANTIVE_DISCUSSION.
                 return {"intent": "SUBSTANTIVE_DISCUSSION"}
+            # Normative TASK-02 disambiguation during plan review:
+            # Procedural feedback on the response plan (e.g. "plan your response", "show your work")
+            # is often spuriously classified by LLMs as ACTION_SUBJECT_OR_OBJECT. Per TASK-02,
+            # procedural instructions that do not alter scope/constraints are approach semantics.
+            if is_plan and task_changed and set(payload.task_change_dimensions) <= {"ACTION_SUBJECT_OR_OBJECT", "OTHER_TASK_OR_RESULT"}:
+                return {"intent": "REVISE_APPROACH"}
             if task_changed:
                 return {"intent": "REVISE_TASK", "also_changes_approach": approach_changed}
             if approach_changed:
@@ -255,10 +348,10 @@ class OperationBridge:
         return {"intent": payload.kind}
 
     def parse_prompt_review(self, model_text: str) -> dict[str, Any]:
-        return self._parse_artifact_review(model_text)
+        return self._parse_artifact_review(model_text, is_plan=False)
 
     def parse_plan_review(self, model_text: str) -> dict[str, Any]:
-        return self._parse_artifact_review(model_text)
+        return self._parse_artifact_review(model_text, is_plan=True)
 
     def parse_bootstrap_analysis(self, model_text: str) -> dict[str, Any]:
         payload: BootstrapAnalysisPayload = self._validate("BOOTSTRAP_ANALYSIS", BootstrapAnalysisPayload, model_text)
@@ -320,7 +413,7 @@ class OperationBridge:
         if isinstance(payload, ExecutionRequestInputData):
             return ExecutionOutcome(
                 payload.kind,
-                payload.body.strip(),
+                _normalize_body_newlines(payload.body.strip()),
                 payload.expected_type.strip(),
                 payload.description.strip(),
                 None,
@@ -328,7 +421,7 @@ class OperationBridge:
         ir_dict = payload.result_ir.model_dump() if payload.result_ir is not None else None
         return ExecutionOutcome(
             payload.kind,
-            payload.body.strip(),
+            _normalize_body_newlines(payload.body.strip()),
             None,
             None,
             ir_dict,

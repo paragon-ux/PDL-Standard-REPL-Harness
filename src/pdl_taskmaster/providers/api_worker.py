@@ -20,9 +20,22 @@ _JSON_ONLY_SUFFIX = (
 
 _SEMANTIC_READ_OPERATIONS = {"BOOTSTRAP_ANALYSIS", "INTERPRET_ACTIVATION"}
 
+def _default_provider_order() -> list[str]:
+    env_order = os.environ.get("OPENROUTER_PROVIDER_ORDER")
+    if env_order:
+        return [p.strip() for p in env_order.split(",") if p.strip()]
+    primary = os.environ.get("OPENROUTER_PROVIDER", "Groq")
+    fallbacks = ["Baseten", "Amazon Bedrock"]
+    order = [primary]
+    for fb in fallbacks:
+        if fb.lower() != primary.lower():
+            order.append(fb)
+    return order
+
+
 DEFAULT_PROVIDER_PINNING: dict[str, Any] = {
-    "order": ["Google"],
-    "allow_fallbacks": False,
+    "order": _default_provider_order(),
+    "allow_fallbacks": True,
 }
 
 DEFAULT_SAFETY_SETTINGS: list[dict[str, str]] = [
@@ -255,18 +268,51 @@ class ApiWorker:
                 break
             except urllib.error.HTTPError as exc:
                 if exc.code in (429, 502, 503, 504) and attempt < 4:
-                    time.sleep(3.0 * (2 ** attempt))
+                    delay = 0.5 * (2 ** attempt)
+                    if exc.headers:
+                        ra = exc.headers.get("Retry-After")
+                        if ra:
+                            try:
+                                val = float(ra)
+                                if 0.0 < val <= 10.0:
+                                    delay = val
+                            except (ValueError, TypeError):
+                                pass
+                    if self.on_progress is not None:
+                        try:
+                            self.on_progress(
+                                f"HTTP {exc.code} received; retrying in {delay:.1f}s (attempt {attempt + 1}/5)..."
+                            )
+                        except Exception:
+                            pass
+                    time.sleep(delay)
                     continue
                 detail = exc.read().decode("utf-8", errors="replace")[:2000]
                 raise TransportError(f"api worker HTTP {exc.code}: {detail}") from exc
             except urllib.error.URLError as exc:
                 if attempt < 4:
-                    time.sleep(3.0 * (2 ** attempt))
+                    delay = 0.5 * (2 ** attempt)
+                    if self.on_progress is not None:
+                        try:
+                            self.on_progress(
+                                f"transport error: {exc.reason}; retrying in {delay:.1f}s (attempt {attempt + 1}/5)..."
+                            )
+                        except Exception:
+                            pass
+                    time.sleep(delay)
                     continue
                 raise TransportError(f"api worker transport error: {exc.reason}") from exc
             except (TimeoutError, socket.timeout) as exc:
                 if attempt < 4:
-                    time.sleep(3.0 * (2 ** attempt))
+                    delay = 0.5 * (2 ** attempt)
+                    if self.on_progress is not None:
+                        try:
+                            self.on_progress(
+                                f"timeout; retrying in {delay:.1f}s (attempt {attempt + 1}/5)..."
+                            )
+                        except Exception:
+                            pass
+                    time.sleep(delay)
                     continue
                 raise TransportError(f"api worker timed out after {self.timeout}s") from exc
         if raw is None:
@@ -295,8 +341,44 @@ class ApiWorker:
         # the semantic read must stay free-text.
         operation_name = getattr(request, "operation", None)
         schema_enforced = self.structured_output and operation_name not in _SEMANTIC_READ_OPERATIONS
+
+        extra_guidance = ""
+        if operation_name in ("DRAFT_PROMPT", "REVISE_PROMPT"):
+            extra_guidance = (
+                "\n\nNORMATIVE GUIDELINES FOR PROMPT PSEUDOCODE (PDL-01 to PDL-08, PROMPT-01 to PROMPT-05):\n"
+                "1. Express the prompt in clean Structured English using uppercase action verbs (PDL-01, PDL-04).\n"
+                "   Example format:\n"
+                "   PARTITION the input string into palindrome substrings where each character belongs to exactly one palindrome\n"
+                "   MINIMIZE the number of cuts in the resulting partition\n"
+                "   RETURN the minimum-cut partition and cut count\n"
+                "2. Layout: Each distinct operation or requirement MUST appear on its own line (PDL-02).\n"
+                "3. No Invented Field Schemas: DO NOT use fielded prefixes like 'TASK:', 'OUTPUT:', 'INPUT:', 'INCLUDE:', 'CONSTRAINTS:' (PDL-05). State each operation directly.\n"
+                "4. Purpose-Complete Target: Prompt Pseudocode defines the substantive requirements to be solved upon execution (PROMPT-01). DO NOT insert internal meta-rules, drafting instructions, or negative execution prohibitions (PROMPT-02, PDL-08)."
+            )
+        elif operation_name in ("DRAFT_PLAN", "REVISE_PLAN"):
+            extra_guidance = (
+                "\n\nNORMATIVE GUIDELINES FOR RESPONSE PLAN PSEUDOCODE (PDL-01 to PDL-08, PLAN-01 to PLAN-10):\n"
+                "1. Express the response plan in clean Structured English using uppercase action verbs (PDL-01, PDL-04).\n"
+                "   Example format:\n"
+                "   IDENTIFY all palindrome substrings within the target string\n"
+                "   COMPUTE the minimum number of cuts required to partition the string\n"
+                "   CONSTRUCT the partition corresponding to the minimum cut count\n"
+                "   EMIT the resulting partition and count\n"
+                "2. Layout: Each step MUST appear on its own line (PDL-02). DO NOT invent prefixes like 'STEP 1:', 'ACTION:', 'RESULT:' (PDL-05).\n"
+                "3. Procedure to Deliverable: Specify the high-level procedural steps to execute and compute the concrete deliverable (PLAN-01, PLAN-02).\n"
+                "4. Neutrality & No Placeholders: Do not leak substantive answers into the plan (PLAN-04), and NEVER insert placeholder steps or meta-prohibitions like 'insert placeholders without performing computation' (PLAN-10)."
+            )
+        elif operation_name == "EXECUTE":
+            extra_guidance = (
+                "\n\nNORMATIVE GUIDELINES FOR EXECUTE:\n"
+                "- This is the substantive execution stage: You MUST solve the problem, perform any required computation, and output the concrete final deliverable/result (e.g. concrete answers, solutions, code, or partitions), not an algorithmic description or meta-summary.\n"
+                "- If SUPPLIED_EXECUTION_INPUT_SOURCE is provided, use it as the operative input data for your computation."
+            )
+
         if instructions:
-            body["instructions"] = instructions
+            body["instructions"] = instructions + extra_guidance
+        elif extra_guidance:
+            body["instructions"] = extra_guidance.strip()
         effort = self._reasoning_for(getattr(request, "operation", None))
         if effort == "none":
             body["reasoning"] = {"enabled": False}
@@ -372,7 +454,7 @@ class ApiWorker:
             # aggregators). It is a transport condition, not model behavior:
             # retry with the same exponential-backoff treatment as 429/5xx.
             for retry in range(3):
-                time.sleep(3.0 * (2 ** retry))
+                time.sleep(0.5 * (2 ** retry))
                 data = self._send_json_with_retries(req)
                 text = self._extract_output_text(data)
                 if text:

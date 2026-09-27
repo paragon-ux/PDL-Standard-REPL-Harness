@@ -19,7 +19,7 @@ Both mandates are enforced by **one unified mechanism**: compiling immutable nor
 ```mermaid
 graph TD
     User([User Request / Shell]) --> REPL["Host & REPL Loop<br/>(src/pdl_taskmaster/host/app.py)"]
-    REPL --> FastPath{Fast-Path / Command?<br/>/confirm, /revise, /stop}
+    REPL --> FastPath{Direct Assent / Fast-Path?<br/>/confirm, confirm, /revise, /stop}
     FastPath -- Yes --> ManualReview["Direct Intent Transition<br/>(Zero LLM Overhead)"]
     FastPath -- No --> Engine["SessionEngine Orchestrator<br/>(src/pdl_taskmaster/runtime/session_engine.py)"]
 
@@ -32,11 +32,15 @@ graph TD
     subgraph DataPlane ["Context Flow & Storage Substrate"]
         Engine <--> VFS["WorkspaceRun / In-Memory VFS<br/>(turns/turn_###/stages/)"]
         Engine <--> Redaction["Quarantine & Redaction Pass<br/>(src/pdl_taskmaster/runtime/quarantine.py)"]
+        Engine <--> Ledger["Cumulative Turn Ledger (S4)<br/>Multi-Turn Deliverable Chaining"]
     end
 
-    subgraph Workers ["Semantic Execution Plane"]
-        Bridge <--> System1["System 1 Decision Worker (ADR-0012)<br/>(Laya / Jev via RLCD)"]
-        Bridge <--> System2["System 2 Generative Worker<br/>(Frontier API / ApiWorker)"]
+    subgraph Workers ["Two-Tier Semantic Execution Plane (ADR-0012)"]
+        Bridge --> S1Router{"Tier 1: System 1 Decision Worker<br/>(Laya / Jev 1.13 Decisions API)"}
+        S1Router -- Pass Gate --> Bridge
+        S1Router -- Gate Fail / Ambiguous --> S2Worker["Tier 2: System 2 Generative Worker<br/>(Frontier API / Full CoT Fallback)"]
+        S2Worker --> Bridge
+        Bridge <--> S2DraftExec["Generative Synthesis & Code<br/>(DRAFT_PROMPT, DRAFT_PLAN, EXECUTE)"]
     end
 ```
 
@@ -154,7 +158,7 @@ stateDiagram-v2
 
 ### 4.1 Host & REPL Loop Subsystem (`src/pdl_taskmaster/host/`)
 * **Role**: Owns the OS process lifetime, terminal I/O loop, configuration resolution, and telemetry sink initialization.
-* **Fast-Path Engine (`U1`, `src/pdl_taskmaster/host/repl.py`)**: Intercepts `/confirm`, `/revise <feedback>`, and `/stop` directly in the REPL, applying review intents straight to `SessionEngine.handle_explicit_review()`. This bypasses expensive 15-second LLM classification round-trips for unambiguous user actions.
+* **Fast-Path Engine (`U1`, `src/pdl_taskmaster/host/repl.py`)**: Intercepts direct assent (`/confirm`, bare `confirm`, `yes`, `proceed`) as well as explicit commands (`/revise <feedback>`, `/stop`) directly in the REPL and engine, applying review intents straight to `SessionEngine.handle_explicit_review()`. This bypasses expensive 15-second LLM classification round-trips for unambiguous user actions.
 * **Non-Interactive Mode**: Fully headless support (`--non-interactive`) with portable POSIX key resolution for SSH relays and automated qualification drivers.
 
 ```mermaid
@@ -164,19 +168,33 @@ sequenceDiagram
     participant Host as PDLtHost (repl.py)
     participant Engine as SessionEngine
     participant Controller as MechanicalController
-    participant Worker as Semantic Worker
+    participant S1 as Tier 1: System 1 (Jev/Laya)
+    participant S2 as Tier 2: System 2 (Frontier LLM)
 
     User->>Host: Enters User Message
-    alt Fast Path (/confirm, /revise, /stop)
+    alt Direct Assent / Command Fast Path (/confirm, confirm, /revise, /stop)
         Host->>Engine: handle_explicit_review(intent)
         Engine->>Controller: apply_review_decision(decision)
         Controller-->>Engine: Transition(NextAction)
     else Natural Language Review
         Host->>Engine: handle_user_message(text)
-        Engine->>Worker: INTERPRET_REVIEW (BOUND_REVIEW_SUBJECT)
-        Worker-->>Engine: ReviewFactsPayload
-        Engine->>Controller: apply_review_decision(decision)
-        Controller-->>Engine: Transition(NextAction)
+        Engine->>S1: INTERPRET_REVIEW (Schema-Driven Decisions API)
+        alt Tier 1: Gating Passed (Conf >= 0.85, Margin >= 0.40, Entropy <= 0.35)
+            S1-->>Engine: ReviewFactsPayload (task_change, approach_change, progression)
+            Engine->>Controller: apply_review_decision(decision)
+            Controller-->>Engine: Transition(NextAction)
+        else Tier 2: Gate Failed / Low Confidence / Ambiguous
+            Engine->>S2: Escalate INTERPRET_REVIEW (Frontier CoT Reasoning)
+            alt System 2 Resolves Review
+                S2-->>Engine: ReviewFactsPayload
+                Engine->>Controller: apply_review_decision(decision)
+                Controller-->>Engine: Transition(NextAction)
+            else Tier 3: Inherent Human Ambiguity Persists (REVIEW-09)
+                S2-->>Engine: UNRESOLVED Intent
+                Engine->>Controller: apply_review_decision(UNRESOLVED)
+                Controller-->>Engine: Transition(REQUEST_REVIEW_CLARIFICATION)
+            end
+        end
     end
     Engine-->>Host: EngineResponse(Artifact/Text)
     Host-->>User: Rendered Output
@@ -240,13 +258,17 @@ flowchart LR
 * **Two-Level Directory Invariant**:
   - **Level 1 (Substantive Task Epoch)**: `turns/turn_###/` encapsulates an entire protocol cycle from user intent to `CLOSED_SUCCESS`.
   - **Level 2 (Invocations)**: `stages/<stage_id>/input/####-<operation>/` and `output/####-<operation>/` isolate intermediate model requests and responses.
-* **Cross-Turn Deliverable Chaining (S4)**: When a session advances to `turn_###+1`, only the confirmed deliverable from the previous `CLOSED_SUCCESS` turn carries forward into `REQUIRED_TASK_INPUTS`. Intermediate drafts and dialogue are structurally inaccessible.
+* **Cross-Turn Deliverable Chaining (S4)**: When a session advances to `turn_###+1`, confirmed deliverables from all prior `CLOSED_SUCCESS` turns are maintained in a **Cumulative Turn Ledger** within the workspace: `[(turn_001, confirmed_prompt, deliverable_body), (turn_002, confirmed_prompt, deliverable_body), ...]`.
+  - For sequential continuation, the immediate prior deliverable ($T-1$) is injected into `REQUIRED_TASK_INPUTS`.
+  - For retrospective or multi-problem tasks (e.g. "show work on the last two problems"), the full cumulative ledger is projected, preventing cross-turn amnesia and placeholder generation.
+  - Intermediate scratchpad drafts, rejected plans, and unconfirmed dialogue are structurally discarded, preserving the semantic containment boundary.
 
 ```mermaid
 graph TD
     subgraph SessionWorkspace ["Session Workspace (sessions/W-xxxxxx/)"]
         Meta["workspace.json (pinned instance & version)"]
         Shared["shared/ (session-scoped read-only resources)"]
+        Ledger["Cumulative Turn Ledger<br/>(turns_history.json)"]
         
         subgraph Turn1 ["turns/turn_001/ (CLOSED_SUCCESS)"]
             T1_Meta["turn.json (status: CLOSED_SUCCESS)"]
@@ -261,7 +283,8 @@ graph TD
             T2_Stages["stages/ (materialized on-demand)"]
         end
         
-        T1_Deliverable -. "Byte-Exact Chain<br/>(REQUIRED_TASK_INPUTS)" .-> Turn2
+        T1_Deliverable --> Ledger
+        Ledger -. "Cumulative Turn History / Prior Deliverable<br/>(REQUIRED_TASK_INPUTS)" .-> Turn2
     end
 ```
 
@@ -291,10 +314,11 @@ Recent architectural reviews identified critical bottlenecks in the `v2.3.0` bas
 * **Defect Remedied**: Autoregressive distillation into 3B–7B Qwen models suffers from JSON decode errors, markdown fence corruption, 15s token latency, and contextual amnesia.
 * **Modernization**:
   - **Non-Generative Classification Head**: Replace generative LLM review interpretation with non-autoregressive "System 1" decision models (**Laya** open-weights ModernBERT / **Jev** API) operating in a single forward pass ($<20\text{ms}$, zero syntax errors).
-  - **Fail-Closed Confidence Gating Invariant**: Output calibrated posterior confidence $c \in [0.0, 1.0]$. If $c < \theta_{floor}$ (default 0.85) or entropy exceeds threshold, the fast path **fails closed**:
-    - Review operations rewrite intent to `UNRESOLVED` (enforcing `REVIEW-09`), triggering an explicit human confirmation card in the REPL.
-    - Activation operations default to `APPLY_PROTOCOL` (ensuring unverified tasks never bypass gates).
-    - Unresolved cases escalate to the Tier 2 System 2 Frontier model for chain-of-thought analysis.
+  - **Sovereign Tripartite Fallback Ladder (ADR-0012 §4.3)**:
+    1. **Tier 1 (System 1 Fast-Path, <300ms)**: Invokes native Decisions API (POST `/api/alpha/decisions`). Passes when calibrated confidence $P_{\text{cal}} \ge 0.85$, top-2 margin $\Delta p \ge 0.40$, and normalized entropy $H(p) \le 0.35$.
+    2. **Tier 2 (System 2 Frontier Escalation, ~3–8s)**: If System 1 fails any gating check or is ambiguous, the worker MUST NOT emit `UNRESOLVED`. It dynamically escalates to System 2 (Frontier LLM with CoT) to interpret human intent.
+    3. **Tier 3 (Mechanical Human Card, `REVIEW-09`)**: If ambiguity persists even after System 2 evaluation, the engine rewrites intent to `UNRESOLVED`, halting execution and prompting the human to clarify.
+  - **Schema-Driven Dynamic Questions**: System 1 question definitions must derive dynamically from normative wire models (`wire_payloads.py` / `EXECUTION_CONTRACT.json`), fully supporting `revises_approach` alongside `revises_task` and `progression_requested`. Plan feedback is never hard-coded out of existence.
   - **Alignment via RLCD (arXiv:2307.12950)**: Train decision heads by pairing positive prompt traces (from Track P) with negative adversarial traces (from F6) scored by the deterministic `MechanicalController` oracle.
   - **Two-Tier Hybrid Split**: System 1 for sub-20ms governance classifications; System 2 (Frontier reasoning) for creative drafting and deliverable code generation.
 

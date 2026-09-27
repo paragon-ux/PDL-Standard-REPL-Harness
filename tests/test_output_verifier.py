@@ -216,3 +216,23 @@ def test_render_instructions_with_verified_execution():
     assert "positive" in instructions
     assert "negative" in instructions
 
+
+def test_partition_sum_triples_rejects_incomplete_partition():
+    from pdl_taskmaster.verification.output_verifier import OutputVerifier
+
+    verifier = OutputVerifier()
+    prompt = """
+    solve Schur Triples problem:
+    71, 97, 54, 56, 44, 158, 45, 58, 82, 135, 113, 117, 86, 40, 12, 185, 63, 50, 111, 72, 90, 109, 61, 13, 92, 60, 91, 35, 114, 94, 105, 26, 15, 51, 102, 118, 76, 32, 108, 23, 22, 134, 83, 43, 64
+    """
+    # Only 2 triples provided instead of 15
+    incomplete_witness = {
+        "polarity": "positive",
+        "evidence": {"path": "execution://witness"},
+        "data": {"triples": [[71, 64, 135], [97, 12, 109]]},
+    }
+    verdict = verifier.check(incomplete_witness, {"prompt_body": prompt})
+    assert not verdict.valid
+    assert "Partition misses required elements" in verdict.diagnostic
+
+

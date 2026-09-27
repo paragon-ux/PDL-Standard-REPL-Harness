@@ -134,6 +134,15 @@ class PartitionSumTriplesChecker(BaseChecker):
 
         # Check coverage against expected input elements if provided
         input_elements = constraints.get("input_elements") or constraints.get("integers")
+        if input_elements is None:
+            p_text = constraints.get("prompt_body") or constraints.get("user_message") or ""
+            if p_text:
+                import re
+                for line in p_text.splitlines():
+                    nums_in_line = re.findall(r"\b\d+\b", line)
+                    if len(nums_in_line) >= 9:
+                        input_elements = [int(x) for x in nums_in_line]
+                        break
         if input_elements is not None:
             expected_set = set(int(x) for x in input_elements)
             actual_set = set(all_elements)

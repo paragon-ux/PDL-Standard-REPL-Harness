@@ -267,6 +267,26 @@ class OperationBridge:
 
     def _validate(self, operation: str, model_type: Any, model_text: str) -> Any:
         value = self._object(model_text)
+        if operation == "EXECUTE" and isinstance(value, dict) and "kind" not in value:
+            # ADR-0016: Root Result IR wire normalization.
+            # If the model emits a bare Result IR object at top level, wrap it as a RESULT outcome.
+            if "files" in value or "reconciliation" in value or "witness" in value:
+                body_candidate = value.get("body")
+                if not body_candidate and value.get("files") and isinstance(value["files"], list):
+                    code_snippets = [
+                        f.get("evidence", {}).get("observed")
+                        for f in value["files"]
+                        if isinstance(f, dict) and isinstance(f.get("evidence"), dict) and f["evidence"].get("observed")
+                    ]
+                    if code_snippets:
+                        body_candidate = "\n\n".join(s for s in code_snippets if s)
+                if not body_candidate:
+                    body_candidate = "Delivered Result IR"
+                value = {
+                    "kind": "RESULT",
+                    "body": body_candidate,
+                    "result_ir": value,
+                }
         try:
             adapter = TypeAdapter(model_type)
             return adapter.validate_python(value)

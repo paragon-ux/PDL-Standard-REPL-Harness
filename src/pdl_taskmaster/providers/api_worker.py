@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import socket
@@ -302,19 +303,26 @@ class ApiWorker:
                     time.sleep(delay)
                     continue
                 raise TransportError(f"api worker transport error: {exc.reason}") from exc
-            except (TimeoutError, socket.timeout) as exc:
+            except (
+                TimeoutError,
+                socket.timeout,
+                ConnectionResetError,
+                http.client.IncompleteRead,
+                http.client.RemoteDisconnected,
+                http.client.HTTPException,
+            ) as exc:
                 if attempt < 4:
                     delay = 0.5 * (2 ** attempt)
                     if self.on_progress is not None:
                         try:
                             self.on_progress(
-                                f"timeout; retrying in {delay:.1f}s (attempt {attempt + 1}/5)..."
+                                f"connection error ({type(exc).__name__}: {exc}); retrying in {delay:.1f}s (attempt {attempt + 1}/5)..."
                             )
                         except Exception:
                             pass
                     time.sleep(delay)
                     continue
-                raise TransportError(f"api worker timed out after {self.timeout}s") from exc
+                raise TransportError(f"api worker connection failed after retries: {exc}") from exc
         if raw is None:
             raise TransportError("api worker failed after retries")
         try:

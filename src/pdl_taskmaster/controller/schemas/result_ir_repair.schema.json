@@ -16,6 +16,27 @@
         "open_defects"
       ],
       "properties": {
+        "witness": {
+          "type": "object",
+          "description": "Witness certifying substantive execution correctness (ADR-0013 / ADR-0015).",
+          "properties": {
+            "polarity": { "type": "string", "enum": ["positive", "negative"] },
+            "evidence": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string" },
+                "section": { "type": "string" },
+                "observed": { "type": "string" }
+              },
+              "required": ["path"]
+            },
+            "data": { "type": "object" },
+            "search_exhausted": { "type": "boolean" },
+            "nodes_explored": { "type": "integer" },
+            "method": { "type": "string" }
+          },
+          "required": ["polarity"]
+        },
         "files": {
           "type": "array",
           "items": {

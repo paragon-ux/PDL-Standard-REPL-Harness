@@ -180,3 +180,71 @@ def test_system1_fail_closed_confidence_gate() -> None:
     })
     act_res = BRIDGE.parse_activation(low_act)
     assert act_res.route == ActivationRoute.APPLY_PROTOCOL
+
+
+def test_result_ir_pydantic_ssot_enforcement() -> None:
+    from pdl_taskmaster.runtime.wire_payloads import ResultIRData
+
+    # Valid Result IR
+    valid_data = {
+        "files": [{"filename": "out.py", "satisfies": ["R1"], "evidence": {"path": "execution://body"}}],
+        "reconciliation": [{"requirement": "R1", "status": "satisfied", "evidence": {"path": "execution://body"}}],
+        "open_defects": [],
+        "witness": {
+            "polarity": "positive",
+            "evidence": {"path": "execution://witness"},
+            "data": {"triples": [[1, 2, 3]]},
+        },
+    }
+    model = ResultIRData.model_validate(valid_data)
+    assert len(model.files) == 1
+    assert model.reconciliation[0].status == "satisfied"
+    assert model.witness.polarity == "positive"
+
+    # Invalid status in reconciliation raises ValidationError
+    invalid_status = dict(valid_data)
+    invalid_status["reconciliation"] = [{"requirement": "R1", "status": "done", "evidence": {"path": "execution://body"}}]
+    with pytest.raises(ValidationError):
+        ResultIRData.model_validate(invalid_status)
+
+
+def test_root_result_ir_normalization_in_bridge() -> None:
+    # Bare Result IR emitted at root without kind="RESULT" (Session 13 failure mode)
+    bare_ir = json.dumps({
+        "files": [
+            {
+                "filename": "solver.py",
+                "satisfies": ["R1"],
+                "evidence": {"path": "execution://body", "observed": "def solve(): return [(1, 2, 3)]"},
+            }
+        ],
+        "reconciliation": [
+            {"requirement": "R1", "status": "satisfied", "evidence": {"path": "execution://body"}}
+        ],
+        "open_defects": [],
+        "witness": {
+            "polarity": "positive",
+            "evidence": {"path": "execution://witness"},
+            "data": {"triples": [[1, 2, 3]]},
+        },
+    })
+    outcome = BRIDGE.parse_execution(bare_ir)
+    assert outcome.kind == "RESULT"
+    assert "def solve(): return [(1, 2, 3)]" in outcome.body
+    assert outcome.result_ir is not None
+    assert outcome.result_ir["witness"]["polarity"] == "positive"
+
+
+def test_validate_result_ir_pydantic_first(tmp_path: Path) -> None:
+    from pdl_taskmaster.runtime.result_ir import validate_result_ir
+
+    # Malformed IR (e.g. reconciliation has entry with invalid status)
+    bad_ir = {
+        "files": [],
+        "reconciliation": [{"requirement": "R1", "status": "invalid_status", "evidence": {"path": "execution://body"}}],
+        "open_defects": [],
+    }
+    errors, norm = validate_result_ir(bad_ir, tmp_path, ["COMPLETE confirmed task"])
+    assert len(errors) > 0
+    assert any("reconciliation.0.status" in e or "Input should be 'satisfied'" in e for e in errors)
+

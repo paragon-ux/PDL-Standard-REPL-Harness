@@ -313,11 +313,59 @@ ExecutionDraftPayload = Annotated[
 ]
 
 
+class Evidence(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    path: str
+    section: Optional[str] = None
+    observed: Optional[str] = None
+
+
+class PositiveWitness(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    polarity: Literal["positive"] = "positive"
+    evidence: Evidence = Field(default_factory=lambda: Evidence(path="execution://witness"))
+    data: dict[str, Any]
+
+
+class NegativeWitness(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    polarity: Literal["negative"] = "negative"
+    evidence: Evidence = Field(default_factory=lambda: Evidence(path="execution://witness"))
+    search_exhausted: bool
+    nodes_explored: int
+    method: str
+
+
+WitnessPayload = Union[PositiveWitness, NegativeWitness]
+
+
+class FileItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    filename: str
+    satisfies: list[str] = Field(default_factory=list)
+    evidence: Evidence
+
+
+class ReconciliationItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    requirement: str
+    status: Literal["satisfied", "partial", "open"]
+    evidence: Evidence
+
+
+class DefectItem(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    id: str
+    description: str
+    evidence: Evidence
+
+
 class ResultIRData(BaseModel):
     model_config = ConfigDict(extra="allow")
-    files: list[Any]
-    reconciliation: list[Any]
-    open_defects: list[Any]
+    files: list[FileItem] = Field(default_factory=list)
+    reconciliation: list[ReconciliationItem] = Field(default_factory=list)
+    open_defects: list[DefectItem] = Field(default_factory=list)
+    witness: Optional[Union[PositiveWitness, NegativeWitness]] = None
 
 
 class ResultIRRepairPayload(BaseModel):
@@ -500,7 +548,7 @@ def map_validation_error_to_wire_reason(
     if "description" in loc or "description" in msg:
         return "execution_description"
     if "result_ir" in loc or "result_ir" in msg:
-        for leaf in ("files", "reconciliation", "open_defects"):
+        for leaf in ("files", "reconciliation", "open_defects", "witness"):
             if leaf in loc or leaf in msg:
                 prefix = "result_ir_repair" if operation == "EMIT_RESULT_IR" else "execution_result_ir"
                 return f"{prefix}_{leaf}"

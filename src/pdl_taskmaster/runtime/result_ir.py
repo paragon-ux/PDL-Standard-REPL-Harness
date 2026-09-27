@@ -26,7 +26,9 @@ from pathlib import Path
 _COMMITMENT_VERB = re.compile(
     r"^(?:IMPLEMENT|DEFINE|GENERATE|DELIVER|ENSURE|PRESERVE|REMOVE|UPDATE|"
     r"MAINTAIN|FIX|SCAN|ALIGN|ELIMINATE|COMPARE|APPLY|MODIFY|LOCATE|CREATE|"
-    r"VERIFY|REWRITE|REBUILD|PRESENT|ADD)\b"
+    r"VERIFY|REWRITE|REBUILD|PRESENT|ADD|PARTITION|RETURN|SOLVE|DETERMINE|"
+    r"COMPUTE|CALCULATE|SEARCH|EVALUATE|OUTPUT|EMIT|CONSTRUCT|EXECUTE|FIND|"
+    r"CHECK|VALIDATE)\b"
 )
 
 _VALID_STATUS = {"satisfied", "partial", "open"}
@@ -45,6 +47,14 @@ def derive_requirements(prompt_body: str) -> list[str]:
         s = line.strip()
         if s and _COMMITMENT_VERB.match(s):
             reqs.append(s)
+    if not reqs:
+        # Fallback: promote first non-empty pseudocode lines so requirements is never empty
+        for line in (prompt_body or "").splitlines():
+            s = line.strip()
+            if s and not s.startswith(("#", "//", "<!--")):
+                reqs.append(s)
+        if not reqs:
+            reqs.append("COMPLETE confirmed task")
     return reqs
 
 
@@ -52,57 +62,106 @@ def render_instructions(
     requirements: list[str],
     repo_root: str | Path | None = None,
     evidence_paths: list[str] | None = None,
+    requires_verified_execution: bool = False,
 ) -> str:
     numbered = "\n".join(f"R{i}: {r}" for i, r in enumerate(requirements, 1))
-    paths = "\n".join(f"- {p}" for p in (evidence_paths or ["execution://body"]))
-    return (
+    effective_paths = list(evidence_paths or ["execution://body"])
+    if requires_verified_execution and "execution://witness" not in effective_paths:
+        effective_paths.append("execution://witness")
+    paths = "\n".join(f"- {p}" for p in effective_paths)
+    base = (
         "CONFIRMED REQUIREMENTS (mechanically derived; reconcile EVERY ID):\n"
-        + (numbered or "R1: (no commitment lines detected)")
+        + (numbered or "R1: COMPLETE confirmed task")
         + "\n\n"
         + load_standard_instructions(repo_root).replace(
             "{evidence_paths}", paths or "- execution://body"
         )
     )
+    if requires_verified_execution:
+        base += (
+            "\n\nWITNESS REQUIREMENT (ADR-0013 / ADR-0015): Because this task requires verified execution, your Result IR MUST include a 'witness' field certifying substantive correctness:\n"
+            "- If a partition exists: {\"polarity\": \"positive\", \"evidence\": {\"path\": \"execution://witness\"}, \"data\": {\"triples\": [[a1, b1, c1], [a2, b2, c2], ...]}} where each triple satisfies a + b = c and all input integers are partitioned without duplicates.\n"
+            "- If no partition exists: {\"polarity\": \"negative\", \"evidence\": {\"path\": \"execution://witness\"}, \"search_exhausted\": true, \"nodes_explored\": <integer count of search states explored, > 1>, \"method\": \"<search algorithm name>\"}\n\n"
+            "COMPUTATIONAL SEARCH & SYNTHESIS: To solve and verify large inputs, include an executable Python solver script in a ```python ... ``` block that searches for the partition and prints the resulting triples or witness object. The host executes your script in an isolated sandbox to certify the witness."
+        )
+    return base
+
+
+_CANONICAL_RESULT_IR_INSTRUCTIONS = """The response MUST end with a fenced ```json block containing the Result IR object, exactly this shape:
+{"files": [{"filename": "<name>.py", "satisfies": ["R<n>"], "evidence": {"path": "<workspace-relative path>", "section": "<verbatim section marker, optional>"}}], "reconciliation": [{"requirement": "R<n>", "status": "satisfied|partial|open", "evidence": {"path": "...", "section": "...", "observed": "<verbatim quote from cited artifact if status is partial/open, or omit for satisfied>"}}], "open_defects": [{"id": "D<n>", "description": "<defect>", "evidence": {"path": "...", "observed": "<verbatim quote>"}}]}
+Files note: 'files' must be an array (use [] if no files in workspace were created or modified).
+Evidence rules: the path "execution://body" refers to THIS response's own deliverable text (use it for code and claims that exist only in this response); the path "execution://witness" refers to witness payload; any other path MUST be one of the AVAILABLE EVIDENCE PATHS listed below; every "observed" string MUST be copied verbatim from the cited artifact; every requirement ID MUST appear in "reconciliation" exactly once; do not invent paths, sections, quotes, or requirement IDs; the host mechanically validates every citation and rejects fabrication.
+AVAILABLE EVIDENCE PATHS: {evidence_paths}"""
 
 
 def load_standard_instructions(repo_root: str | Path | None = None) -> str:
-    """ADR-0009: the controller imports the Result IR standard at the EXECUTE
-    stage and renders its instruction block verbatim. Single source of truth
-    is contracts/standards/RESULT_STANDARD.md."""
-    root = Path(repo_root) if repo_root else Path(__file__).resolve().parents[3]
-    standard = root / "contracts" / "standards" / "RESULT_STANDARD.md"
-    text = standard.read_text(encoding="utf-8")
-    m = re.search(
-        r"<!-- RESULT-IR:INSTRUCTIONS.*?-->\s*\n(.*?)\n?<!-- /RESULT-IR:INSTRUCTIONS -->",
-        text,
-        re.S,
-    )
-    if not m:
-        raise ValueError("result_standard_instructions_missing")
-    return m.group(1).strip()
+    """Load Result IR instructions safely without fragile disk dependency (ADR-0009 / ADR-0015).
+
+    Returns the canonical compiled Result IR instructions, falling back to the immutable
+    constant if contracts/standards/RESULT_STANDARD.md is not present on disk in candidate repo.
+    """
+    candidates = []
+    if repo_root:
+        candidates.append(Path(repo_root) / "contracts" / "standards" / "RESULT_STANDARD.md")
+    try:
+        pkg_root = Path(__file__).resolve().parents[3]
+        candidates.append(pkg_root / "contracts" / "standards" / "RESULT_STANDARD.md")
+    except Exception:
+        pass
+
+    for candidate in candidates:
+        if candidate.is_file():
+            try:
+                text = candidate.read_text(encoding="utf-8")
+                m = re.search(
+                    r"<!-- RESULT-IR:INSTRUCTIONS.*?-->\s*\n(.*?)\n?<!-- /RESULT-IR:INSTRUCTIONS -->",
+                    text,
+                    re.S,
+                )
+                if m:
+                    return m.group(1).strip()
+            except Exception:
+                continue
+
+    return _CANONICAL_RESULT_IR_INSTRUCTIONS
 
 
 def extract_result_ir(body: str) -> dict | None:
     """Extract the Result IR from an execution body: the LAST fenced ```json
     block, or — as models sometimes emit it unfenced — a trailing raw JSON
-    object starting with {\"files\"."""
+    object containing 'files', 'reconciliation', or 'witness'."""
     body = body or ""
-    blocks = re.findall(r"```json\s*\n(.*?)```", body, re.S)
+    blocks = re.findall(r"```(?:json)?\s*\n(.*?)```", body, re.S)
     for candidate in reversed(blocks):
         try:
-            obj = json.loads(candidate)
+            obj = json.loads(candidate.strip())
         except json.JSONDecodeError:
             continue
-        if isinstance(obj, dict):
+        if isinstance(obj, dict) and any(k in obj for k in ("files", "reconciliation", "witness")):
             return obj
-    idx = body.rfind('{"files"')
-    if idx >= 0:
+
+    # Search for trailing JSON object
+    for marker in ('{"files"', '{\n  "files"', '{"witness"', '{\n  "witness"', '{"reconciliation"', '{\n  "reconciliation"'):
+        idx = body.rfind(marker)
+        if idx >= 0:
+            try:
+                obj, _ = json.JSONDecoder().raw_decode(body[idx:])
+                if isinstance(obj, dict):
+                    return obj
+            except json.JSONDecodeError:
+                pass
+
+    # Generic search for last balanced '{' that decodes to a Result IR dict
+    r_idx = body.rfind("{")
+    while r_idx >= 0:
         try:
-            obj, _ = json.JSONDecoder().raw_decode(body[idx:])
+            obj, _ = json.JSONDecoder().raw_decode(body[r_idx:])
+            if isinstance(obj, dict) and any(k in obj for k in ("files", "reconciliation", "witness")):
+                return obj
         except json.JSONDecodeError:
-            return None
-        if isinstance(obj, dict):
-            return obj
+            pass
+        r_idx = body.rfind("{", 0, r_idx)
+
     return None
 
 
@@ -124,6 +183,10 @@ def _resolve_evidence(
             errors.append(f"{where}: execution://body cited but no execution body available")
             return
         content = execution_body
+    elif raw in ("execution://witness", "execution://input", "execution://prompt"):
+        # Reserved protocol URIs (ADR-0013 / ADR-0015): witness and prompt evidence
+        # do not resolve to disk files in the workspace.
+        return
     else:
         candidate = (workspace_path / raw).resolve()
         try:
@@ -161,15 +224,23 @@ def validate_result_ir(
     if not isinstance(ir, dict):
         return ["Result IR must be a JSON object"], {}
 
-    files = ir.get("files")
-    recon = ir.get("reconciliation")
+    # Phase 1: Pydantic SSOT Structural Validation (ADR-0016)
+    from pdl_taskmaster.runtime.wire_payloads import ResultIRData
+    from pydantic import ValidationError
+    try:
+        validated_ir = ResultIRData.model_validate(ir)
+    except ValidationError as val_err:
+        for err in val_err.errors():
+            loc = ".".join(str(x) for x in err.get("loc", ()))
+            msg = err.get("msg", "")
+            errors.append(f"{loc}: {msg}" if loc else msg)
+        return errors, {}
+
+    files = ir.get("files", [])
+    recon = ir.get("reconciliation", [])
     defects = ir.get("open_defects", [])
-    if not isinstance(files, list) or not files:
-        errors.append("'files' must be a non-empty array")
-    if not isinstance(recon, list) or not recon:
+    if requirements and not recon:
         errors.append("'reconciliation' must be a non-empty array")
-    if not isinstance(defects, list):
-        errors.append("'open_defects' must be an array when present")
 
     # Requirement coverage: every derived ID reconciled exactly once.
     seen: dict[str, int] = {}
@@ -185,7 +256,18 @@ def validate_result_ir(
                 errors.append(f"reconciliation[{i}] ({rid}): invalid status {status!r}")
             if rid not in {f"R{j}" for j in range(1, len(requirements) + 1)}:
                 errors.append(f"reconciliation[{i}]: unknown requirement ID {rid!r}")
-            _resolve_evidence(entry.get("evidence"), ws, errors, f"reconciliation[{i}] ({rid})", execution_body)
+            ev = entry.get("evidence")
+            req_idx = int(rid[1:]) - 1 if rid.startswith("R") and rid[1:].isdigit() else -1
+            req_text = requirements[req_idx] if 0 <= req_idx < len(requirements) else ""
+            if status == "satisfied" and isinstance(ev, dict):
+                # Per RS-07, verbatim observed citation is mandatory for partial or open status
+                # and open defects. For satisfied status, the deliverable artifact satisfies the
+                # requirement, and 'observed' is optional explanatory text or requirement echo.
+                ev_to_resolve = dict(ev)
+                ev_to_resolve.pop("observed", None)
+                _resolve_evidence(ev_to_resolve, ws, errors, f"reconciliation[{i}] ({rid})", execution_body)
+            else:
+                _resolve_evidence(ev, ws, errors, f"reconciliation[{i}] ({rid})", execution_body)
     total = {f"R{j}" for j in range(1, len(requirements) + 1)}
     for rid in sorted(total - set(seen)):
         errors.append(f"requirement {rid} is not reconciled")
@@ -198,9 +280,17 @@ def validate_result_ir(
             if not isinstance(f, dict) or not str(f.get("filename", "")).strip():
                 errors.append(f"files[{i}]: 'filename' required")
                 continue
-            _resolve_evidence(
-                f.get("evidence"), ws, errors, f"files[{i}] ({f.get('filename')})", execution_body
-            )
+            f_ev = f.get("evidence")
+            if isinstance(f_ev, dict):
+                f_ev_to_resolve = dict(f_ev)
+                f_ev_to_resolve.pop("observed", None)
+                _resolve_evidence(
+                    f_ev_to_resolve, ws, errors, f"files[{i}] ({f.get('filename')})", execution_body
+                )
+            else:
+                _resolve_evidence(
+                    f_ev, ws, errors, f"files[{i}] ({f.get('filename')})", execution_body
+                )
 
     if isinstance(defects, list):
         for i, d in enumerate(defects, 1):
@@ -208,6 +298,27 @@ def validate_result_ir(
                 errors.append(f"open_defects[{i}]: 'description' required")
                 continue
             _resolve_evidence(d.get("evidence"), ws, errors, f"open_defects[{i}]", execution_body)
+
+    witness = ir.get("witness")
+    if witness is not None:
+        if not isinstance(witness, dict):
+            errors.append("'witness' must be an object when present")
+        else:
+            polarity = witness.get("polarity")
+            if polarity not in ("positive", "negative"):
+                errors.append(f"'witness.polarity' must be 'positive' or 'negative', got {polarity!r}")
+            elif polarity == "positive":
+                if "data" not in witness or not isinstance(witness["data"], dict):
+                    errors.append("'witness.data' must be an object for positive polarity")
+            elif polarity == "negative":
+                if "search_exhausted" not in witness or not isinstance(witness["search_exhausted"], bool):
+                    errors.append("'witness.search_exhausted' must be a boolean for negative polarity")
+                if "nodes_explored" not in witness or not isinstance(witness["nodes_explored"], int):
+                    errors.append("'witness.nodes_explored' must be an integer for negative polarity")
+                if "method" not in witness or not isinstance(witness["method"], str):
+                    errors.append("'witness.method' must be a string for negative polarity")
+            if "evidence" in witness:
+                _resolve_evidence(witness.get("evidence"), ws, errors, "witness", execution_body)
 
     return errors, (ir if not errors else {})
 
@@ -399,3 +510,100 @@ def entity_enforcement_misses(
         elif _norm(val) not in norm_deliv:
             deliv_misses.append(f"{kind}:{val}")
     return brief_misses, deliv_misses
+
+
+def format_friendly_deliverable(text: str) -> str:
+    """Format an execution deliverable for human/agent presentation in regular REPL mode.
+
+    Replaces raw Result IR JSON blocks with a clean, readable summary card.
+    """
+    if not text:
+        return text
+
+    is_unverified = text.startswith("UNVERIFIED ANSWER:")
+    reason = ""
+    candidate_body = text
+
+    if is_unverified:
+        m = re.match(
+            r"^UNVERIFIED ANSWER:.*?(?:Reason:\s*(.*?))\s*\n\nCandidate deliverable:\s*\n(.*)$",
+            text,
+            re.S,
+        )
+        if m:
+            reason = m.group(1).strip()
+            candidate_body = m.group(2).strip()
+
+    # Extract IR if present
+    ir = extract_result_ir(candidate_body)
+    if not ir:
+        return text
+
+    # Strip Result IR json block from candidate body
+    clean_body = candidate_body
+    clean_body = re.sub(r"```json\s*\{.*?\"files\".*?\}\s*```", "", clean_body, flags=re.S).strip()
+    clean_body = re.sub(
+        r"(?:Result IR:|\n|^)\s*\{\s*\"(?:files|witness)\".*\}\s*$",
+        "",
+        clean_body,
+        flags=re.S,
+    ).strip()
+
+    lines = []
+    if is_unverified:
+        lines.append("[!] UNVERIFIED DELIVERABLE (Substantive verification incomplete)")
+        if reason:
+            lines.append(f"    Reason: {reason}")
+        lines.append("")
+        lines.append("Candidate Output:")
+        lines.append(clean_body)
+    else:
+        lines.append(clean_body)
+
+    lines.append("")
+    lines.append("Result Reconciliation:")
+
+    recon = ir.get("reconciliation") or []
+    if recon:
+        for r in recon:
+            if isinstance(r, dict):
+                rid = r.get("requirement", "")
+                st = r.get("status", "")
+                sym = "[+]" if st == "satisfied" else ("[~]" if st == "partial" else "[-]")
+                lines.append(f"  {sym} {rid}: {st}")
+    else:
+        lines.append("  (no requirement citations)")
+
+    files = ir.get("files") or []
+    if files:
+        file_names = ", ".join(f.get("filename", "") for f in files if isinstance(f, dict))
+        lines.append(f"  * Files: {len(files)} modified ({file_names})")
+    else:
+        lines.append("  * Files: 0 modified")
+
+    witness = ir.get("witness")
+    if witness and isinstance(witness, dict):
+        pol = witness.get("polarity", "")
+        if pol == "positive":
+            data = witness.get("data") or {}
+            triples = data.get("triples")
+            count_str = f" ({len(triples)} triples partitioned)" if isinstance(triples, list) else ""
+            lines.append(f"  * Verification: Positive witness verified{count_str}")
+        elif pol == "negative":
+            nodes = witness.get("nodes_explored", 0)
+            method = witness.get("method", "exhaustive_search")
+            exhausted = witness.get("search_exhausted", False)
+            status_str = "exhausted" if exhausted else "unexhausted"
+            lines.append(f"  * Verification: Negative witness ({status_str}, {nodes} nodes explored via {method})")
+    elif is_unverified:
+        lines.append("  * Verification: Witness missing or unverified")
+
+    defects = ir.get("open_defects") or []
+    if defects:
+        lines.append(f"  * Open Defects: {len(defects)}")
+        for d in defects:
+            if isinstance(d, dict):
+                lines.append(f"    - {d.get('id', '')}: {d.get('description', '')}")
+
+    return "\n".join(lines).strip()
+

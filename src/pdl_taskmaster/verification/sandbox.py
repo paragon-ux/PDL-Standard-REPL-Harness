@@ -313,11 +313,13 @@ class ExecutionSandbox:
 
         # Memory limit exhaustion detection
         oom_killed = False
-        if "MemoryError" in stderr_text:
+        lower_err = stderr_text.lower()
+        if "memoryerror" in lower_err or "out of memory" in lower_err or "cannot allocate memory" in lower_err:
             oom_killed = True
         elif exit_code in (-1073741545, 3221225751, -1073741801, 3221225495):  # Win32 STATUS_NO_MEMORY / STATUS_PAGEFILE_QUOTA
             oom_killed = True
-        elif not _IS_WINDOWS and exit_code in (-9, 137) and not timed_out:
+        elif not _IS_WINDOWS and exit_code in (-9, 137, -11, 139) and not timed_out:
+            # POSIX RLIMIT_AS SIGKILL (-9 / 137) or SIGSEGV (-11 / 139 on mmap/brk failure)
             oom_killed = True
 
         return SandboxResult(

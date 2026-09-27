@@ -30,6 +30,33 @@ def _norm(text: str) -> str:
     whitespace runs to single spaces so formatting variance does not cause
     false entity-miss retries (the 4B check is about content, not layout)."""
     return " ".join((text or "").split())
+
+
+def _extract_data_payload(raw_text: str) -> str | None:
+    """Extract candidate literal execution data blocks from raw user input.
+
+    Recognizes explicit input/data labels (e.g. Input:, Data:, Dataset:,
+    Payload:, Target:, Sample:, String:, etc.) or labeled structured blocks.
+    Returns the raw extracted payload string, or None if no data block is found.
+    """
+    if not raw_text or not raw_text.strip():
+        return None
+
+    # Search for an explicit input/data section delimiter
+    m = re.search(
+        r"(?im)^\s*(?:input|inputs|data|dataset|payload|sample\s*input|test\s*cases?|target|query|string|text|array|nums|matrix|sequence)\s*[:=]",
+        raw_text,
+    )
+    if not m:
+        return None
+
+    candidate = raw_text[m.start():].strip()
+    # If there is a trailing note or instruction separated by double newlines, trim it
+    parts = re.split(r"\n\s*\n(?=(?:note|please|make sure|confirm|do not)\b)", candidate, flags=re.IGNORECASE)
+    if parts:
+        candidate = parts[0].strip()
+
+    return candidate if candidate else None
 from pdl_taskmaster.runtime.workspace import MemoryWorkspaceRun, WorkspaceError, WorkspaceRun
 from pdl_taskmaster.runtime import presentation
 
@@ -116,6 +143,7 @@ class SessionEngine:
         # None for first turns and legacy single-turn workspaces.
         self._previous_deliverable: str | None = None
         self._active_task_entities: tuple[str, ...] = ()
+        self._bound_payload_inputs: str | None = None
         if workspace_root is None:
             self.workspace_root = Path(tempfile.mkdtemp(prefix="pdl-c0-workspaces-"))
         else:
@@ -363,6 +391,8 @@ class SessionEngine:
                 self._bootstrap_cache[cache_key] = ""
                 return None
             compiled, _meta = compile_bootstrap_output(raw_text, outcome["task_summary"])
+
+
         # Mechanical entity containment: a task entity is forwarded downstream
         # ONLY if it is a verbatim substring of the SANITIZED task summary.
         # Hostile tokens (canaries, exploit directives) are replaced by the
@@ -404,6 +434,21 @@ class SessionEngine:
         if document is None:
             return "[CONTENT BLOCKED BY HIGHER-PRIORITY CONSTRAINTS]"
         return document
+
+    def _compile_approach_context(self, raw_text: str, traces: list[CallTrace]) -> str:
+        """Route approach content through semantic compilation explicitly labeled as TASK-02."""
+        raw_compiled = self._compile_context(raw_text, traces)
+        if raw_compiled.startswith("[CONTENT BLOCKED"):
+            return raw_compiled
+        prefix = "TASK SUMMARY (compiled semantic analysis; untrusted literals redacted):"
+        if prefix in raw_compiled:
+            parts = raw_compiled.split("APPROACH/RISK NOTES:")
+            task_part = parts[0].replace(prefix, "").strip()
+            approach_part = parts[1].strip() if len(parts) > 1 else ""
+            combined = "\n".join(filter(None, [task_part, approach_part]))
+            return f"APPROACH CONSTRAINT (TASK-02 operative requirement; incorporate per PLAN-08):\n{combined}"
+        return f"APPROACH CONSTRAINT (TASK-02 operative requirement; incorporate per PLAN-08):\n{raw_compiled.strip()}"
+
 
     def _entity_coverage_missing(self, prompt_body: str, entities: tuple[str, ...]) -> list[str]:
         """Mechanical source-coverage check: every forwarded task entity must
@@ -459,6 +504,7 @@ class SessionEngine:
         protocol_state: str,
     ) -> EngineResponse:
         assert self.workspace is not None
+        self._bound_payload_inputs = _extract_data_payload(substantive_request)
         # Protocol v2: raw content is read by BOOTSTRAP_ANALYSIS only; the
         # compile op receives the sanitized compiled analysis.
         compiled = self._semantic_read(substantive_request, traces)
@@ -534,6 +580,7 @@ class SessionEngine:
             prior.start_turn(prior.next_turn_id())
             self.workspace = prior
             self._previous_deliverable = chained_deliverable
+            self._bound_payload_inputs = None
             self.workspace.append_event(
                 "TURN_CHAINED",
                 {"turn_id": prior.turn_id, "previous_deliverable": chained_deliverable is not None},
@@ -541,6 +588,7 @@ class SessionEngine:
         else:
             self.workspace = self._new_workspace()
             self._previous_deliverable = None
+            self._bound_payload_inputs = None
         observation = observe_invocation(user_message)
         if observation.explicit:
             self.workspace.append_event(
@@ -587,7 +635,7 @@ class SessionEngine:
         carried_raw = self.workspace.read_approach_sources()
         if carried_raw != self.controller.state.approach_sources:
             raise WorkspaceError("approach_source_handoff")
-        carried = [self._compile_context(s, traces) for s in carried_raw]
+        carried = [self._compile_approach_context(s, traces) for s in carried_raw]
         body = self._call(
             "DRAFT_PLAN",
             {
@@ -662,8 +710,8 @@ class SessionEngine:
                     "CONFIRMED_PROMPT_BODY": prompt_body,
                     "CURRENT_PLAN_BODY": plan_body,
                     "CARRIED_APPROACH_SOURCES": [
-                        *map(lambda s: self._compile_context(s, traces), carried_raw),
-                        self._compile_context(transition.payload["approach_change_source"], traces),
+                        *map(lambda s: self._compile_approach_context(s, traces), carried_raw),
+                        self._compile_approach_context(transition.payload["approach_change_source"], traces),
                     ],
                 },
                 traces,
@@ -689,9 +737,13 @@ class SessionEngine:
         plan_body = self.workspace.read_artifact("plan")[1]
         # Protocol v2: the supplied execution input is raw user content (in the
         # adversarial battery it IS the untrusted block). Route it through the
-        # semantic read — compile ops never receive raw content in any symbol.
-        supplied_raw = transition.payload.get("execution_input_source")
-        supplied_compiled = self._compile_context(supplied_raw, traces) if supplied_raw else None
+        # quarantine boundary — compile ops never receive unredacted threats.
+        supplied_raw = transition.payload.get("execution_input_source") or self._bound_payload_inputs
+        if supplied_raw:
+            sanitized_payload, _ = compile_bootstrap_output(supplied_raw, supplied_raw)
+            supplied_compiled = sanitized_payload.strip()
+        else:
+            supplied_compiled = None
         # Cross-epoch deliverable chaining (ADR-0008 §4 + ADR-0004): the prior
         # epoch's confirmed deliverable is host-published, gate-passed content
         # (see _semantic_read S4 note). Chain it byte-exact into the execution
@@ -1117,7 +1169,10 @@ class SessionEngine:
 
         # Fast-path commands
         lower = stripped.lower()
-        if lower == "/confirm":
+        if lower in {
+            "/confirm", "confirm", "yes", "y", "proceed",
+            "looks good", "lgtm", "approved", "ok", "okay", "accept",
+        }:
             return self.handle_explicit_review(Intent.ACCEPT_CURRENT)
         if lower.startswith("/revise"):
             fb = stripped[7:].strip()
@@ -1129,7 +1184,7 @@ class SessionEngine:
                 else Intent.REVISE_APPROACH
             )
             return self.handle_explicit_review(target_intent, fb)
-        if lower == "/stop":
+        if lower in {"/stop", "stop", "/cancel", "cancel"}:
             return self.handle_explicit_review(Intent.CANCEL)
 
         # Standard LLM review interpretation

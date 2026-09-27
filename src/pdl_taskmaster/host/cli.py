@@ -73,7 +73,7 @@ def _cmd_verify(argv: list[str]) -> int:
     return verify_main()
 
 
-def _main_impl(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
 
@@ -94,14 +94,6 @@ def _main_impl(argv: list[str] | None = None) -> int:
     from pdl_taskmaster.host.repl import main as repl_main
 
     return repl_main()
-
-
-def main(argv: list[str] | None = None) -> int:
-    try:
-        return _main_impl(argv)
-    except KeyboardInterrupt:
-        print("\n[session terminated by user]", file=sys.stderr, flush=True)
-        return 130
 
 
 if __name__ == "__main__":

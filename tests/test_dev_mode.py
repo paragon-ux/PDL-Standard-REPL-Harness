@@ -37,6 +37,7 @@ class FakeRuntime:
             "workspace_path": str(tmp_path / "ws"),
             "controller_state": {"stage": "PROMPT_REVIEW", "instance_id": "inst-1"},
         }
+        self.exit_on_close = False
 
 
 @pytest.fixture
@@ -130,3 +131,75 @@ def test_dev_get(dev_env, capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["timeout"] == 60.0
+
+
+def test_dev_exit_on_close(dev_env, capsys):
+    runtime, worker, base = dev_env
+    assert runtime.exit_on_close is False
+
+    _handle_dev_command("/dev exit-on-close on", False, runtime, worker, base)
+    assert runtime.exit_on_close is True
+    assert "exit-on-close: on" in capsys.readouterr().out
+
+    _handle_dev_command("/dev exit-on-close off", False, runtime, worker, base)
+    assert runtime.exit_on_close is False
+    assert "exit-on-close: off" in capsys.readouterr().out
+
+
+def test_format_friendly_deliverable():
+    from pdl_taskmaster.runtime.result_ir import format_friendly_deliverable
+
+    # Normal verified deliverable
+    raw = """Here is the solution to the partition problem.
+
+```python
+triples = [(1, 2, 3), (4, 5, 9)]
+```
+
+```json
+{
+  "files": [],
+  "reconciliation": [
+    {"requirement": "R1", "status": "satisfied", "evidence": {"path": "execution://body"}},
+    {"requirement": "R2", "status": "satisfied", "evidence": {"path": "execution://body"}}
+  ],
+  "open_defects": [],
+  "witness": {
+    "polarity": "positive",
+    "evidence": {"path": "execution://witness"},
+    "data": {"triples": [[1, 2, 3], [4, 5, 9]]}
+  }
+}
+```"""
+    formatted = format_friendly_deliverable(raw)
+    assert "```json" not in formatted
+    assert "Result Reconciliation:" in formatted
+    assert "[+] R1: satisfied" in formatted
+    assert "[+] R2: satisfied" in formatted
+    assert "* Files: 0 modified" in formatted
+    assert "* Verification: Positive witness verified (2 triples partitioned)" in formatted
+
+    # Unverified deliverable
+    unverified_raw = """UNVERIFIED ANSWER: Substantive verification was not completed after repair attempts. Reason: partition misses required elements
+
+Candidate deliverable:
+I explored some nodes and concluded false.
+
+Result IR:
+{
+  "files": [],
+  "reconciliation": [{"requirement": "R1", "status": "satisfied", "evidence": {"path": "execution://body"}}],
+  "open_defects": [],
+  "witness": {
+    "polarity": "negative",
+    "evidence": {"path": "execution://witness"},
+    "search_exhausted": false,
+    "nodes_explored": 1,
+    "method": "greedy"
+  }
+}"""
+    u_formatted = format_friendly_deliverable(unverified_raw)
+    assert "[!] UNVERIFIED DELIVERABLE" in u_formatted
+    assert "Reason: partition misses required elements" in u_formatted
+    assert "Negative witness (unexhausted, 1 nodes explored via greedy)" in u_formatted
+

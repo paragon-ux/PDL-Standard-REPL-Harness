@@ -113,6 +113,7 @@ class SessionRuntime:
     transcript_path: Path
     workspace_root: Path
     observation_dir: Path
+    exit_on_close: bool = False
 
     def close(self) -> None:
         try:
@@ -254,6 +255,7 @@ def open_session(
         transcript_path=transcript_path,
         workspace_root=workspace_root,
         observation_dir=observation_dir,
+        exit_on_close=bool(getattr(args, "exit_on_close", False)),
     )
 
 
@@ -486,6 +488,7 @@ def _handle_dev_command(
         print(
             "Dev Mode (Agentic Diagnostic & Control Plane):\n"
             "  /dev [on|off]              - Toggle verbose developer telemetry\n"
+            "  /dev exit-on-close [on|off]- Toggle auto-exit on protocol closure (CLOSED_SUCCESS/CANCELLED)\n"
             "  /dev status                - Full JSON snapshot of host, engine, controller, worker\n"
             "  /dev diagnose              - Run self-diagnostic checks (repo, standards, providers, API key)\n"
             "  /dev set <key> <val...>    - Mutate operational parameters on the fly:\n"
@@ -505,6 +508,14 @@ def _handle_dev_command(
         print(f"[dev] mode: {'on' if new_dev else 'off'}", flush=True)
         return True, new_dev
 
+    if sub in {"exit-on-close", "exit_on_close"}:
+        if arg in {"on", "off"}:
+            runtime.exit_on_close = (arg == "on")
+            print(f"[dev] exit-on-close: {arg}", flush=True)
+        else:
+            print(f"[dev] exit-on-close is currently: {'on' if runtime.exit_on_close else 'off'}", flush=True)
+        return True, dev_mode
+
     if sub == "status":
         engine = getattr(runtime.host, "engine", None)
         ctrl = getattr(engine, "controller", None) if engine else None
@@ -514,6 +525,7 @@ def _handle_dev_command(
             ctrl_state = runtime.host.status().get("controller_state") or {}
         status_data = {
             "dev_mode": dev_mode,
+            "exit_on_close": getattr(runtime, "exit_on_close", False),
             "session_id": runtime.session_id,
             "session_dir": str(runtime.session_dir),
             "workspace_path": runtime.host.status().get("workspace_path"),
@@ -801,6 +813,11 @@ def main() -> int:
         "--dev",
         action="store_true",
         help="Start REPL in Dev Mode (enables agentic introspection, telemetry, and live operational mutations)",
+    )
+    parser.add_argument(
+        "--exit-on-close",
+        action="store_true",
+        help="Exit REPL when protocol reaches a closed state (CLOSED_SUCCESS or CLOSED_CANCELLED)",
     )
     args = parser.parse_args()
 
@@ -1194,8 +1211,13 @@ def main() -> int:
                 _write_transcript("ERROR> " + message)
                 continue
             if turn.text:
-                print(turn.text, flush=True)
-                _write_transcript("ASSISTANT> " + turn.text)
+                if dev_mode:
+                    display_text = turn.text
+                else:
+                    from pdl_taskmaster.runtime.result_ir import format_friendly_deliverable
+                    display_text = format_friendly_deliverable(turn.text)
+                print(display_text, flush=True)
+                _write_transcript("ASSISTANT> " + display_text)
             if dev_mode:
                 engine = getattr(runtime.host, "engine", None)
                 ctrl = getattr(engine, "controller", None)
@@ -1210,6 +1232,8 @@ def main() -> int:
             if turn.closed:
                 print("[protocol closed]", flush=True)
                 _write_transcript("PROTOCOL_CLOSED")
+                if runtime.exit_on_close:
+                    break
     finally:
         _disable_bracketed_paste()
         try:

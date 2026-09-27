@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -267,10 +268,14 @@ def switch_session(
 ) -> SessionRuntime:
     """Close the active host and open another session in one operation."""
     if log_mlflow:
-        subprocess.run(
-            [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
-            cwd=ROOT,
-        )
+        try:
+            subprocess.run(
+                [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
+                cwd=ROOT,
+                check=False,
+            )
+        except KeyboardInterrupt:
+            print("\n[MLflow logging cancelled by user]", flush=True)
     runtime.close()
     return open_session(args, session_base, worker, session_id)
 
@@ -466,6 +471,204 @@ def _read_repl_input(prompt: str = "> ") -> str:
     return raw
 
 
+def _handle_dev_command(
+    line: str,
+    dev_mode: bool,
+    runtime: SessionRuntime,
+    worker: Any,
+    session_base: Path,
+) -> tuple[bool, bool]:
+    parts = line.split(maxsplit=2)
+    sub = parts[1].lower() if len(parts) > 1 else ""
+    arg = parts[2].strip() if len(parts) > 2 else ""
+
+    if sub in {"", "help"}:
+        print(
+            "Dev Mode (Agentic Diagnostic & Control Plane):\n"
+            "  /dev [on|off]              - Toggle verbose developer telemetry\n"
+            "  /dev status                - Full JSON snapshot of host, engine, controller, worker\n"
+            "  /dev diagnose              - Run self-diagnostic checks (repo, standards, providers, API key)\n"
+            "  /dev set <key> <val...>    - Mutate operational parameters on the fly:\n"
+            "                                provider <p1,p2,...>  (e.g. groq,baseten,amazon-bedrock)\n"
+            "                                fallbacks <true|false>\n"
+            "                                model <op> <name>     (e.g. EXECUTE deepseek/deepseek-r1)\n"
+            "                                reasoning <op> <effort>\n"
+            "                                timeout <seconds>\n"
+            "                                max_tokens <int>\n"
+            "  /dev get [key]             - Inspect configuration parameter or dump all dev settings",
+            flush=True,
+        )
+        return True, dev_mode
+
+    if sub in {"on", "off"}:
+        new_dev = (sub == "on")
+        print(f"[dev] mode: {'on' if new_dev else 'off'}", flush=True)
+        return True, new_dev
+
+    if sub == "status":
+        engine = getattr(runtime.host, "engine", None)
+        ctrl = getattr(engine, "controller", None) if engine else None
+        if ctrl and hasattr(ctrl, "state") and hasattr(ctrl.state, "to_dict"):
+            ctrl_state = ctrl.state.to_dict()
+        else:
+            ctrl_state = runtime.host.status().get("controller_state") or {}
+        status_data = {
+            "dev_mode": dev_mode,
+            "session_id": runtime.session_id,
+            "session_dir": str(runtime.session_dir),
+            "workspace_path": runtime.host.status().get("workspace_path"),
+            "controller_stage": ctrl_state.get("stage") if isinstance(ctrl_state, dict) else None,
+            "controller_instance_id": ctrl_state.get("instance_id") if isinstance(ctrl_state, dict) else None,
+            "worker_profile": _worker_profile(worker),
+            "worker_model": getattr(worker, "model", None),
+            "worker_timeout": getattr(worker, "timeout", None),
+            "provider_pinning": getattr(worker, "provider_pinning", None),
+            "model_by_operation": getattr(worker, "model_by_operation", None),
+            "reasoning_by_operation": getattr(worker, "reasoning_by_operation", None),
+            "bound_payload_inputs": getattr(engine, "_bound_payload_inputs", None) if engine else None,
+        }
+        print(json.dumps(status_data, indent=2, default=str), flush=True)
+        return True, dev_mode
+
+    if sub == "diagnose":
+        print("[dev:diagnose] Running PDLt system self-test...", flush=True)
+        repo_root = getattr(runtime.host, "candidate_repo", Path.cwd())
+        from pdl_taskmaster.runtime.normative_store import NormativeStore
+        standards_root = NormativeStore.resolve_standards_root(repo_root)
+        std_ok = standards_root.is_dir()
+        contract_ok = NormativeStore.resolve_contract(repo_root, "EXECUTION_CONTRACT.json").is_file()
+        print(f"  [1/4] Standards Store: {'PASS' if std_ok and contract_ok else 'FAIL'} ({standards_root})", flush=True)
+
+        profile = _worker_profile(worker)
+        api_key_set = bool(os.environ.get(getattr(worker, "api_key_env", "OPENROUTER_API_KEY"))) if profile == "api" else True
+        print(f"  [2/4] Worker Transport: {'PASS' if api_key_set else 'WARN (no API key in env)'} ({profile})", flush=True)
+
+        pinning = getattr(worker, "provider_pinning", None)
+        if pinning:
+            order = pinning.get("order", [])
+            fb = pinning.get("allow_fallbacks", False)
+            print(f"  [3/4] Provider Pinning: PASS (order={order}, allow_fallbacks={fb})", flush=True)
+        else:
+            print("  [3/4] Provider Pinning: N/A (worker has no provider pinning)", flush=True)
+
+        engine = getattr(runtime.host, "engine", None)
+        engine_ok = engine is not None
+        print(f"  [4/4] SessionEngine: {'PASS' if engine_ok else 'FAIL'}", flush=True)
+        print("[dev:diagnose] Diagnostics complete.", flush=True)
+        return True, dev_mode
+
+    if sub == "set":
+        if not arg:
+            print("usage: /dev set <key> <value...>", flush=True)
+            return True, dev_mode
+        set_parts = arg.split(maxsplit=1)
+        k = set_parts[0].lower()
+        v = set_parts[1].strip() if len(set_parts) > 1 else ""
+        if not v:
+            print(f"usage: /dev set {k} <value>", flush=True)
+            return True, dev_mode
+
+        if k in {"provider", "providers"}:
+            names = [p.strip() for p in v.split(",") if p.strip()]
+            mapping = {
+                "groq": "Groq",
+                "baseten": "Baseten",
+                "baseten/fp4": "Baseten",
+                "amazon-bedrock": "Amazon Bedrock",
+                "bedrock": "Amazon Bedrock",
+                "cerebras": "Cerebras",
+                "sambanova": "SambaNova",
+            }
+            resolved = [mapping.get(p.lower(), p) for p in names]
+            if hasattr(worker, "provider_pinning") and isinstance(worker.provider_pinning, dict):
+                worker.provider_pinning["order"] = resolved
+                print(f"[dev] provider pinning order set to: {resolved}", flush=True)
+            else:
+                print("[dev] current worker does not support provider pinning", flush=True)
+        elif k in {"fallback", "fallbacks"}:
+            val_bool = v.lower() in ("true", "1", "yes", "on")
+            if hasattr(worker, "provider_pinning") and isinstance(worker.provider_pinning, dict):
+                worker.provider_pinning["allow_fallbacks"] = val_bool
+                print(f"[dev] provider allow_fallbacks set to: {val_bool}", flush=True)
+            else:
+                print("[dev] current worker does not support provider pinning", flush=True)
+        elif k == "model":
+            model_parts = v.split(maxsplit=1)
+            if len(model_parts) == 1:
+                worker.model = model_parts[0]
+                print(f"[dev] default worker model set to: {worker.model}", flush=True)
+            else:
+                op_name, m_name = model_parts[0].upper(), model_parts[1]
+                if hasattr(worker, "model_by_operation"):
+                    if worker.model_by_operation is None:
+                        worker.model_by_operation = {}
+                    worker.model_by_operation[op_name] = m_name
+                    print(f"[dev] model for {op_name} set to: {m_name}", flush=True)
+                else:
+                    print("[dev] current worker does not support per-operation models", flush=True)
+        elif k == "reasoning":
+            reasoning_parts = v.split(maxsplit=1)
+            if len(reasoning_parts) == 1:
+                worker.reasoning_effort = reasoning_parts[0]
+                print(f"[dev] default reasoning effort set to: {worker.reasoning_effort}", flush=True)
+            else:
+                op_name, effort = reasoning_parts[0].upper(), reasoning_parts[1]
+                if hasattr(worker, "reasoning_by_operation"):
+                    if worker.reasoning_by_operation is None:
+                        worker.reasoning_by_operation = {}
+                    worker.reasoning_by_operation[op_name] = effort
+                    print(f"[dev] reasoning for {op_name} set to: {effort}", flush=True)
+                else:
+                    print("[dev] current worker does not support per-operation reasoning", flush=True)
+        elif k == "timeout":
+            try:
+                worker.timeout = float(v)
+                print(f"[dev] worker timeout set to: {worker.timeout}s", flush=True)
+            except (AttributeError, ValueError) as exc:
+                print(f"[dev] cannot set timeout: {exc}", flush=True)
+        elif k == "max_tokens":
+            try:
+                worker.max_tokens = int(v)
+                print(f"[dev] worker max_tokens set to: {worker.max_tokens}", flush=True)
+            except (AttributeError, ValueError) as exc:
+                print(f"[dev] cannot set max_tokens: {exc}", flush=True)
+        else:
+            print(f"[dev] unknown setting: {k} (supported: provider, fallbacks, model, reasoning, timeout, max_tokens)", flush=True)
+        return True, dev_mode
+
+    if sub == "get":
+        if arg:
+            k = arg.lower()
+            if k in {"provider", "providers"}:
+                print(getattr(worker, "provider_pinning", None), flush=True)
+            elif k == "model":
+                print(f"default: {getattr(worker, 'model', None)}, per_operation: {getattr(worker, 'model_by_operation', None)}", flush=True)
+            elif k == "reasoning":
+                print(f"default: {getattr(worker, 'reasoning_effort', None)}, per_operation: {getattr(worker, 'reasoning_by_operation', None)}", flush=True)
+            elif k == "timeout":
+                print(getattr(worker, "timeout", None), flush=True)
+            elif k == "max_tokens":
+                print(getattr(worker, "max_tokens", None), flush=True)
+            else:
+                print(f"[dev] unknown key '{arg}'", flush=True)
+        else:
+            dev_config = {
+                "dev_mode": dev_mode,
+                "provider_pinning": getattr(worker, "provider_pinning", None),
+                "default_model": getattr(worker, "model", None),
+                "model_by_operation": getattr(worker, "model_by_operation", None),
+                "reasoning_effort": getattr(worker, "reasoning_effort", None),
+                "reasoning_by_operation": getattr(worker, "reasoning_by_operation", None),
+                "timeout": getattr(worker, "timeout", None),
+                "max_tokens": getattr(worker, "max_tokens", None),
+            }
+            print(json.dumps(dev_config, indent=2), flush=True)
+        return True, dev_mode
+
+    print(f"[dev] unknown dev subcommand: '{sub}' (see /dev help)", flush=True)
+    return True, dev_mode
+
+
 def main() -> int:
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -594,6 +797,11 @@ def main() -> int:
         action="store_true",
         help="OPT-IN ONLY: use --dangerously-bypass-approvals-and-sandbox (codex worker only). Requires a hardened/disposable execution environment; not part of the Phase 0-5 seal.",
     )
+    parser.add_argument(
+        "--dev",
+        action="store_true",
+        help="Start REPL in Dev Mode (enables agentic introspection, telemetry, and live operational mutations)",
+    )
     args = parser.parse_args()
 
     if args.worker != "codex":
@@ -671,6 +879,7 @@ def main() -> int:
         )
     args.render_compact = _resolve_render_compact(args)
     runtime = open_session(args, session_base, worker, session_id, restore_path=args.restore)
+    dev_mode = bool(getattr(args, "dev", False))
 
     def _write_transcript(text: str) -> None:
         runtime.transcript.write(text + "\n")
@@ -681,6 +890,8 @@ def main() -> int:
     print(f"PDLt REPL started (v{__version__}).", flush=True)
     print("Send input to the SessionEngine. Review gates accept /confirm, /revise <feedback>, or /stop.", flush=True)
     print("Commands: /help (full roster), /paste (multi-line), /status, /quit", flush=True)
+    if dev_mode:
+        print("[dev] Dev Mode: ON (agentic diagnostic and mutation plane active)", flush=True)
     if args.allow_bypass:
         print(
             "WARNING: dangerous bypass mode is ON. This condition requires an externally "
@@ -722,6 +933,7 @@ def main() -> int:
                     "/sandbox [read-only|workspace-write] -> show/set worker sandbox mode (codex worker only)\n"
                     "/workdir [path] -> show/set worker workdir\n"
                     "/transcript [path] -> show/set transcript file\n"
+                    "/dev [on|off|status|diagnose|set|get] -> Dev Mode diagnostic and mutation control plane\n"
                     "/new -> start a new session\n"
                     "/resume <session-id> -> resume a session\n"
                     "/quit -> exit",
@@ -735,7 +947,10 @@ def main() -> int:
                 parts = line.split(maxsplit=1)
                 cmd = parts[0].lower()
                 arg = parts[1].strip() if len(parts) > 1 else ""
-                if cmd == "/mlflow":
+                if cmd == "/dev":
+                    handled, dev_mode = _handle_dev_command(line, dev_mode, runtime, worker, session_base)
+                    continue
+                elif cmd == "/mlflow":
                     if arg in {"on", "off"}:
                         log_mlflow = arg == "on"
                     else:
@@ -969,6 +1184,10 @@ def main() -> int:
             print(f"[worker progress -> {runtime.session_dir / 'worker-progress.log'}]", flush=True)
             try:
                 turn = runtime.handle(line)
+            except KeyboardInterrupt:
+                print("\n[operation interrupted by user]", flush=True)
+                _write_transcript("USER_INTERRUPTED")
+                continue
             except Exception as exc:
                 message = f"{type(exc).__name__}: {exc}"
                 print(f"[error] {message}", flush=True)
@@ -977,25 +1196,44 @@ def main() -> int:
             if turn.text:
                 print(turn.text, flush=True)
                 _write_transcript("ASSISTANT> " + turn.text)
+            if dev_mode:
+                engine = getattr(runtime.host, "engine", None)
+                ctrl = getattr(engine, "controller", None)
+                stage = ctrl.state.stage.value if ctrl else "no_controller"
+                print(f"[dev:telemetry] controller stage: {stage}", flush=True)
+                traces = getattr(turn, "traces", [])
+                if traces:
+                    for idx, tr in enumerate(traces, 1):
+                        op = getattr(tr, "operation", "unknown")
+                        txt = getattr(tr, "model_text", "")
+                        print(f"[dev:telemetry] call #{idx}: {op} ({len(txt)} chars output)", flush=True)
             if turn.closed:
                 print("[protocol closed]", flush=True)
                 _write_transcript("PROTOCOL_CLOSED")
     finally:
         _disable_bracketed_paste()
-        runtime.close()
+        try:
+            runtime.close()
+        except KeyboardInterrupt:
+            pass
         if log_mlflow:
-            subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pdl_taskmaster.tracking.log_live_session",
-                    "--session-dir",
-                    str(runtime.session_dir),
-                    "--worker-profile",
-                    _worker_profile(worker),
-                ],
-                cwd=ROOT,
-            )
+            try:
+                print("[logging session to MLflow... (press Ctrl+C to cancel)]", flush=True)
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "pdl_taskmaster.tracking.log_live_session",
+                        "--session-dir",
+                        str(runtime.session_dir),
+                        "--worker-profile",
+                        _worker_profile(worker),
+                    ],
+                    cwd=ROOT,
+                    check=False,
+                )
+            except KeyboardInterrupt:
+                print("\n[MLflow logging cancelled by user]", flush=True)
     # Headless fail-closed invariant (ADR-0012):
     # In non-interactive mode, if execution terminates while sitting at an unconfirmed
     # review gate or non-terminal stage, exit with code 2 rather than falsely signalling success.
@@ -1015,4 +1253,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        print("\n[session terminated by user]", file=sys.stderr, flush=True)
+        raise SystemExit(130)

@@ -144,13 +144,13 @@ class TestSys1Client:
             client.call(req)
 
     def test_client_configuration_defaults(self):
-        client = Sys1Client(api_key="test-key")
+        client = Sys1Client(api_key="test")
         assert client.is_configured is True
         assert "openrouter.ai" in client.endpoint
         assert "sys1" in client.model
 
     def test_successful_client_call_mocked(self):
-        client = Sys1Client(api_key="mock-key", endpoint="https://example.com/decisions")
+        client = Sys1Client(api_key="mock", endpoint="https://example.com/decisions")
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({
             "answers": {

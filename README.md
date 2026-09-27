@@ -26,6 +26,8 @@ docs/                      documentation
   architecture/            framing.md, whitepaper.md, protocol specs
   operations/              eval-metrics.md, efficiency-report.md
   governance/              roadmap.md, experiment-log.md (full decision history)
+  releases/                v2.5.0.md release notes
+  ABLATIONS.md             substantive correctness and dual-plane empirical ablations
   adr/ trd/                background architecture-decision records (history, not required reading)
 ```
 
@@ -67,7 +69,7 @@ pdlt                        # Launch interactive REPL (default)
 
 ```powershell
 pdlt verify                 # Deterministic baseline verifier
-pytest                      # Run complete test suite (offline, 87 passed)
+pytest                      # Run complete test suite (offline, 174 passed, 2 skipped)
 ```
 
 The verifier checks required runtime/instructional files, imports, the zero-template workspace invariant, fixture hashes, REPL subprocess-script presence, source-repository isolation, a fresh-workspace lifecycle test (prompt → plan → execute → result), and resuming that same workspace. All verifier workspaces are temporary.
@@ -81,7 +83,7 @@ pdlt --worker recorded --case-ids G06 --new-session
 
 Recorded mode is **exact, deterministic replay**: it only responds to the exact interaction sequences captured in the fixture (`G06`: full lifecycle; `A02`: prompt revision). Use `--quit` to exit — there's no `/exit` command.
 
-Commands: `/help`, `/status`, `/session`, `/new`, `/resume`, `/mlflow [on|off]`, `/tokens [on|off]`, `/timeout [seconds]`, `/model [name]`, `/worker [api|codex|recorded]`, `/config` (codex only), `/sandbox` (codex only), `/workdir [path]`, `/transcript [path]`, `/paste` (or `"""`), `/quit`.
+Commands: `/help`, `/status`, `/session`, `/new`, `/resume`, `/dev [on|off]`, `/mlflow [on|off]`, `/tokens [on|off]`, `/timeout [seconds]`, `/model [name]`, `/worker [api|codex|recorded]`, `/config` (codex only), `/sandbox` (codex only), `/workdir [path]`, `/transcript [path]`, `/paste` (or `"""`), `/quit`.
 
 Fast-path review commands: `/confirm`, `/revise <feedback>`, `/stop`.
 
@@ -96,6 +98,18 @@ pdlt --new-session
 > **System 1 / System 2 Architecture Note**: Production default is `--worker api` (System 2: `openai/gpt-oss-120b` with reasoning effort `low`; benchmarks evaluated on `z-ai/glm-4.7`). Local fast System 1 classification models are undergoing contrastive RLCD fine-tuning (ADR-0012) and fail-closed to System 2 via the confidence ladder if threshold ($0.85$) or top-2 margin ($0.40$) are unmet.
 
 `--worker api` sends the compiled interpretation/plan directly to an OpenAI-compatible `/responses` endpoint (instructions bundled in `src/pdl_taskmaster/runtime/worker-bootstrap.txt`), with no tool definitions, sandbox, or agentic system prompt attached — deliberately; see the "instruction-lightness" finding in the whitepaper (§3).
+
+### REPL Dev Mode & Substantive Verification
+
+```powershell
+pdlt --dev                  # Launch with live telemetry inspector and stage controls
+pdlt --dev --exit-on-close  # Headless test run: exit when CLOSED_SUCCESS or error reached
+```
+
+- **Interactive Telemetry Inspector**: Displays real-time controller stage transitions, entity drops, and verification events.
+- **Substantive Witness Verification & OS Sandbox**: For combinatorial and algorithmic tasks, execution occurs within an OS-confined sandbox (Job Objects on Windows, `rlimit` on POSIX) with deterministic witness verification ([ADR-0013](docs/adr/0013-substantive-correctness-verification.md), [ADR-0015](docs/adr/0015-model-synthesized-verification-and-confinement-boundaries.md)).
+- **Deliverable Formatting**: Automatic ASCII-safe human/agent deliverable cards (`format_friendly_deliverable`) replacing raw Result IR wire blocks in user view.
+- **Empirical Benchmarks & Ablations**: Full evaluation results comparing System 1, ungrounded System 2, and the dual-plane harness: [`docs/ABLATIONS.md`](docs/ABLATIONS.md).
 
 ### Efficiency flags (`--worker api`)
 

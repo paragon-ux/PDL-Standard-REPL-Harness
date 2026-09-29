@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PDLt Live REPL Viewer & Telemetry Dashboard</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased p-4 min-h-screen">
+  <!-- Header & Stage Tracker Bar -->
+  <header class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-4 shadow-lg flex flex-col space-y-3">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-3.5 w-3.5 rounded-full bg-emerald-500 animate-pulse"></div>
+        <h1 class="text-lg font-bold tracking-tight text-white">PDLt Live REPL Telemetry & Verification Viewer</h1>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
+          Approach 1: Web-Based Live Viewer
+        </span>
+      </div>
+      <div class="text-xs text-slate-400">
+        Active Session: <span id="session-id" class="mono font-semibold text-slate-200">Loading...</span>
+      </div>
+    </div>
+
+    <!-- Visual Stage Tracker Pipeline Badges -->
+    <div class="flex items-center space-x-2 pt-1 border-t border-slate-800/80">
+      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Pipeline Stage:</span>
+      
+      <!-- Stage 1: PROMPT_REVIEW -->
+      <div id="badge-prompt-review" class="flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-slate-950 text-slate-500 border border-slate-800 transition-all">
+        <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+        <span>PROMPT_REVIEW</span>
+      </div>
+      <span class="text-slate-600 font-bold">→</span>
+
+      <!-- Stage 2: PLAN_REVIEW -->
+      <div id="badge-plan-review" class="flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-slate-950 text-slate-500 border border-slate-800 transition-all">
+        <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+        <span>PLAN_REVIEW</span>
+      </div>
+      <span class="text-slate-600 font-bold">→</span>
+
+      <!-- Stage 3: EXECUTION_READY -->
+      <div id="badge-execution-ready" class="flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-slate-950 text-slate-500 border border-slate-800 transition-all">
+        <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+        <span>EXECUTION_READY</span>
+      </div>
+      <span class="text-slate-600 font-bold">→</span>
+
+      <!-- Stage 4: CLOSED_SUCCESS -->
+      <div id="badge-closed-success" class="flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-slate-950 text-slate-500 border border-slate-800 transition-all">
+        <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+        <span>CLOSED_SUCCESS</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Split-Pane Grid -->
+  <div class="grid grid-cols-12 gap-4">
+    <!-- Left Pane: 105-Prompt Catalogue Tracker -->
+    <div class="col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-[76vh]">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-slate-300 uppercase tracking-wider">105-Prompt Catalogue</h2>
+        <span id="catalogue-count" class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">105 items</span>
+      </div>
+      <input type="text" id="search-input" onkeyup="filterCatalogue()" placeholder="Search prompts..." class="w-full bg-slate-950 border border-slate-800 rounded-md px-3 py-1.5 text-xs text-slate-200 mb-3 focus:outline-none focus:border-indigo-500">
+      <div id="catalogue-list" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
+        <!-- Prompts render here -->
+      </div>
+    </div>
+
+    <!-- Center Pane: Real-Time Live REPL Terminal Feed -->
+    <div class="col-span-6 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-[76vh]">
+      <div class="flex items-center justify-between mb-2 pb-2 border-b border-slate-800">
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Live REPL Terminal Stream</span>
+          <span class="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">tail -f worker-progress.log</span>
+        </div>
+        <div class="flex items-center space-x-3">
+          <label class="flex items-center space-x-1.5 text-xs text-slate-400 cursor-pointer">
+            <input type="checkbox" id="auto-scroll-toggle" checked class="rounded border-slate-800 bg-slate-950 text-indigo-500">
+            <span>Auto-scroll</span>
+          </label>
+          <button onclick="clearTerminal()" class="text-xs text-slate-400 hover:text-white transition-colors">Clear</button>
+        </div>
+      </div>
+      
+      <!-- Color-Differentiated Monospace Output -->
+      <div id="terminal-feed" class="flex-1 bg-slate-950 border border-slate-900 rounded-lg p-3 mono text-xs overflow-y-auto whitespace-pre-wrap leading-relaxed space-y-1">
+        <div class="text-slate-500 italic">Connecting to live REPL telemetry server...</div>
+      </div>
+    </div>
+
+    <!-- Right Pane: Plane 1 Wire & Plane 2 Sandbox Verifier Inspector -->
+    <div class="col-span-3 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col h-[76vh] space-y-4">
+      <!-- Plane 1 Wire Status -->
+      <div class="bg-slate-950 border border-slate-800 rounded-lg p-3">
+        <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-2">Plane 1: Pydantic Wire SSOT</h3>
+        <div class="text-xs text-slate-300 space-y-1">
+          <div>Status: <span class="text-emerald-400 font-semibold">Wire Schema Conforming</span></div>
+          <div>Strict Structured Output: <span class="text-indigo-300 mono font-semibold">True</span></div>
+          <div>Provider Engine: <span class="text-slate-400">openai/gpt-oss-120b</span></div>
+        </div>
+      </div>
+
+      <!-- Plane 2 Sandbox & Witness Inspector -->
+      <div class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-3 flex flex-col overflow-hidden">
+        <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2">Plane 2: ExecutionSandbox & Witness</h3>
+        <div id="witness-container" class="flex-1 overflow-y-auto space-y-2 text-xs">
+          <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+            <span class="text-slate-400 text-[10px] block mb-1">Synthesized Python Solver (Sandbox Code):</span>
+            <pre id="code-snippet" class="mono text-[11px] text-amber-300 overflow-x-auto whitespace-pre">No python code fence active yet.</pre>
+          </div>
+          <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+            <span class="text-slate-400 text-[10px] block mb-1">Witness Certificate & Verifier Verdict:</span>
+            <pre id="witness-json" class="mono text-[11px] text-emerald-300 overflow-x-auto whitespace-pre">Awaiting sandbox witness...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let SERVER_URL = window.location.origin;
+    let activePromptSnippet = '';
+
+    function clearTerminal() {
+      document.getElementById('terminal-feed').innerHTML = '';
+    }
+
+    // Color-Differentiated Terminal Log Parser
+    function formatLogLine(line) {
+      if (!line) return '';
+      const trimmed = line.trim();
+      
+      // Errors
+      if (trimmed.includes('[error]') || trimmed.includes('Error:') || trimmed.includes('ValidationError') || trimmed.includes('WireError')) {
+        return `<div class="text-rose-400 font-bold bg-rose-950/30 px-1 py-0.5 rounded border border-rose-900/50">${escapeHtml(line)}</div>`;
+      }
+      // User Input / Prompts
+      if (trimmed.startsWith('USER>') || trimmed.startsWith('Input:') || trimmed.startsWith('Given') || line.includes('Multi-line input')) {
+        return `<div class="text-cyan-300 font-semibold">${escapeHtml(line)}</div>`;
+      }
+      // System / Telemetry / Stages
+      if (line.includes('[dev:telemetry]') || line.includes('[worker progress]') || line.includes('STAGE:') || line.includes('[protocol closed]')) {
+        return `<div class="text-purple-300 font-semibold">${escapeHtml(line)}</div>`;
+      }
+      // Model / Assistant Pseudocode Responses
+      if (line.includes('Prompt Pseudocode') || line.includes('Response Plan Pseudocode') || line.includes('### solver.py')) {
+        return `<div class="text-amber-300 font-bold mt-1">${escapeHtml(line)}</div>`;
+      }
+      // Standard Output
+      return `<div class="text-slate-300">${escapeHtml(line)}</div>`;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // Visual Stage Tracker Pipeline Badges
+    function updateStageBadges(stage) {
+      const stages = ['PROMPT_REVIEW', 'PLAN_REVIEW', 'EXECUTION_READY', 'CLOSED_SUCCESS'];
+      const current = stage || 'IDLE';
+
+      stages.forEach(s => {
+        const el = document.getElementById('badge-' + s.toLowerCase().replace('_', '-'));
+        if (!el) return;
+        const dot = el.querySelector('span');
+
+        if (s === current) {
+          // Active stage
+          el.className = "flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-indigo-950 text-indigo-300 border border-indigo-500 shadow-md shadow-indigo-900/50 animate-pulse";
+          if (dot) dot.className = "h-2 w-2 rounded-full bg-indigo-400";
+        } else if (stages.indexOf(s) < stages.indexOf(current) || current === 'CLOSED_SUCCESS') {
+          // Passed stage
+          el.className = "flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-800";
+          if (dot) dot.className = "h-2 w-2 rounded-full bg-emerald-400";
+        } else {
+          // Pending stage
+          el.className = "flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-slate-950 text-slate-500 border border-slate-800";
+          if (dot) dot.className = "h-2 w-2 rounded-full bg-slate-600";
+        }
+      });
+    }
+
+    let allPrompts = [];
+    async function loadCatalogue() {
+      try {
+        const res = await fetch(SERVER_URL + '/api/catalogue');
+        allPrompts = await res.json();
+        renderCatalogue(allPrompts);
+      } catch (err) {
+        allPrompts = [
+          { name: '01-01-schur_triples_n15.txt', category: '01_combinatorial_search' },
+          { name: '01-02-exact_cover_dlx.txt', category: '01_combinatorial_search' },
+          { name: '13-01-unsatisfiable_constraints.txt', category: '13_negative_and_impossible' },
+          { name: '14-01-loop_invariant_proof.txt', category: '14_formal_verification' },
+        ];
+        renderCatalogue(allPrompts);
+      }
+    }
+
+    // Active Prompt Tracking in Catalogue
+    function renderCatalogue(items) {
+      const listEl = document.getElementById('catalogue-list');
+      document.getElementById('catalogue-count').innerText = items.length + ' items';
+      listEl.innerHTML = items.map(item => {
+        const isActive = activePromptSnippet && (item.name.includes(activePromptSnippet) || activePromptSnippet.includes(item.name.replace('.txt', '')));
+        const borderClass = isActive
+          ? 'border-indigo-500 bg-indigo-950/40 shadow-sm shadow-indigo-900/50 text-indigo-200'
+          : 'border-slate-800/80 bg-slate-950 text-slate-300 hover:border-slate-700';
+
+        return `
+          <div class="p-2 rounded border ${borderClass} transition-all flex items-center justify-between text-xs cursor-pointer">
+            <div class="flex items-center space-x-2 truncate">
+              ${isActive ? '<span class="h-2 w-2 rounded-full bg-indigo-400 animate-ping"></span>' : ''}
+              <span class="truncate font-medium">${item.name}</span>
+            </div>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">${item.category.split('_')[0]}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterCatalogue() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const filtered = allPrompts.filter(p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+      renderCatalogue(filtered);
+    }
+
+    // Flawless Auto-Scroll Control
+    function pollStatus() {
+      fetch(SERVER_URL + '/api/status')
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('session-id').innerText = data.session_id || 'NONE';
+          updateStageBadges(data.stage);
+
+          if (data.active_prompt_name && data.active_prompt_name !== activePromptSnippet) {
+            activePromptSnippet = data.active_prompt_name;
+            renderCatalogue(allPrompts);
+          }
+
+          if (data.logs && data.logs.length > 0) {
+            const term = document.getElementById('terminal-feed');
+            const autoScrollChecked = document.getElementById('auto-scroll-toggle').checked;
+            const isNearBottom = term.scrollHeight - term.scrollTop - term.clientHeight < 80;
+
+            term.innerHTML = data.logs.map(formatLogLine).join('');
+
+            if (autoScrollChecked && isNearBottom) {
+              term.scrollTop = term.scrollHeight;
+            }
+          }
+
+          if (data.code_snippet) {
+            document.getElementById('code-snippet').innerText = data.code_snippet;
+          }
+
+          if (data.witness) {
+            document.getElementById('witness-json').innerText = JSON.stringify(data.witness, null, 2);
+          }
+        })
+        .catch(err => {
+          // Retry
+        });
+    }
+
+    loadCatalogue();
+    setInterval(pollStatus, 1500);
+  </script>
+</body>
+</html>

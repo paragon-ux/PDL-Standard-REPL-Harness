@@ -15,11 +15,12 @@ from pdl_taskmaster.providers.sys1.schema import RecipeResult, Sys1Question, Sys
 
 # Deterministic regex patterns for combinatorial existence and exact witness problems
 _COMBINATORIAL_PATTERNS = re.compile(
-    r"(?i)\b(?:schur\s+triples?|partition\b[^.\n]*\btriples?|sum\s+triples?|"
+    r"(?i)\b(?:schur\s+triples?|partitioned?\b[^.\n]*\btriples?|sum\s+triples?|"
     r"subset\s*sum|exact\s+cover|(?:graph\s+)?(?:\d+-)?coloring|graph\s+color|clique\b|hamiltonian\b|"
     r"boolean\s+satisfiability|\bsat\s+solver|combinatorial\s+(?:existence|structure|optimization)|"
     r"minimal\s+(?:cut|partition)\s+palindrome|palindrome\s+partitioning|"
-    r"does\s+(?:there\s+exist|a\s+valid\s+partition\s+exist)|is\s+it\s+possible\s+to\s+partition)\b"
+    r"does\s+(?:there\s+exist|a\s+valid\s+partition\s+exist)|is\s+it\s+possible\s+to\s+partition|"
+    r"sisters?|brothers?|how\s+many\s+sisters|family\s+relationship|logic\s+puzzle|riddle)\b"
 )
 
 

@@ -73,6 +73,12 @@ def _cmd_verify(argv: list[str]) -> int:
     return verify_main()
 
 
+def _cmd_viewer(argv: list[str]) -> int:
+    from pdl_taskmaster.tools.viewer_server import main as viewer_main
+
+    return viewer_main(argv)
+
+
 def _main_impl(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
@@ -89,6 +95,8 @@ def _main_impl(argv: list[str] | None = None) -> int:
         return _cmd_init(argv[1:])
     if subcmd == "verify":
         return _cmd_verify(argv[1:])
+    if subcmd in {"viewer", "ui", "dashboard"}:
+        return _cmd_viewer(argv[1:])
 
     # Default: route all other invocations to REPL
     from pdl_taskmaster.host.repl import main as repl_main

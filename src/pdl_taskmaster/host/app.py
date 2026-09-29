@@ -84,6 +84,7 @@ class PDLtHost:
                     higher_priority_constraints=self.higher_priority_constraints,
                     available_execution_tools=[],
                     render_compact=self.render_compact,
+                    sys1_client=getattr(self.worker, "sys1_client", None),
                 )
             except Exception as exc:
                 # Graceful degradation: a session with no committed protocol
@@ -99,6 +100,7 @@ class PDLtHost:
                 available_execution_tools=[],
                 workspace_root=self.workspace_root,
                 render_compact=self.render_compact,
+                sys1_client=getattr(self.worker, "sys1_client", None),
             )
         self.engine = engine
         if self.observation_dir is not None:

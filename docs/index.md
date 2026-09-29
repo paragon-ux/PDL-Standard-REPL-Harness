@@ -26,9 +26,11 @@ Site-ready documentation for the PDL-Standard-REPL-Harness (PDL Taskmaster).
 
 - [Roadmap](governance/roadmap.md) — tracks F/P/E/M/L/D/S/U, phases 1–9,
   the Connected Dual Gate, and release sequencing.
-- [Experiment Decision Register](governance/experiment-log.md) — D0–D27:
+- [Experiment Decision Register](governance/experiment-log.md) — D0–D29:
   every ratified decision, falsifiable pre-registration, and failure-mode
   register.
+- [Regression Failure Ledger](governance/regressions-log.jsonl) — mechanized
+  pre-confirmation regression log linking Session failure modes to contract fixes.
 
 ## Internal provenance (excluded from site builds)
 

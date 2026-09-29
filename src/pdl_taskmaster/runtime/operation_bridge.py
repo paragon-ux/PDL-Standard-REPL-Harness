@@ -103,19 +103,23 @@ def _normalize_body_newlines(body: str) -> str:
 
 _META_RULE_PATTERNS = [
     # Prohibitions on computation/execution/solving/partitioning + describing only:
-    # e.g. "DO NOT perform the partitioning; only describe the required result."
+    # e.g. "DO NOT perform the actual partitioning or verification at this stage; only specify the required result."
     # e.g. "Do not perform any computation; only describe the required task."
-    # e.g. "Do not compute; describe only."
+    # e.g. "DO NOT perform any calculations or produce the actual partition in this step."
     re.compile(
-        r"(?i)\b(?:do not|never)\s+(?:perform|execute|calculate|compute|solve|partition|do)\s+(?:any\s+|the\s+)?(?:computation|work|calculation|partitioning|task)\b[^.\n]*[.!]?",
+        r"(?i)\b(?:do not|never)\s+(?:perform|execute|calculate|compute|solve|partition|do|produce)\s+(?:any\s+|the\s+|actual\s+|the\s+actual\s+)?(?:computation|work|calculation|calculations|partitioning|partition|verification|task|search)\b[^.\n]*[.!]?",
     ),
-    # Standalone "only describe / describe only the required task/result/output":
+    # Standalone "only describe / only specify / describe only the required task/result/output":
     re.compile(
-        r"(?i)\b(?:only\s+describe|describe\s+only)\s+(?:the\s+)?(?:required\s+)?(?:task|result|output|deliverable)\b[^.\n]*[.!]?",
+        r"(?i)\b(?:only\s+(?:describe|specify)|(?:describe|specify)\s+only)\s+(?:the\s+)?(?:required\s+)?(?:task|result|output|deliverable)\b[^.\n]*[.!]?",
     ),
-    # "without performing any computation/work/calculation/selection/partitioning"
+    # "without performing any / the actual computation/work/calculation/selection/partitioning/search"
     re.compile(
-        r"(?i)\bwithout\s+performing\s+any\s+(?:computation|work|calculation|selection|partitioning)\b[^.\n]*[.!]?",
+        r"(?i)\bwithout\s+performing\s+(?:any\s+|the\s+|actual\s+|the\s+actual\s+)?(?:computation|work|calculation|selection|partitioning|search)\b[^.\n]*[.!]?",
+    ),
+    # "at this stage / in this step ... only specify / describe"
+    re.compile(
+        r"(?i)\b(?:at\s+this\s+stage|in\s+this\s+step)[;,]?\s*only\s+(?:specify|describe|state)\b[^.\n]*[.!]?",
     ),
     # "no actual/algorithmic/substantive computation/work is performed"
     re.compile(
@@ -268,8 +272,11 @@ class OperationBridge:
     def _validate(self, operation: str, model_type: Any, model_text: str) -> Any:
         value = self._object(model_text)
         if operation == "EXECUTE" and isinstance(value, dict) and "kind" not in value:
-            # ADR-0016: Root Result IR wire normalization.
-            # If the model emits a bare Result IR object at top level, wrap it as a RESULT outcome.
+            # ADR-0016 / ADR-0017: Root Result IR and model synonym wire normalization.
+            for alt in ("deliverable", "text", "output", "code", "solution", "content", "response", "answer"):
+                if alt in value and isinstance(value[alt], str) and value[alt].strip() and "body" not in value:
+                    value["body"] = value[alt]
+                    break
             if "files" in value or "reconciliation" in value or "witness" in value:
                 body_candidate = value.get("body")
                 if not body_candidate and value.get("files") and isinstance(value["files"], list):
@@ -287,6 +294,8 @@ class OperationBridge:
                     "body": body_candidate,
                     "result_ir": value,
                 }
+            elif "body" in value and isinstance(value["body"], str) and value["body"].strip():
+                value["kind"] = "RESULT"
         try:
             adapter = TypeAdapter(model_type)
             return adapter.validate_python(value)

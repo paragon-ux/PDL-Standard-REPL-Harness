@@ -19,7 +19,7 @@ from pdl_taskmaster.providers.sys1.schema import Sys1Request
 logger = logging.getLogger(__name__)
 
 DEFAULT_SYS1_ENDPOINT = "https://openrouter.ai/api/alpha/decisions"
-DEFAULT_SYS1_MODEL = os.environ.get("SYS1_MODEL", "typesafe/sys1-latest")
+DEFAULT_SYS1_MODEL = os.environ.get("SYS1_MODEL", "typesafe/jev-1.13")
 
 
 class Sys1Client:

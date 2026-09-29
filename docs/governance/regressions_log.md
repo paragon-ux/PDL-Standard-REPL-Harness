@@ -1,0 +1,27 @@
+# PDL Taskmaster Regressions Log
+
+This log records verified operational and architectural regressions identified in live sessions and automated catalogue evaluation runs, along with their root causes, violated contract clauses, and normative remediations.
+
+---
+
+## Registry of Known Regressions
+
+| ID | Session / Run Reference | Severity | Contract Clauses | Root Cause & Failure Mode | Normative Remediation |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`REG-001`** | `session-13 (session-20260927-101719)` | CRITICAL | `WIRE-01`, `CONFORM-02` | **Wire Formatting:** Model emitted bare Result IR with solver code embedded as escaped JSON string in `evidence.observed` instead of a markdown body field, defeating balanced-brace extraction. | Enabled `--api-structured-output` by default so provider enforces Pydantic `ExecutionOutcomePayload` schema ([ADR-0010](../adr/0010-pydantic-wire-enforcement.md), [ADR-0016](../adr/0016-pydantic-ssot-wire-and-deliverable-boundary-enforcement.md)). |
+| **`REG-002`** | `session-14 (session-20260927-193227)` | CRITICAL | `CONFORM-01`, `HOST-04` | **Scope Indentation:** `schema_path.is_file()` check ran outside the `isinstance(..., str)` guard in `api_worker.py`, causing `UnboundLocalError` crash. | Indented `schema_path.is_file()` under the guard and statically verified schema resolution across all 13 operations. |
+| **`REG-003`** | `session-15 (session-20260927-194230)` | HIGH | `RS-01`, `EXEC-04` | **Ungrounded Confabulation:** Model emitted text assertion *"No valid partition exists"* without executing solver code or outputting a witness trace in Result IR. | Enforced substantive verification gate ([ADR-0013](../adr/0013-substantive-correctness-verification.md), [ADR-0015](../adr/0015-model-synthesized-verification-and-confinement-boundaries.md)) and explicit solver code execution. |
+| **`REG-004`** | `session-16 (session-20260927-230432)` | CRITICAL | `WIRE-01`, `CONFORM-03` | **Provider Grammar Strictness:** Upstream Groq engine rejected Pydantic schema with `TransportError 400` due to un-inlined `$defs/$ref` pointers. | Implemented recursive `$defs/$ref` inlining, title/description stripping, and `additionalProperties:false` enforcement ([ADR-0014](../adr/0014-dual-plane-boundary-and-wire-conformance.md)). |
+| **`REG-005`** | `session-20260928-094619` | CRITICAL | `EXEC-04`, `DATA-02` | **Data Payload Extraction:** Regex missed variable assignment inputs (e.g. `L = {71, 97, ...}`), leaving execution input source empty; `partition\b` missed `partitioned`. | Expanded `_extract_data_payload` regex to match variable assignments and updated problem class regex to `partitioned?\b`. |
+| **`REG-006`** | `session-20260929-045948` | CRITICAL | `PLAN-04`, `EXEC-04` | **Naive Search Timeout:** Model synthesized naive sequential backtracking (`for i in range(...)`) without constraint propagation, exploring millions of states and exceeding 5.0s sandbox ceiling. | Mandated Minimum Remaining Values (MRV) / most-constrained-element branch ordering in Plan Soundness Gate and calibrated sandbox timeout to 15.0s ([ADR-0017](../adr/0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md)). |
+| **`REG-007`** | `catalogue-01-01 (run-20260928-090451)` | HIGH | `PROMPT-01`, `PDL-08` | **Prompt Deferral Evasion:** Model authored self-serving meta-rules in Prompt Pseudocode (*"DO NOT perform calculations at this stage"*) and echoed them in execution to evade work. | Enforced strict prohibition against deferrals by automatically detecting and stripping/rejecting computation-evasion meta-rules in `operation_bridge.py` ([ADR-0017](../adr/0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md)). |
+| **`REG-008`** | `catalogue-01-01 (run-20260928-093759)` | CRITICAL | `WIRE-01`, `S1-01` | **Autoregressive Review Disparity:** Pure unrouted `gpt-oss-120b` usage across all review gates caused 1.5s–3.0s review latencies, provider-side formatting crashes, and wire drops (`missing_fields`). | Realigned runtime topology to wire `Sys1Client` (TypeSafe Jev) as the sovereign basis for activation and review gate transitions in $<300\text{ms}$ ([ADR-0012](../adr/0012-system-1-decision-models-via-rlcd.md), [ADR-0017](../adr/0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md)). |
+| **`REG-009`** | `session-20260929-061601` | HIGH | `RS-08`, `EXEC-05` | **Verification Routing & False-Green Closure:** Substantive verification errors were misrouted to `EMIT_RESULT_IR` instead of code re-emission, while unverified runs erroneously transitioned to `CLOSED_SUCCESS`; Result IR section validator rejected standard generic aliases like `'code'`. | Disrouted substantive verification errors to code-defect re-emission calling `EXECUTE`, grounded sandbox witness directly when python code is present, allowed standard code section aliases in Result IR, and enforced fail-closed termination (`CLOSED_CANCELLED`, exit code 1) on verification failure ([ADR-0017](../adr/0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md)). |
+
+---
+
+## Regression Verification Protocols
+
+1. **Automated Catalogue Runner:** Any regression reference (`regression_ref`) specified in `prompts/CATALOGUE_MANIFEST.jsonl` must evaluate to `CLOSED_SUCCESS`. Any hit terminates the run with non-zero exit code.
+2. **Offline Unit & Integration Suite:** Each regression is guarded by dedicated offline unit tests under `tests/`.
+3. **Live REPL Baseline Gate:** `pdlt verify` validates the complete lifecycle without regressions before every commit.

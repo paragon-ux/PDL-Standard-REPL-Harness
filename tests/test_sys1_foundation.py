@@ -147,7 +147,7 @@ class TestSys1Client:
         client = Sys1Client(api_key="test")
         assert client.is_configured is True
         assert "openrouter.ai" in client.endpoint
-        assert "sys1" in client.model
+        assert "sys1" in client.model or "jev" in client.model
 
     def test_successful_client_call_mocked(self):
         client = Sys1Client(api_key="mock", endpoint="https://example.com/decisions")

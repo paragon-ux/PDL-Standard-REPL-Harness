@@ -43,6 +43,14 @@ Harness-resident checkers (such as `PartitionSumTriplesChecker`) SHALL be mainta
 
 The harness SHALL NOT accumulate an unbounded library of handcrafted domain solvers. For uncalibrated problem domains requiring verified execution, the harness uses `FallbackChecker`, which validates structural schema conformance, certificate completeness (`search_exhausted == True`), and marks output as `provisional` without preempting the model's sandboxed self-verification.
 
+### 3. Live REPL Zero-Regression Pre-Confirmation Invariant
+
+To ensure that offline test fixtures and unit mocks (`pytest`) do not conceal live wire payload formatting defects, dynamic path resolution bugs, or model schema enforcement errors, the release of any protocol or host modification SHALL be governed by a strict Live REPL Verification Invariant:
+
+* **Live REPL Operational Stage Traversal Mandate:** Every completed pass or bugfix MUST execute a live verification run using the terminal REPL in the designated test workspace (`C:\Users\USER\Desktop\Frameworks\PDLt-Test`) with Dev Mode (`--dev`) enabled.
+* **Full Protocol Traversal:** The live verification pass MUST execute across all active operational stages (`PROMPT_REVIEW` → `PLAN_REVIEW` → `CLOSED_SUCCESS`) with zero unhandled exceptions, zero unhandled `WireError` regressions, and clean stage transitions.
+* **Structured Failure Logging:** Any major failure or contract violation encountered during development or live REPL runs MUST be recorded in the mechanized ledger `docs/governance/regressions-log.jsonl` detailing cause types, problem statements, type effects, and type solutions before confirming the fix.
+
 ---
 
 ## Consequences

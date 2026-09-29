@@ -50,7 +50,7 @@ class OutputVerifier:
         else:
             text = str(context_or_text)
 
-        if re.search(r"(?i)\b(?:schur\s+triples?|partition\b[^.\n]*\btriples?|sum\s+triples?)\b", text):
+        if re.search(r"(?i)\b(?:schur\s+triples?|partitioned?\b[^.\n]*\btriples?|sum\s+triples?)\b", text):
             return "partition_sum_triples"
 
         return None

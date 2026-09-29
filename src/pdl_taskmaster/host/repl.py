@@ -13,9 +13,36 @@ from typing import Any, TextIO
 import sys
 
 
-ROOT = Path(__file__).resolve().parents[3]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+def _resolve_repo_root() -> Path | None:
+    """Resolve the repository root when running from a dev/editable install.
+
+    Returns None when running from a wheel-installed site-packages layout
+    where the repo root cannot be meaningfully derived from __file__.
+    """
+    candidate = Path(__file__).resolve().parents[3]
+    # A dev-install lives under the repo; site-packages does not.
+    if (candidate / "pyproject.toml").is_file() or (candidate / "setup.py").is_file():
+        return candidate
+    return None
+
+
+_REPO_ROOT = _resolve_repo_root()
+
+# Dev-install sys.path shim — harmless no-op for wheel installs.
+if _REPO_ROOT is not None and str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+
+def _default_session_base() -> Path:
+    """Default live-session storage root.
+
+    Dev-install: <repo>/runs/live-sessions  (preserves existing sessions)
+    Wheel-install: ~/.pdlt/runs/live-sessions  (user-writable, consistent
+    with NormativeStore.user_dir())
+    """
+    if _REPO_ROOT is not None:
+        return _REPO_ROOT / "runs" / "live-sessions"
+    return Path.home() / ".pdlt" / "runs" / "live-sessions"
 
 from pdl_taskmaster.host.app import PDLtHost
 from pdl_taskmaster.providers.api_worker import ApiWorker
@@ -165,14 +192,17 @@ def _select_session(session_base: Path, args) -> str:
         return sanitize_session_name(args.session_id)
     if args.new_session or not _is_interactive(args):
         return _new_session_name()
+    # Ensure session root exists on first run (e.g. fresh wheel install).
+    session_base.mkdir(parents=True, exist_ok=True)
     sessions = sorted(
         (path for path in session_base.iterdir() if path.is_dir()),
         key=lambda path: path.stat().st_mtime,
         reverse=True,
     )
-    if sessions:
-        print("Existing sessions:", flush=True)
-        for index, path in enumerate(sessions, 1):
+    displayed = sessions[:10]
+    if displayed:
+        print("Existing sessions (10 most recent):", flush=True)
+        for index, path in enumerate(displayed, 1):
             print(f"  {index}) {path.name}", flush=True)
         print("  n) Start a new session", flush=True)
     else:
@@ -181,8 +211,8 @@ def _select_session(session_base: Path, args) -> str:
         choice = input("Select session: ").strip()
     except EOFError:
         return _new_session_name()
-    if choice.isdigit() and 1 <= int(choice) <= len(sessions):
-        return sessions[int(choice) - 1].name
+    if choice.isdigit() and 1 <= int(choice) <= len(displayed):
+        return displayed[int(choice) - 1].name
     if choice.lower() == "n" or not choice:
         return _new_session_name()
     return sanitize_session_name(choice)
@@ -273,7 +303,7 @@ def switch_session(
         try:
             subprocess.run(
                 [sys.executable, "-m", "pdl_taskmaster.tracking.log_live_session", "--session-dir", str(runtime.session_dir), "--worker-profile", _worker_profile(worker)],
-                cwd=ROOT,
+                cwd=(_REPO_ROOT or Path.cwd()),
                 check=False,
             )
         except KeyboardInterrupt:
@@ -794,9 +824,16 @@ def main() -> int:
     )
     parser.add_argument(
         "--api-structured-output",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="api worker only: pass the compiled output schema as a real JSON-schema "
-             "decoding constraint (opt-in; backend must support structured output)",
+             "decoding constraint (default ON; use --no-api-structured-output or --no-structured-output to disable)",
+    )
+    parser.add_argument(
+        "--no-structured-output",
+        action="store_false",
+        dest="api_structured_output",
+        help="api worker only: disable JSON-schema decoding constraints (alias for --no-api-structured-output)",
     )
     parser.add_argument(
         "--worker-sandbox",
@@ -829,7 +866,7 @@ def main() -> int:
         if args.allow_bypass:
             print(f"[note: --allow-bypass is specific to the codex worker and is ignored for worker '{args.worker}']", flush=True)
 
-    session_base = args.workspace_root or ROOT / "runs" / "live-sessions"
+    session_base = args.workspace_root or _default_session_base()
     try:
         session_id = _select_session(session_base, args)
     except ValueError as exc:
@@ -882,7 +919,7 @@ def main() -> int:
             reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
             model_by_operation=_parse_model_operations(args.api_model_operation),
             reorder_keys_for_cache=bool(getattr(args, "cache_order_render", False)),
-            structured_output=bool(getattr(args, "api_structured_output", False)),
+            structured_output=bool(getattr(args, "api_structured_output", True)),
             max_tokens=getattr(args, "max_tokens", 4096),
             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
         )
@@ -950,6 +987,7 @@ def main() -> int:
                     "/sandbox [read-only|workspace-write] -> show/set worker sandbox mode (codex worker only)\n"
                     "/workdir [path] -> show/set worker workdir\n"
                     "/transcript [path] -> show/set transcript file\n"
+                    "/viewer -> launch and open live telemetry & verifier browser dashboard\n"
                     "/dev [on|off|status|diagnose|set|get] -> Dev Mode diagnostic and mutation control plane\n"
                     "/new -> start a new session\n"
                     "/resume <session-id> -> resume a session\n"
@@ -964,6 +1002,26 @@ def main() -> int:
                 parts = line.split(maxsplit=1)
                 cmd = parts[0].lower()
                 arg = parts[1].strip() if len(parts) > 1 else ""
+                if cmd in {"/viewer", "/ui", "/dashboard"}:
+                    import webbrowser
+                    from pdl_taskmaster.tools.viewer_server import start_server
+
+                    global _viewer_server_state
+                    if "_viewer_server_state" not in globals() or _viewer_server_state is None:
+                        try:
+                            _viewer_server_state = start_server(8090)
+                        except OSError as exc:
+                            print(f"[viewer error] Could not start server: {exc}", flush=True)
+                            continue
+
+                    _, _, bound_port = _viewer_server_state
+                    url = f"http://localhost:{bound_port}"
+                    print(f"[viewer] Live REPL dashboard running on {url}", flush=True)
+                    try:
+                        webbrowser.open(url)
+                    except Exception:
+                        pass
+                    continue
                 if cmd == "/dev":
                     handled, dev_mode = _handle_dev_command(line, dev_mode, runtime, worker, session_base)
                     continue
@@ -1133,7 +1191,7 @@ def main() -> int:
                             reasoning_effort=args.api_reasoning_effort,
                             reasoning_by_operation=_parse_reasoning_operations(args.api_reasoning_operation),
                             model_by_operation=_parse_model_operations(args.api_model_operation),
-                            structured_output=bool(getattr(args, "api_structured_output", False)),
+                            structured_output=bool(getattr(args, "api_structured_output", True)),
                             on_progress=lambda line: print(f"[api] {line}", flush=True) if line.strip() else None,
                         )
                     else:
@@ -1253,7 +1311,7 @@ def main() -> int:
                         "--worker-profile",
                         _worker_profile(worker),
                     ],
-                    cwd=ROOT,
+                    cwd=(_REPO_ROOT or Path.cwd()),
                     check=False,
                 )
             except KeyboardInterrupt:
@@ -1266,7 +1324,14 @@ def main() -> int:
         ctrl = status.get("controller_state")
         if ctrl is not None:
             final_stage = ctrl.get("stage")
-            if final_stage not in {"CLOSED_SUCCESS", "CLOSED_CANCELLED"}:
+            if final_stage == "CLOSED_CANCELLED":
+                print(
+                    f"[headless halt] Session ended with stage '{final_stage}'. Exiting fail-closed (code 1).",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                return 1
+            if final_stage != "CLOSED_SUCCESS":
                 print(
                     f"[headless halt] Session ended at non-terminal stage '{final_stage}'. Exiting fail-closed (code 2).",
                     file=sys.stderr,

@@ -421,6 +421,7 @@ OPERATION_PAYLOAD_MODELS: dict[str, Any] = {
     "INTERPRET_PLAN_REVIEW": ArtifactReviewPayload,
     "INTERPRET_EXECUTION_INPUT": ExecutionInputPayload,
     "ANSWER_PROTOCOL_DISCUSSION": ProtocolDiscussionPayload,
+    "DRAFT_EXECUTE": ExecutionDraftPayload,
     "DRAFT_EXECUTION": ExecutionDraftPayload,
     "EMIT_RESULT_IR": ResultIRRepairPayload,
     "EXECUTE": ExecutionOutcomePayload,
@@ -485,7 +486,7 @@ def map_validation_error_to_wire_reason(
                 return "prompt_draft_kind"
             if operation == "INTERPRET_EXECUTION_INPUT":
                 return "execution_input_kind"
-            if operation == "DRAFT_EXECUTION":
+            if operation in {"DRAFT_EXECUTION", "DRAFT_EXECUTE"}:
                 return "execution_draft_kind"
             if operation == "EXECUTE":
                 return "execution_kind"
@@ -531,6 +532,8 @@ def map_validation_error_to_wire_reason(
         if "PLAN-04" in msg or "PLAN-10" in msg or "placeholder" in msg or "prohibition" in msg:
             return "plan_pdl_placeholder_bleed"
         return "neutral_plan_body"
+    if "execution_code_fence_required" in loc or "execution_code_fence_required" in msg:
+        return "execution_code_fence_required"
     if "body" in loc or "body" in msg:
         return "protocol_body" if operation == "ANSWER_PROTOCOL_DISCUSSION" else "execution_body"
     if "approach_handoff" in loc or "approach_handoff" in msg:

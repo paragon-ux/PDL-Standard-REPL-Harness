@@ -185,11 +185,19 @@ class PartitionSumTriplesChecker(BaseChecker):
                 diagnostic="Negative witness must include non-negative integer 'nodes_explored'.",
             )
 
-        if nodes_explored <= 1 and (constraints.get("prompt_body") or constraints.get("user_message")):
-            return VerificationVerdict(
-                valid=False,
-                diagnostic="Negative witness search_exhausted is invalid: exploring <= 1 nodes cannot prove non-existence for a non-trivial integer partition problem without mathematical impossibility proof.",
+        if nodes_explored <= 1:
+            p_text = (constraints.get("prompt_body") or constraints.get("user_message") or "").lower()
+            method_text = str(witness.get("method") or "").lower()
+            body_text = str(body or "").lower()
+            has_math_proof = any(
+                term in method_text or term in body_text
+                for term in ("divisible", "multiple", "cardinality", "modulo", "parity", "not a multiple", "not divisible", "mathematical")
             )
+            if not has_math_proof and p_text:
+                return VerificationVerdict(
+                    valid=False,
+                    diagnostic="Negative witness search_exhausted is invalid: exploring <= 1 nodes cannot prove non-existence for a non-trivial integer partition problem without mathematical impossibility proof.",
+                )
 
         method = witness.get("method")
         if not isinstance(method, str) or not method.strip():

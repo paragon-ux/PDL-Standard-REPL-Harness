@@ -64,10 +64,14 @@ To guarantee that future edits to normative clauses do not re-introduce regressi
    - The anti-pattern raises `WireError` with the exact clause citation.
    - The emitted `operator_feedback` guides the model to the valid positive structure.
 
+### Pillar 4: Schema Grammar Sanitization for Provider Interoperability
+- **Provider-Agnostic JSON-Schema Sanitization:** `ApiWorker._sanitize_schema_for_grammar` recursively inlines all `$defs` and `$ref` pointers into self-contained JSON schema definitions, stripping unsupported keywords (`$schema`, `title`, `description`, `minLength`, `maxLength`, `minItems`, `maxItems`, `uniqueItems`), converting `const` into single-item `enum` constraints, and enforcing `additionalProperties: false` for object schemas.
+- **Strict Decoding Engine Compatibility:** Ensures that Pydantic-derived wire schemas function seamlessly across strict backend grammar engines (such as Groq, vLLM, Venice, Outlines, and Vertex) without triggering upstream JSON validation 400/500 transport errors.
+
 ## Regression Guardrails
 
 1. **Schema Boundary Regression Suite:** `tests/test_wire_repairs.py` SHALL maintain parameterized tests asserting that all historical failure shapes (Session 7 Run 2 inlined fields, embedded meta-rule bleed, and plan placeholder steps) are rejected deterministically by Pydantic.
-2. **Live REPL Verification Directive:** Per `AGENTS.md`, every completed pass SHALL execute a live test using the REPL in `C:\Users\USER\Desktop\Frameworks\PDLt-Test` with `--dev` mode enabled to confirm that live model sampling remains green across all operational stages.
+2. **Live REPL Verification & Environment Mirroring Directive:** Per `AGENTS.md` and ADR-0015, every completed pass SHALL execute a live test using the REPL in `C:\Users\USER\Desktop\Frameworks\PDLt-Test` with `--dev` mode enabled. To prevent provider-specific schema validation regressions (such as Groq transport errors), the live test pass MUST mirror the target deployment environment (model, base URL, and decoding parameters) across all operational stages (`PROMPT_REVIEW` → `PLAN_REVIEW` → `CLOSED_SUCCESS`).
 
 ## Consequences
 

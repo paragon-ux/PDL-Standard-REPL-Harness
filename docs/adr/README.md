@@ -18,6 +18,7 @@
 | [ADR-0014](0014-dual-plane-boundary-and-wire-conformance.md) | Accepted | Dual-plane boundary architecture: positive structural guidance, wire-level Pydantic contract enforcement, and tripartite clause governance. |
 | [ADR-0015](0015-model-synthesized-verification-and-confinement-boundaries.md) | Proposed | Model-synthesized verification and confinement boundaries in ephemeral sandboxes. |
 | [ADR-0016](0016-pydantic-ssot-wire-and-deliverable-boundary-enforcement.md) | Accepted | Pydantic Single Source of Truth (SSOT) for wire and deliverable boundary enforcement. |
+| [ADR-0017](0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md) | Accepted | Dual-Plane Runtime Realignment: System 1 (Jev) Baseline & Constraint-Ordered Solver Governance. |
 
 The records are intentionally separated so UI, context construction, execution
 isolation, output representation, and reasoning policy can evolve without

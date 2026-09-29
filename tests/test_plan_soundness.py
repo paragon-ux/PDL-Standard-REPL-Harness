@@ -105,3 +105,26 @@ def test_plan_soundness_bypassed_for_standard_tasks():
     result = validate_plan_soundness(standard_plan, requires_verified_execution=False)
     assert result.valid
     assert len(result.violations) == 0
+
+
+def test_plan_soundness_combinatorial_mrv_required():
+    # Naive search without MRV heuristic for partition problem is rejected
+    naive_partition_plan = (
+        "1. EXECUTE a Python backtracking solver script to search for a partition of the integers into triples satisfying a + b = c.\n"
+        "2. If found, emit YES with triples.\n"
+        "3. Else, emit NO."
+    )
+    res_naive = validate_plan_soundness(naive_partition_plan, requires_verified_execution=True)
+    assert not res_naive.valid
+    assert any("Minimum Remaining Values (MRV)" in v for v in res_naive.violations)
+
+    # Adding MRV heuristic passes
+    mrv_partition_plan = (
+        "1. EXECUTE a Python backtracking solver script with Minimum Remaining Values (MRV) heuristic to search for a partition of the integers into triples satisfying a + b = c.\n"
+        "2. If found, emit YES with triples.\n"
+        "3. Else, emit NO."
+    )
+    res_mrv = validate_plan_soundness(mrv_partition_plan, requires_verified_execution=True)
+    assert res_mrv.valid
+    assert len(res_mrv.violations) == 0
+

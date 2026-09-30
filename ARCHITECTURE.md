@@ -1,20 +1,19 @@
 # PDL Taskmaster — Systems Architecture & Execution Blueprint
 
-**System Lineage**: `v2.0.0` $\to$ `v2.3.0` $\to$ `v2.4.0` (Active Development)  
+**System Lineage**: `v2.0.0` $\to$ `v2.4.0` $\to$ `v2.5.1` $\to$ `v2.6.0` (Active Production Baseline)  
 **Chartered Consensus ID**: `49ac3d41` (via `waymark-engine`)  
-**Base Lineage Ratifications**: ADR-0001 through ADR-0012; TRD-0001 through TRD-0003  
+**Base Lineage Ratifications**: ADR-0001 through ADR-0020; TRD-0001 through TRD-0003; Normative Guardrails (`GUARD-01` through `GUARD-05`)  
 
 ---
 
 ## 1. Executive Summary & Core Philosophy
 
-**PDL Taskmaster (PDL-Standard-REPL-Harness)** is a controller-gated, deterministic alignment harness designed to solve the foundational dilemma of autonomous agent systems: *the component carrying out the task cannot be the sole entity deciding what the task means*.
+**PDL Taskmaster (`pdl-taskmaster`)** is a controller-gated, deterministic alignment harness and dual-plane runtime governor designed to solve the foundational dilemma of autonomous agent systems: *the component carrying out the task cannot be the sole entity deciding what the task means*.
 
-The harness enforces a dual mandate:
+The harness enforces three non-negotiable mandates:
 1. **Fidelity (Evidence I)**: A task must be executed strictly as the requester intended, not as the model prefers to interpret it—ensuring accurate actor attribution (`SEM-05`), explicit ambiguity surfacing, and strict preservation of technical contracts (`TASK-01`).
 2. **Containment (Evidence II)**: Content arriving *inside* a task (quoted text, documents, embedded user instructions) must remain passive data. Through architectural semantic bootstrap containment (`BOOTSTRAP_ANALYSIS`), raw untrusted input is physically quarantined from compilation operations, while downstream deliverables and entities are screened through native DLP sanitization (`SEM-06`).
-
-Both mandates are enforced by **one unified mechanism**: compiling immutable normative standards into per-operation context projections, physically isolating untrusted input behind a semantic bootstrap read, and mechanically gating state transitions behind human-verified pseudocode artifacts.
+3. **The Referee Invariant (`GUARD-01` through `GUARD-05`)**: The harness is strictly an **objective protocol governor and referee**, never an AI task solver. The harness enforces protocol boundaries, review stages, schema conformance, and execution sandboxing—but MUST NEVER inject algorithmic advice, coach the model with domain heuristics, require specific algorithmic keywords in review gates, or fabricate synthetic witnesses. **A failed benchmark is acceptable and diagnostic of genuine model capability boundaries, but a gamed benchmark is a critical integrity breach.**
 
 ```mermaid
 graph TD
@@ -35,10 +34,17 @@ graph TD
         Engine <--> Ledger["Cumulative Turn Ledger (S4)<br/>Multi-Turn Deliverable Chaining"]
     end
 
-    subgraph Workers ["Two-Tier Semantic Execution Plane (ADR-0012)"]
-        Bridge --> S1Router{"Tier 1: System 1 Decision Worker<br/>(Laya / Jev 1.13 Decisions API)"}
+    subgraph VerificationPlane ["Deterministic Verification Engine (ADR-0018, GUARD-03)"]
+        Engine <--> Soundness["Plan Soundness Checker<br/>(src/pdl_taskmaster/verification/plan_soundness.py)"]
+        Engine <--> OutputVerifier["Pydantic Output Verifier<br/>(src/pdl_taskmaster/verification/output_verifier.py)"]
+        Engine <--> Sandbox["Host Execution Sandbox<br/>(src/pdl_taskmaster/verification/sandbox.py)"]
+    end
+
+    subgraph Workers ["Two-Tier Semantic Execution Plane (ADR-0012, ADR-0014, ADR-0020)"]
+        Bridge --> S1Router{"Tier 1: System 1 Fast Router<br/>(src/pdl_taskmaster/providers/sys1/fast_router.py)"}
+        S1Router -- Boundary Violation --> BoundaryRefusal["Fail-Closed Refusal (Exit 1)<br/>Policy / Network / Knowledge Cutoff"]
         S1Router -- Pass Gate --> Bridge
-        S1Router -- Gate Fail / Ambiguous --> S2Worker["Tier 2: System 2 Generative Worker<br/>(Frontier API / Full CoT Fallback)"]
+        S1Router -- Generative / Review --> S2Worker["Tier 2: System 2 Reasoning Worker<br/>(Frontier API / gpt-oss-120b)"]
         S2Worker --> Bridge
         Bridge <--> S2DraftExec["Generative Synthesis & Code<br/>(DRAFT_PROMPT, DRAFT_PLAN, EXECUTE)"]
     end
@@ -53,104 +59,130 @@ PDL-Standard-REPL-Harness/
 ├── contracts/                        # Normative authorities & execution bindings
 │   ├── standards/                    # Immutable standard specifications (*.md)
 │   ├── AUTHORITY_MAP.json            # Normative authority hierarchy
+│   ├── CALIBRATION.json              # Confidence calibration parameters
+│   ├── CONTRACT_MANIFEST.json        # Hash-pinned contract manifest (GUARD-05)
 │   ├── EXECUTION_CONTRACT.json       # Per-operation input/output symbols & clauses
+│   ├── IMPLEMENTATION_BOUNDARY.json  # Platform & environment boundary definitions
 │   └── VERIFICATION_CONTRACT.json    # Automated stage verification requirements
 ├── docs/                             # Architecture specifications & decision records
-│   ├── adr/                          # Architectural Decision Records (ADR-0001..0012)
+│   ├── adr/                          # Architectural Decision Records (ADR-0001..0020)
 │   ├── architecture/                 # Whitepapers & framing specifications
 │   ├── governance/                   # Roadmap, experiment logs, and release plans
+│   ├── guardrails/                   # ANTI_OVERFITTING_AND_BENCHMARK_INTEGRITY.md (SSOT)
 │   └── trd/                          # Technical Requirement Documents (TRD-0001..0003)
 ├── src/pdl_taskmaster/               # Packaged Python distribution root
-│   ├── contracts/                    # Bundled normative contracts (Tier 4 store)
+│   ├── contracts/                    # Bundled normative contracts & AUTHORITY_MAP.json
 │   ├── controller/                   # Deterministic state machine & transition rules
-│   │   └── mechanical_controller.py  # Stage, Intent, Transition, MechanicalController
-│   ├── eval/                         # Adversarial and fidelity qualification suites
-│   │   ├── build_adversarial_battery.py # F6 27-case breadth-first battery generator
-│   │   ├── fidelity_scan.py          # Track P requirement recall and adherence scorer
-│   │   ├── leak_scan.py              # Strict full-text deliverable & metadata scanner
-│   │   └── run_qualified_batch.py    # Paired A/B execution harness with Wilson escalation
+│   │   ├── mechanical_controller.py  # Stage, Intent, Transition, MechanicalController
+│   │   └── schemas/                  # Wire and deliverable validation schemas
 │   ├── host/                         # User-facing terminal REPL, pdlt CLI, and host loop
 │   │   ├── app.py                    # PDLtHost process and turn lifecycle manager
 │   │   ├── cli.py                    # pdlt umbrella command line entry point
 │   │   └── repl.py                   # Terminal loop, fast paths, and argument parsing
-│   ├── observation/                  # Structured telemetry sinks and event schemas
-│   ├── providers/                    # Execution worker backends (API, Codex, Stubs)
-│   │   ├── api_worker.py             # OpenAI-compatible API client with tiering & caching
+│   ├── providers/                    # Execution worker backends & classifiers
+│   │   ├── api_worker.py             # System 2 OpenAI-compatible API client (e.g. gpt-oss-120b)
 │   │   ├── fixtures.py               # Fixture builder for deterministic test replay
-│   │   └── live_stub.py              # Offline deterministic test worker
+│   │   ├── live_stub.py              # Offline deterministic test worker
+│   │   └── sys1/                     # System 1 Fast Router (<200ms discrete classifier)
+│   │       ├── decision_head.py      # Confidence-calibrated decision engine
+│   │       ├── fast_router.py        # Dual-Plane router orchestration
+│   │       └── recipes/              # Discrete classification recipes
+│   │           ├── activation_route.py # Boundary refusal (env vars, network, cutoff)
+│   │           ├── problem_class.py    # Problem classification
+│   │           └── review_intent.py    # Review confirmation parsing (CONFIRM, REVISE)
 │   ├── runtime/                      # Core protocol orchestrator and data plane
 │   │   ├── context_compiler.py       # Per-operation prompt projection compiler
 │   │   ├── normative_store.py        # 4-tier precedence standards resolver
 │   │   ├── operation_bridge.py       # Wire serializer, deserializer, and schema parser
 │   │   ├── quarantine.py             # D29 generalized canary and IOC redaction pass
 │   │   ├── result_ir.py              # TRD-0003 Result IR decomposition and verifier
-│   │   ├── session_engine.py         # SessionEngine 5-stage orchestrator
+│   │   ├── session_engine.py         # SessionEngine core dual-plane orchestrator
 │   │   ├── wire_payloads.py          # Pydantic v2 wire models (ADR-0010)
 │   │   └── workspace.py              # Context-flow workspace and turn hierarchy (S3/S4)
-│   └── tracking/                     # Optional MLflow tracking sink
-├── tests/                            # Offline test suite (87 passed, 1 skipped)
-│   └── fixtures/                     # Self-contained recorded cases & battery manifests
-└── runs/                             # External evaluation manifests and run ledgers
+│   ├── verification/                 # Deterministic verification & host execution engine
+│   │   ├── checkers/                 # Domain-specific verifiers (partition_sum_triples.py)
+│   │   ├── output_verifier.py        # Pydantic SSOT contract validator (ADR-0018)
+│   │   ├── plan_soundness.py         # Grammar & PDL rule compliance checker (PDL-01..08)
+│   │   └── sandbox.py                # Isolated host execution sandbox with limits
+│   ├── verify/                       # Invariant verification suite (pdlt verify)
+│   │   └── verify_repl_baseline.py   # Baseline REPL invariant verification engine
+│   ├── observation/                  # Structured telemetry sinks and event schemas
+│   └── tracking/                     # Telemetry sinks and MLflow session logging
+├── tests/                            # Comprehensive regression & anti-overfitting test suite
+│   ├── test_harness_anti_overfitting.py # Mandatory anti-overfitting gate (GUARD-01..05)
+│   ├── test_output_verifier.py       # Pydantic wire & deliverable tests
+│   ├── test_plan_soundness.py        # Structural PDL grammar compliance tests
+│   ├── test_sandbox.py               # Host execution sandbox tests
+│   └── test_sys1_fast_router.py      # System 1 boundary refusal tests
+├── AGENTS.md                         # Operational rules & guardrail cross-checks for AI agents
+├── ARCHITECTURE.md                   # This document
+├── REVIEWER.md                       # Token-efficient reviewer navigation guide
+└── pyproject.toml                    # Build metadata, entry points, and dependencies
 ```
 
 ---
 
-## 3. Protocol State Machine & Lifecycle (MechanicalController)
+## 3. Protocol State Machine & Lifecycle (MechanicalController & SessionEngine)
 
-Protocol state transitions are strictly deterministic and owned by `MechanicalController`. No semantic worker or model output can bypass stage gates.
+Protocol state transitions are strictly deterministic and owned by `MechanicalController` and `SessionEngine`. No semantic worker or model output can bypass stage gates.
 
 ```mermaid
 stateDiagram-v2
     [*] --> UNINITIALIZED
     
-    UNINITIALIZED --> PROMPT_DRAFTING: Initial Substantive Request
-    PROMPT_DRAFTING --> PROMPT_REVIEW: DRAFT_PROMPT Emitted
+    UNINITIALIZED --> PROMPT_REVIEW: User Request
     
     state PROMPT_REVIEW {
-        [*] --> WaitingHumanPrompt
-        WaitingHumanPrompt --> PromptRevision: User REVISE_TASK
-        PromptRevision --> WaitingHumanPrompt: REVISE_PROMPT Emitted
-        WaitingHumanPrompt --> PromptConfirmed: User ACCEPT_CURRENT (/confirm)
+        [*] --> WaitingPromptReview
+        WaitingPromptReview --> PromptRevision: User REVISE_TASK
+        PromptRevision --> WaitingPromptReview: Updated Prompt Emitted
+        WaitingPromptReview --> PromptConfirmed: User CONFIRM (/confirm)
     }
     
-    PROMPT_REVIEW --> PLAN_REQUIRED: Prompt Confirmed
-    PLAN_REQUIRED --> PLAN_DRAFTING: Approach Carried
-    PLAN_DRAFTING --> PLAN_REVIEW: DRAFT_PLAN Emitted
+    PROMPT_REVIEW --> PLAN_REVIEW: Prompt Confirmed
     
     state PLAN_REVIEW {
-        [*] --> WaitingHumanPlan
-        WaitingHumanPlan --> PlanRevision: User REVISE_APPROACH
-        PlanRevision --> WaitingHumanPlan: REVISE_PLAN Emitted
-        WaitingHumanPlan --> InvalidatePlan: User REVISE_TASK
-        InvalidatePlan --> PROMPT_REVIEW: Re-enter Prompt Review
-        WaitingHumanPlan --> PlanConfirmed: User ACCEPT_CURRENT (/confirm)
+        [*] --> WaitingPlanReview
+        WaitingPlanReview --> PlanRevision: User REVISE_APPROACH
+        PlanRevision --> WaitingPlanReview: Updated Plan Emitted
+        WaitingPlanReview --> RevertToPrompt: User REVISE_TASK
+        RevertToPrompt --> PROMPT_REVIEW: Re-enter Prompt Review
+        WaitingPlanReview --> PlanConfirmed: User CONFIRM (/confirm)
     }
     
-    PLAN_REVIEW --> EXECUTION_READY: Plan Confirmed
-    EXECUTION_READY --> EXECUTING: Gate Cleared
+    PLAN_REVIEW --> EXECUTION: Plan Confirmed
     
-    state EXECUTING {
-        [*] --> ExecuteOp
-        ExecuteOp --> ResultIRVerify: Deliverable Emitted
-        ResultIRVerify --> IRRepair: Violations Detected
-        IRRepair --> ResultIRVerify: Corrected IR Emitted
-        ResultIRVerify --> Complete: Validation Passed
+    state EXECUTION {
+        [*] --> RunWorker
+        RunWorker --> ExecuteSandbox: Python Script Present
+        ExecuteSandbox --> OutputVerify: Capture Stdout Witnesses
+        RunWorker --> OutputVerify: Analytical / Symbolic Deduction
+        OutputVerify --> ClosedSuccess: Pydantic Validation Passed
+        OutputVerify --> RetryCorrection: Validation Failed
+        RetryCorrection --> RunWorker: Single Retry Loop
     }
     
-    EXECUTING --> CLOSED_SUCCESS: Deliverable Hashed & Published
-    EXECUTING --> WAITING_INPUT: Agent Requests Missing Input
-    WAITING_INPUT --> EXECUTING: Input Supplied & Verified
+    EXECUTION --> CLOSED_SUCCESS: Deliverable Verified (Exit 0)
+    EXECUTION --> WAITING_INPUT: Agent Requests Missing Input (Exit 3)
+    WAITING_INPUT --> EXECUTION: Input Supplied
     
-    PROMPT_REVIEW --> CLOSED_CANCELLED: User /stop or Cancellation
-    PLAN_REVIEW --> CLOSED_CANCELLED: User /stop or Cancellation
-    EXECUTING --> CLOSED_CANCELLED: Higher-Priority Violation
+    PROMPT_REVIEW --> CLOSED_CANCELLED: Refusal / User /stop (Exit 1)
+    PLAN_REVIEW --> CLOSED_CANCELLED: Refusal / User /stop (Exit 1)
+    EXECUTION --> CLOSED_CANCELLED: Policy Violation / Refusal (Exit 1)
+    PROMPT_REVIEW --> UNCONFIRMED_GATE: Stalled at Gate (Exit 2)
+    PLAN_REVIEW --> UNCONFIRMED_GATE: Stalled at Gate (Exit 2)
 ```
 
-### Stage Transition Rules
-1. **Gate 1 Invariant (`AUTH-01`, `PROTO-02`)**: The engine cannot transition to `PLAN_DRAFTING` without an immutable, confirmed `Prompt` artifact in the active workspace.
-2. **Gate 2 Invariant (`AUTH-02`, `PROTO-02`)**: The engine cannot transition to `EXECUTION_READY` without an immutable, confirmed `Plan` artifact bound to the confirmed `Prompt`'s cryptographic hash.
-3. **Negative Constraint by Omission (`ADR-0007`, `PLAN-10`, `EXEC-05`)**: Negative constraints and exclusions must be operationalized as structural omission rather than defensive runtime wrappers.
-4. **Silence-Deferral Defense (`D3`, `REVIEW-14`)**: Submitting whitespace or empty input during review stages re-prompts for confirmation and never defaults to acceptance.
+### Stage Transition Rules & Invariants
+1. **Gate 1 Invariant (`AUTH-01`, `PROTO-02`)**: The engine cannot transition to `PLAN_REVIEW` without an immutable, confirmed `Prompt` artifact in the active workspace.
+2. **Gate 2 Invariant (`AUTH-02`, `PROTO-02`)**: The engine cannot transition to `EXECUTION` without an immutable, confirmed `Plan` artifact bound to the confirmed `Prompt`'s cryptographic hash.
+3. **Plan Soundness Invariant (`PDL-01`..`PDL-08`, `GUARD-03`, `GUARD-04`)**: Response plans are validated for grammar, single-operation lines, capitalized verbs, and declared deliverables. Verifiers MUST NOT require specific algorithmic keywords (such as "backtracking" or "MRV") and MUST accept purely deductive/analytical plans without code when verified execution is not mandated.
+4. **Boundary Refusal Invariant (`ADR-0020`, `GUARD-02`)**: Out-of-bounds, network-dependent, or contradictory tasks are intercepted and refused fail-closed by System 1 in $<200\text{ms}$ based on runtime conditions (`PDLT_SANDBOX_NETWORK`, `PDLT_POLICY_SCOPE`, `PDLT_KNOWLEDGE_CUTOFF`), never via prompt-specific benchmark token traps.
+5. **Headless Status Codes (`ADR-0019`)**:
+   - `0`: `CLOSED_SUCCESS` (deliverable verified, contracts satisfied).
+   - `1`: `CLOSED_CANCELLED` / fail-closed boundary refusal.
+   - `2`: `UNCONFIRMED_GATE` (execution halted at review gate).
+   - `3`: `WAITING_INPUT` (legitimate pause awaiting external input).
 
 ---
 
@@ -158,8 +190,8 @@ stateDiagram-v2
 
 ### 4.1 Host & REPL Loop Subsystem (`src/pdl_taskmaster/host/`)
 * **Role**: Owns the OS process lifetime, terminal I/O loop, configuration resolution, and telemetry sink initialization.
-* **Fast-Path Engine (`U1`, `src/pdl_taskmaster/host/repl.py`)**: Intercepts direct assent (`/confirm`, bare `confirm`, `yes`, `proceed`) as well as explicit commands (`/revise <feedback>`, `/stop`) directly in the REPL and engine, applying review intents straight to `SessionEngine.handle_explicit_review()`. This bypasses expensive 15-second LLM classification round-trips for unambiguous user actions.
-* **Non-Interactive Mode**: Fully headless support (`--non-interactive`) with portable POSIX key resolution for SSH relays and automated qualification drivers.
+* **Fast-Path Engine (`U1`, `src/pdl_taskmaster/host/repl.py`)**: Intercepts direct assent (`/confirm`, bare `confirm`, `yes`, `proceed`) as well as explicit commands (`/revise <feedback>`, `/stop`) directly in the REPL and engine, applying review intents straight to `SessionEngine.handle_explicit_review()`.
+* **Telemetry & Dev Mode**: In dev mode (`--dev` or `/dev on`), the host renders comprehensive telemetry including stage transitions, execution duration, sandbox stdout/stderr, and token consumption metrics.
 
 ```mermaid
 sequenceDiagram
@@ -167,160 +199,135 @@ sequenceDiagram
     actor User
     participant Host as PDLtHost (repl.py)
     participant Engine as SessionEngine
-    participant Controller as MechanicalController
-    participant S1 as Tier 1: System 1 (Jev/Laya)
-    participant S2 as Tier 2: System 2 (Frontier LLM)
+    participant S1 as System 1 Router (sys1/)
+    participant S2 as System 2 Worker (api_worker.py)
+    participant Verifier as OutputVerifier & Sandbox
 
-    User->>Host: Enters User Message
-    alt Direct Assent / Command Fast Path (/confirm, confirm, /revise, /stop)
-        Host->>Engine: handle_explicit_review(intent)
-        Engine->>Controller: apply_review_decision(decision)
-        Controller-->>Engine: Transition(NextAction)
-    else Natural Language Review
-        Host->>Engine: handle_user_message(text)
-        Engine->>S1: INTERPRET_REVIEW (Schema-Driven Decisions API)
-        alt Tier 1: Gating Passed (Conf >= 0.85, Margin >= 0.40, Entropy <= 0.35)
-            S1-->>Engine: ReviewFactsPayload (task_change, approach_change, progression)
-            Engine->>Controller: apply_review_decision(decision)
-            Controller-->>Engine: Transition(NextAction)
-        else Tier 2: Gate Failed / Low Confidence / Ambiguous
-            Engine->>S2: Escalate INTERPRET_REVIEW (Frontier CoT Reasoning)
-            alt System 2 Resolves Review
-                S2-->>Engine: ReviewFactsPayload
-                Engine->>Controller: apply_review_decision(decision)
-                Controller-->>Engine: Transition(NextAction)
-            else Tier 3: Inherent Human Ambiguity Persists (REVIEW-09)
-                S2-->>Engine: UNRESOLVED Intent
-                Engine->>Controller: apply_review_decision(UNRESOLVED)
-                Controller-->>Engine: Transition(REQUEST_REVIEW_CLARIFICATION)
-            end
+    User->>Host: Enters User Request
+    Host->>Engine: handle_user_message(text)
+    Engine->>S1: ACTIVATION_ROUTE & PROBLEM_CLASS
+    alt Boundary Refusal (Policy / Network / Impossible)
+        S1-->>Engine: BLOCKED_POLICY / Boundary Violation
+        Engine-->>Host: Emit Refusal (Exit 1: CLOSED_CANCELLED)
+    else Normal Processing
+        Engine->>S2: DRAFT_PROMPT
+        S2-->>Engine: Prompt Pseudocode
+        Engine-->>Host: Render PROMPT_REVIEW Gate
+        User->>Host: /confirm
+        Host->>Engine: handle_explicit_review(CONFIRM)
+        Engine->>S2: DRAFT_PLAN
+        S2-->>Engine: Response Plan Pseudocode
+        Engine->>Verifier: validate_plan_soundness(plan)
+        Engine-->>Host: Render PLAN_REVIEW Gate
+        User->>Host: /confirm
+        Host->>Engine: handle_explicit_review(CONFIRM)
+        Engine->>S2: EXECUTE
+        S2-->>Engine: Deliverable (Code or Analytical Proof)
+        alt Python Script Emitted
+            Engine->>Verifier: execute_in_sandbox(script)
+            Verifier-->>Engine: stdout / witnesses
         end
+        Engine->>Verifier: verify_deliverable(schemas, witnesses)
+        Verifier-->>Engine: Contract Passed
+        Engine-->>Host: Emit Final Deliverable (Exit 0: CLOSED_SUCCESS)
     end
-    Engine-->>Host: EngineResponse(Artifact/Text)
-    Host-->>User: Rendered Output
 ```
 
 ---
 
-### 4.2 Quarantine & Redaction Data Plane (`src/pdl_taskmaster/runtime/quarantine.py`)
-* **Role**: Enforces the semantic-bootstrap containment boundary established in Protocol v2 (ADR-0003, TRD-0002, Decision D20).
-* **Primary Control — Architectural Isolation**: Raw untrusted user content is read exclusively by `BOOTSTRAP_ANALYSIS`. Compile operations (`DRAFT_PROMPT`, `DRAFT_PLAN`, `EXECUTE`) **never** receive raw user text; they operate strictly on compiled context projections.
-* **Secondary Control — DLP & Canary Redaction Pass (`D29`)**: Acts as a defense-in-depth data loss prevention backstop:
+### 4.2 System 1 Fast Router Subsystem (`src/pdl_taskmaster/providers/sys1/`)
+* **Role**: High-speed, non-generative classification of environment bounds, permissions, and review intent operating in $<200\text{ms}$.
+* **Core Philosophy — Route the Sandbox, Not the Model**: System 1 is strictly restricted to discrete, calibrated state machine labels (`BLOCKED_POLICY | NEEDS_NETWORK | NEEDS_WITNESS | NORMAL` and review intent `CONFIRM | REVISE_APPROACH | CHANGE_TASK | CANCEL`). System 1 is **never** used to qualitatively score plan elegance, reasoning quality, or completeness. Code strictly owns all transitions.
+* **Component Architecture**:
+  - `fast_router.py`: Dual-Plane router orchestration.
+  - `recipes/activation_route.py`: General boundary refusal conditioned on runtime environment variables (`PDLT_SANDBOX_NETWORK`, `PDLT_POLICY_SCOPE`, `PDLT_KNOWLEDGE_CUTOFF`).
+  - `recipes/problem_class.py`: High-level category classification without benchmark-targeted keyword tricks.
+  - `recipes/review_intent.py`: Fast confirmation parsing.
+
+---
+
+### 4.3 Deterministic Verification & Sandbox Subsystem (`src/pdl_taskmaster/verification/`)
+* **Role**: Evaluates deliverables and plans against strict, deterministic rules without LLM self-grading or regex scraping (`ADR-0018`, `GUARD-03`).
+* **Pydantic SSOT (`output_verifier.py`)**:
+  - Eliminates heuristic regex parsing for wire verification and witness extraction.
+  - Uses schema-first Pydantic models with alias coercion (`OutputVerifier`, `PartitionSumTriplesChecker`).
+  - Deliverables must validate against structured contract schemas.
+* **Autonomous Host Execution (`sandbox.py`, `GUARD-03`)**:
+  - When Python code or solver scripts are present, the host sandbox executes them automatically in an isolated ephemeral scratchpad with CPU timeouts and memory limits.
+  - Witnesses are captured directly from stdout. The harness never emits `REQUEST_INPUT` asking the user to run code.
+* **First-Class Reasoning (`GUARD-03`)**:
+  - Analytical derivations, symbolic mathematics, word problems, and logical deductions are first-class deliverables.
+  - The verifier MUST NOT coerce symbolic tasks into executable Python scripts or force models to fabricate concrete values for symbolic variables.
+* **Plan Soundness Checker (`plan_soundness.py`)**:
+  - Validates prompt pseudocode and response plans against `PDL-01` through `PDL-08`.
+  - Rejects plans with invented field schemas (`TASK:`, `OUTPUT:`) or non-capitalized verbs.
+  - Does NOT require specific algorithmic keywords (e.g. "backtracking" or "MRV").
+
+---
+
+### 4.4 Quarantine & Redaction Data Plane (`src/pdl_taskmaster/runtime/quarantine.py`)
+* **Role**: Enforces semantic-bootstrap containment (ADR-0003, TRD-0002).
+* **Primary Control — Architectural Isolation**: Raw untrusted user content is read exclusively by `BOOTSTRAP_ANALYSIS`. Compile operations (`DRAFT_PROMPT`, `DRAFT_PLAN`, `EXECUTE`) operate strictly on compiled context projections.
+* **Secondary Control — DLP & Canary Redaction Pass (`D29`)**:
   - Automatically sanitizes synthetic canary prefixes (`TRIPWIRE_*`, `CANARY_*`).
-  - Detects and replaces prefix-free canonical UUIDs (`[a-f0-9]{8}-[a-f0-9]{4}-...`).
+  - Detects and replaces prefix-free canonical UUIDs.
   - Detects and redacts high-entropy hex sequences ($\ge 32$ hexadecimal characters).
   - Sanitizes all Indicators of Compromise (IOCs) into `[REDACTED_IOC]`.
-* **Entity Inheritance (`R2`)**: Forwarded task entities must be exact substrings of the *sanitized* summary. Hostile tokens stripped at the compile tier cannot be re-injected.
-
-```mermaid
-flowchart LR
-    RawInput[Raw Untrusted Input] --> Bootstrap[BOOTSTRAP_ANALYSIS]
-    Bootstrap --> Split{Field Extraction}
-    Split --> TaskSummary[task_summary]
-    Split --> ApproachNotes[approach_notes]
-    Split --> RiskNotes[risk_notes<br/>Quarantined Threat Telemetry]
-    
-    TaskSummary --> Sanitizer[DLP & Canary Redaction Pass<br/>src/pdl_taskmaster/runtime/quarantine.py]
-    Sanitizer --> Entities[Entity Channel Filter<br/>Verbatim Substring Inheritance]
-    Sanitizer --> CompileContext[Compiled Context Document]
-    Entities --> CompileContext
-    
-    CompileContext --> DraftPrompt[DRAFT_PROMPT]
-    CompileContext --> DraftPlan[DRAFT_PLAN]
-    CompileContext --> Execute[EXECUTE]
-```
 
 ---
 
-### 4.3 Context Compilation & Projections (`src/pdl_taskmaster/runtime/context_compiler.py`)
+### 4.5 Context Compilation & Projections (`src/pdl_taskmaster/runtime/context_compiler.py`)
 * **Role**: Compiles immutable, content-addressed prompt projections per operation.
 * **Mechanism**:
-  1. Inspects `contracts/EXECUTION_CONTRACT.json` to identify required input symbols and normative standard clauses for the target operation.
-  2. Resolves standard text from the version-pinned Normative Store (`~/.pdlt/versions/v2/` per ADR-0008).
+  1. Inspects `contracts/EXECUTION_CONTRACT.json` for required symbols and normative clauses.
+  2. Resolves standard text from the version-pinned Normative Store.
   3. Formats clauses, higher-priority constraints, and stage values into a structured projection document.
   4. Computes `projection_sha256` for audit tracking and offline fixture replay.
-  5. Serializes prompt output with support for `--render-compact` (23% token reduction) and `--cache-order-render` (prefix caching optimization).
 
 ---
 
-### 4.4 Result IR Decomposition & Verification (`src/pdl_taskmaster/runtime/result_ir.py`)
+### 4.6 Result IR Decomposition & Verification (`src/pdl_taskmaster/runtime/result_ir.py`)
 * **Role**: Enforces structured result-decomposition per ADR-0009 and TRD-0003 (`RS-01` through `RS-10`).
 * **Mechanism**:
   - `derive_requirements`: Extracts numbered requirements from confirmed prompt pseudocode.
-  - `render_execution_brief`: Drafts execution entities, delivery markers (`### filename.py`), and wire format declarations before code generation.
-  - `validate_result_ir`: Deterministically reconciles declared requirements against evidence paths (`execution://body`, workspace outputs) and validates wire-format arithmetic.
-  - `EMIT_RESULT_IR`: Dedicated repair operation that re-emits only the corrected Result IR on validation failure without forcing full code re-emission.
+  - `render_execution_brief`: Drafts execution entities, delivery markers, and wire format declarations before code generation.
+  - `validate_result_ir`: Deterministically reconciles declared requirements against evidence paths and validates wire-format arithmetic.
 
 ---
 
-### 4.5 Storage Architecture & Turn Hierarchy (`src/pdl_taskmaster/runtime/workspace.py`)
+### 4.7 Storage Architecture & Turn Hierarchy (`src/pdl_taskmaster/runtime/workspace.py`)
 * **Role**: Manages multi-turn workspace hierarchies and deliverable chaining (ADR-0008 S3/S4).
 * **Two-Level Directory Invariant**:
   - **Level 1 (Substantive Task Epoch)**: `turns/turn_###/` encapsulates an entire protocol cycle from user intent to `CLOSED_SUCCESS`.
   - **Level 2 (Invocations)**: `stages/<stage_id>/input/####-<operation>/` and `output/####-<operation>/` isolate intermediate model requests and responses.
-* **Cross-Turn Deliverable Chaining (S4)**: When a session advances to `turn_###+1`, confirmed deliverables from all prior `CLOSED_SUCCESS` turns are maintained in a **Cumulative Turn Ledger** within the workspace: `[(turn_001, confirmed_prompt, deliverable_body), (turn_002, confirmed_prompt, deliverable_body), ...]`.
-  - For sequential continuation, the immediate prior deliverable ($T-1$) is injected into `REQUIRED_TASK_INPUTS`.
-  - For retrospective or multi-problem tasks (e.g. "show work on the last two problems"), the full cumulative ledger is projected, preventing cross-turn amnesia and placeholder generation.
-  - Intermediate scratchpad drafts, rejected plans, and unconfirmed dialogue are structurally discarded, preserving the semantic containment boundary.
-
-```mermaid
-graph TD
-    subgraph SessionWorkspace ["Session Workspace (sessions/W-xxxxxx/)"]
-        Meta["workspace.json (pinned instance & version)"]
-        Shared["shared/ (session-scoped read-only resources)"]
-        Ledger["Cumulative Turn Ledger<br/>(turns_history.json)"]
-        
-        subgraph Turn1 ["turns/turn_001/ (CLOSED_SUCCESS)"]
-            T1_Meta["turn.json (status: CLOSED_SUCCESS)"]
-            T1_State["state/ (controller-state.json)"]
-            T1_Stages["stages/ (10_prompt, 20_plan, 50_execution)"]
-            T1_Deliverable["current.md (Verified Final Deliverable)"]
-        end
-        
-        subgraph Turn2 ["turns/turn_002/ (ACTIVE)"]
-            T2_Meta["turn.json (status: ACTIVE)"]
-            T2_State["state/ (controller-state.json)"]
-            T2_Stages["stages/ (materialized on-demand)"]
-        end
-        
-        T1_Deliverable --> Ledger
-        Ledger -. "Cumulative Turn History / Prior Deliverable<br/>(REQUIRED_TASK_INPUTS)" .-> Turn2
-    end
-```
+* **In-Memory VFS Substrate (`ADR-0011`)**: Fast in-memory virtual filesystem (`MemoryWorkspaceRun`) executing stage handoffs in RAM buffers with unjournaled disk writes, dropping workspace I/O latency to $<1\text{ms}$. Single-artifact turn persistence on terminal status.
+* **Cross-Turn Deliverable Chaining (S4)**: When a session advances to `turn_###+1`, confirmed deliverables from prior `CLOSED_SUCCESS` turns are maintained in a **Cumulative Turn Ledger** within the workspace.
 
 ---
 
-## 5. Architectural Modernization Strategy (ADR-0010 through ADR-0012)
+## 5. Architectural Modernization & Governance (ADR-0010 through ADR-0020)
 
-Recent architectural reviews identified critical bottlenecks in the `v2.3.0` baseline, now codified into three active Architecture Decision Records:
+| ADR | Title | Problem Remedied & Architectural Resolution |
+| :--- | :--- | :--- |
+| **ADR-0010** | **Pydantic Wire Enforcement** | Replaced manual JSON parsing and coarse string errors with strongly typed Pydantic v2 `BaseModel`s for all operation outputs. |
+| **ADR-0011** | **In-Memory VFS & Ephemeral Sandboxing** | Eliminated high NTFS disk latency by introducing `MemoryWorkspaceRun` ($<1\text{ms}$ handoffs) and ephemeral sandbox execution. |
+| **ADR-0012** | **System 1 Decision Models via RLCD** | Introduced non-autoregressive decision models for sub-20ms governance classifications without token generation latency. |
+| **ADR-0013** | **Substantive Correctness Verification** | Automated host execution of code deliverables in the sandbox to capture stdout witnesses rather than prompting the user. |
+| **ADR-0014** | **Dual-Plane Boundary & Wire Conformance** | Established the strict Dual-Plane separation: System 1 fast router for classification vs. System 2 reasoning worker. |
+| **ADR-0015** | **Model-Synthesized Verification Boundaries** | Clarified execution containment boundaries between synthesized solver code and host evaluation runtime. |
+| **ADR-0016** | **Pydantic SSOT Wire & Deliverable Boundary** | Mandated schema-first verification across all deliverable envelopes. |
+| **ADR-0017** | **Dual-Plane Runtime Realignment** | Integrated Jev fast routing into REPL runtime. *(Note: Pillar 2 algorithmic solver injection was superseded by GUARD-01 and GUARD-04 to maintain protocol neutrality).* |
+| **ADR-0018** | **Elimination of Regex Heuristics in Verification** | Replaced heuristic regex deliverable parsing with strict Pydantic models with alias coercion (`OutputVerifier`). |
+| **ADR-0019** | **Headless Status Codes & Wire Tolerance** | Codified standardized exit codes: `0` (`CLOSED_SUCCESS`), `1` (`CLOSED_CANCELLED`), `2` (`UNCONFIRMED_GATE`), `3` (`WAITING_INPUT`). |
+| **ADR-0020** | **System 1 Environment-Conditioned Refusal** | Bound boundary refusals to runtime environment variables (`PDLT_SANDBOX_NETWORK`, `PDLT_POLICY_SCOPE`), banning benchmark keyword traps. |
 
-### ADR-0010: Pydantic Schema Enforcement
-* **Target Subsystem**: `src/pdl_taskmaster/runtime/operation_bridge.py`
-* **Defect Remedied**: Manual JSON parsing via `_object()`, ad-hoc key checks (`_keys()`), and coarse string-based `WireError`s.
-* **Modernization**:
-  - Strongly typed Pydantic v2 `BaseModel`s for all operation outputs (`ActivationDecisionPayload`, `BootstrapAnalysisPayload`, `PromptDraftPayload`, `ReviewFactsPayload`, `ExecutionDraftPayload`, `ExecutionOutcomePayload`).
-  - Provider schemas for `--api-structured-output` generated directly from `model_json_schema()`.
-  - Precision operator corrections generated from `ValidationError.errors()` injected into the retry-once loop in `SessionEngine._call`.
-
-### ADR-0011: Software-Defined In-Memory VFS & Ephemeral Sandboxing
-* **Target Subsystem**: `src/pdl_taskmaster/runtime/workspace.py` and `src/pdl_taskmaster/controller/mechanical_controller.py`
-* **Defect Remedied**: High I/O latency and file bloat on Windows NTFS caused by 60–100 synchronous `os.fsync()` calls and directory creations per turn.
-* **Modernization**:
-  - **Shipped Substrate (v2.4.0)**: In-memory Virtual Filesystem (`MemoryWorkspaceRun`) and cached state store (`MemoryAtomicJsonStore`) executing stage handoffs in RAM buffers with fast unjournaled disk writes, dropping workspace I/O from **~3,000ms to $<1\text{ms}$**. Single-artifact turn persistence on terminal status (`flush_turn_archive`).
-  - **Exploratory Execution Isolation (Phase 10 Roadmap)**: Ephemeral Copy-on-Write (CoW) MicroVM Sandboxing (Firecracker / E2B) for isolated runtime tool execution during `EXECUTE`, strictly gated behind MCP.
-
-### ADR-0012: System 1 Decision Models via RLCD over Laya/Jev
-* **Target Subsystem**: Track L realignment (Phases 6–7)
-* **Defect Remedied**: Autoregressive distillation into 3B–7B Qwen models suffers from JSON decode errors, markdown fence corruption, 15s token latency, and contextual amnesia.
-* **Modernization**:
-  - **Non-Generative Classification Head**: Replace generative LLM review interpretation with non-autoregressive "System 1" decision models (**Laya** open-weights ModernBERT / **Jev** API) operating in a single forward pass ($<20\text{ms}$, zero syntax errors).
-  - **Sovereign Tripartite Fallback Ladder (ADR-0012 §4.3)**:
-    1. **Tier 1 (System 1 Fast-Path, <300ms)**: Invokes native Decisions API (POST `/api/alpha/decisions`). Passes when calibrated confidence $P_{\text{cal}} \ge 0.85$, top-2 margin $\Delta p \ge 0.40$, and normalized entropy $H(p) \le 0.35$.
-    2. **Tier 2 (System 2 Frontier Escalation, ~3–8s)**: If System 1 fails any gating check or is ambiguous, the worker MUST NOT emit `UNRESOLVED`. It dynamically escalates to System 2 (Frontier LLM with CoT) to interpret human intent.
-    3. **Tier 3 (Mechanical Human Card, `REVIEW-09`)**: If ambiguity persists even after System 2 evaluation, the engine rewrites intent to `UNRESOLVED`, halting execution and prompting the human to clarify.
-  - **Schema-Driven Dynamic Questions**: System 1 question definitions must derive dynamically from normative wire models (`wire_payloads.py` / `EXECUTION_CONTRACT.json`), fully supporting `revises_approach` alongside `revises_task` and `progression_requested`. Plan feedback is never hard-coded out of existence.
-  - **Alignment via RLCD (arXiv:2307.12950)**: Train decision heads by pairing positive prompt traces (from Track P) with negative adversarial traces (from F6) scored by the deterministic `MechanicalController` oracle.
-  - **Two-Tier Hybrid Split**: System 1 for sub-20ms governance classifications; System 2 (Frontier reasoning) for creative drafting and deliverable code generation.
+### The Normative Guardrails (`GUARD-01` through `GUARD-05`)
+Codified in `docs/guardrails/ANTI_OVERFITTING_AND_BENCHMARK_INTEGRITY.md` and enforced by `tests/test_harness_anti_overfitting.py`:
+- **`GUARD-01`**: No synthetic carried approach injections into worker prompts.
+- **`GUARD-02`**: General boundary refusals without hardcoded benchmark package names (`frostbitedb`).
+- **`GUARD-03`**: Strict Pydantic parsing without regex deliverable scraping; analytical deductions are first-class deliverables.
+- **`GUARD-04`**: Zero algorithmic coaching (no MRV, DLX, backtracking hints in prompts or plan gates).
+- **`GUARD-05`**: Zero SHA-256 contract hash divergences tracked in `CONTRACT_MANIFEST.json`.
 
 ---
 
@@ -347,19 +354,23 @@ The repository maps executable contracts to immutable specifications in `contrac
 
 ## 7. Operational & Verification Commands
 
-```bash
-# Run complete test suite (unit, integration, and baseline invariants)
-pytest
+```powershell
+# 1. Run mandatory anti-overfitting gate (GUARD-01 through GUARD-05)
+pytest tests/test_harness_anti_overfitting.py -v
 
-# Execute F6 adversarial battery (qualification sweep)
-python -m pdl_taskmaster.eval.run_qualified_batch --trials 3 --out-dir runs/adversarial/
+# 2. Run protocol baseline invariant verification
+pdlt verify
 
-# Run paired A/B comparison report (Evidence II format)
-python -m pdl_taskmaster.eval.compare_eval_runs --summary-a runs/adversarial/summary.json
+# 3. Run complete offline test suite (unit, integration, and wire verification)
+pytest -m "not slow and not live"
 
-# Launch interactive terminal REPL with API worker
-pdlt --worker api --model z-ai/glm-4.7
+# 4. Launch interactive terminal REPL with dev telemetry
+pdlt --dev
 
-# Query Waymark architectural consensus memory
-waymark ask "Full repository architecture, state machine, and call flow in PDL Taskmaster" --plain
+# 5. Launch headless session with exit code monitoring (ADR-0019)
+pdlt --non-interactive --exit-on-close --stage PROMPT_REVIEW < prompt.txt
+
+# 6. Execute 105-prompt System 2 benchmark catalogue dry-run
+cd ..\PDLt-Test
+python run_catalogue.py --dry-run
 ```

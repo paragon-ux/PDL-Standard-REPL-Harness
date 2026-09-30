@@ -155,3 +155,37 @@ def test_guard_no_benchmark_probe_interceptions():
         "GUARD-02 VIOLATION: Found hardcoded benchmark probe package 'frostbite' in activation_route.py"
     )
 
+
+def test_benchmark_contamination_scan():
+    """GUARD-01/02/04: Source code must have ZERO benchmark prompt IDs or probe tokens."""
+    src_dir = ROOT / "src" / "pdl_taskmaster"
+    prompt_id_pattern = re.compile(r"\b(0[1-9]|1[0-5])-(0[1-7])\b")
+    prohibited_tokens = [
+        "frostbite",
+        "frostbitedb",
+        "schur_triples",
+        "exact_cover_dlx",
+        "alice has m sisters",
+    ]
+
+    violations: list[str] = []
+    for py_file in src_dir.rglob("*.py"):
+        content = py_file.read_text(encoding="utf-8")
+        prompt_match = prompt_id_pattern.search(content)
+        if prompt_match:
+            violations.append(
+                f"{py_file.relative_to(ROOT)}: Contains benchmark prompt ID '{prompt_match.group(0)}'"
+            )
+        lower_content = content.lower()
+        for token in prohibited_tokens:
+            if token in lower_content:
+                violations.append(
+                    f"{py_file.relative_to(ROOT)}: Contains benchmark probe token '{token}'"
+                )
+
+    assert not violations, (
+        "GUARD VIOLATION: Benchmark contamination found in production source:\n"
+        + "\n".join(violations)
+    )
+
+

@@ -46,6 +46,9 @@ jobs:
       - name: Normative invariant verification (pdlt verify)
         run: uv run pdlt verify
 
+      - name: Anti-overfitting and benchmark integrity gate
+        run: uv run pytest tests/test_harness_anti_overfitting.py -v
+
       - name: Run offline test suite
         run: uv run pytest -m "not slow and not live"
 

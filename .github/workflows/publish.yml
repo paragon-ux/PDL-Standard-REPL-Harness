@@ -23,6 +23,8 @@ jobs:
         run: uv sync --all-extras
       - name: Run normative verification (pdlt verify)
         run: uv run pdlt verify
+      - name: Anti-overfitting and benchmark integrity gate
+        run: uv run pytest tests/test_harness_anti_overfitting.py -v
       - name: Run test suite
         run: uv run pytest -m "not slow and not live"
       - name: Build distributions

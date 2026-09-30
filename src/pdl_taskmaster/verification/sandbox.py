@@ -86,60 +86,6 @@ class SandboxResult:
         return self.exit_code == 0 and not self.timed_out and not self.oom_killed and self.error is None
 
 
-def validate_ast_anti_patterns(code_text: str) -> list[str]:
-    """Inspect Python code AST for prohibitive anti-patterns before sandbox execution."""
-    import ast
-    issues: list[str] = []
-    try:
-        tree = ast.parse(code_text)
-    except Exception:
-        return issues
-
-    container_sizes: dict[str, int] = {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    val = node.value
-                    if isinstance(val, (ast.List, ast.Set, ast.Tuple)):
-                        container_sizes[target.id] = len(val.elts)
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call):
-            func = node.func
-            func_name = ""
-            if isinstance(func, ast.Attribute):
-                func_name = func.attr
-            elif isinstance(func, ast.Name):
-                func_name = func.id
-
-            if func_name == "permutations":
-                if node.args:
-                    arg0 = node.args[0]
-                    size = 0
-                    if isinstance(arg0, (ast.List, ast.Set, ast.Tuple)):
-                        size = len(arg0.elts)
-                    elif isinstance(arg0, ast.Name) and arg0.id in container_sizes:
-                        size = container_sizes[arg0.id]
-
-                    # Check length parameter r
-                    r_val = None
-                    if len(node.args) >= 2:
-                        arg1 = node.args[1]
-                        if isinstance(arg1, ast.Constant) and isinstance(arg1.value, int):
-                            r_val = arg1.value
-                    for kw in node.keywords:
-                        if kw.arg == "r" and isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, int):
-                            r_val = kw.value.value
-
-                    # If r is specified and small (<= 5), this is bounded candidate generation (e.g. triples), not full factorial search
-                    if size > 10 and (r_val is None or r_val > 5):
-                        issues.append(
-                            f"Prohibited anti-pattern: itertools.permutations called directly on a container of size {size} > 10 without candidate pruning. "
-                            "Use constraint propagation or candidate pruning instead."
-                        )
-    return issues
-
 
 class ExecutionSandbox:
     """OS-native deterministic execution sandbox (P1).
@@ -206,16 +152,6 @@ class ExecutionSandbox:
         env: dict[str, str] | None = None,
     ) -> SandboxResult:
         """Execute a Python snippet in an isolated ephemeral scratchpad with OS-native limits."""
-        ast_issues = validate_ast_anti_patterns(code)
-        if ast_issues:
-            return SandboxResult(
-                stdout="",
-                stderr="\n".join(ast_issues),
-                exit_code=1,
-                duration_ms=0.0,
-                error="AST_ANTI_PATTERN_INTERCEPTED: " + "; ".join(ast_issues),
-            )
-
         effective_timeout = timeout if timeout is not None else self.timeout_seconds
         effective_memory = memory_limit if memory_limit is not None else self.memory_limit_bytes
 

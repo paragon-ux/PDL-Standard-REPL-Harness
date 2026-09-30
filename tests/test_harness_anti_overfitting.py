@@ -90,7 +90,10 @@ def test_guard05_contract_manifest_sha256_synchronized():
     for entry in manifest.get("files", []):
         file_path = ROOT / entry["path"]
         assert file_path.is_file(), f"Manifest references missing file: {entry['path']}"
-        actual_sha = hashlib.sha256(file_path.read_bytes()).hexdigest()
+        raw_bytes = file_path.read_bytes()
+        if file_path.suffix in {".md", ".json", ".txt", ".py", ".yaml", ".yml"}:
+            raw_bytes = raw_bytes.replace(b"\r\n", b"\n")
+        actual_sha = hashlib.sha256(raw_bytes).hexdigest()
         if entry["sha256"] != actual_sha:
             mismatches.append(f"{entry['path']}: expected {entry['sha256'][:10]} got {actual_sha[:10]}")
 

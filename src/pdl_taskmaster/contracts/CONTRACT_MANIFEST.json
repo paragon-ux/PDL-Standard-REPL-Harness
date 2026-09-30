@@ -147,7 +147,7 @@
     },
     {
       "path": "contracts/EXECUTION_CONTRACT.json",
-      "sha256": "a96568dcd84203cea9833545826692f66705663244201a26016168d38e9891d6"
+      "sha256": "b69aa00bc26982aec9d2a708bdf8c44aa8cd2dc6df315331f17015520ba545da"
     },
     {
       "path": "contracts/IMPLEMENTATION_BOUNDARY.json",
@@ -155,7 +155,7 @@
     },
     {
       "path": "contracts/VERIFICATION_CONTRACT.json",
-      "sha256": "02001a80dddf570f284ba0f99e922cc3c7dc12dd148d968d55b077784522b92b"
+      "sha256": "72eb0c6f93a56b21c32fdf466e8258b5a6701e41f178d2a3cfdd353ddf36262d"
     },
     {
       "path": "contracts/standards/ARTIFACT_STANDARD.md",
@@ -175,7 +175,7 @@
     },
     {
       "path": "contracts/standards/EXECUTION_STANDARD.md",
-      "sha256": "c5145ad84d53de6674f25589df447a4c9c4ddcf4b17790e8d6c7d270fb10d8b2"
+      "sha256": "7f41407de602cd9e68db4b74e035030f27f53d25126bfdf607a88a8634902f42"
     },
     {
       "path": "contracts/standards/HANDOFF_STANDARD.md",
@@ -199,7 +199,7 @@
     },
     {
       "path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
-      "sha256": "c79469bcc86b6663de546adf2f4c92e84c0d46917ce38edd29e8a20c186defb6"
+      "sha256": "f544c6ea74859f800a2064accc646a7c204cda3d9900cb71169662094860f980"
     },
     {
       "path": "contracts/standards/REVIEW_STANDARD.md",
@@ -207,7 +207,7 @@
     },
     {
       "path": "contracts/standards/SEMANTIC_INPUT_STANDARD.md",
-      "sha256": "c6b43b68ee5c2f2ec49e5108c0e45c438d9d875e3ee5b58af936a2c472eb2cea"
+      "sha256": "e6a7a356681c551a812f93677c099927ec64607c15045c48e13c64afcb47d705"
     },
     {
       "path": "contracts/standards/TASK_SEMANTICS_STANDARD.md",

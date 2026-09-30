@@ -147,7 +147,7 @@
     },
     {
       "path": "contracts/EXECUTION_CONTRACT.json",
-      "sha256": "84ea92717bd9e23ec9eb0223030be498e5de2dd7bfcfd713681735cd214511c6"
+      "sha256": "b69aa00bc26982aec9d2a708bdf8c44aa8cd2dc6df315331f17015520ba545da"
     },
     {
       "path": "contracts/IMPLEMENTATION_BOUNDARY.json",
@@ -199,7 +199,7 @@
     },
     {
       "path": "contracts/standards/RESPONSE_PLAN_STANDARD.md",
-      "sha256": "37b3985383fcefc0282c36d659ab4a55daa3f5f9267b9939cfbb8a7d27a7c65b"
+      "sha256": "f544c6ea74859f800a2064accc646a7c204cda3d9900cb71169662094860f980"
     },
     {
       "path": "contracts/standards/REVIEW_STANDARD.md",

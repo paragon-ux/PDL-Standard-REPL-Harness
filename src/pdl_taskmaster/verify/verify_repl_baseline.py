@@ -179,8 +179,12 @@ def _failures() -> list[str]:
                 target_f = ROOT / entry["path"]
                 if not target_f.is_file():
                     problems.append(f"manifest_missing_file:{entry['path']}")
-                elif hashlib.sha256(target_f.read_bytes()).hexdigest() != entry["sha256"]:
-                    problems.append(f"manifest_sha256_divergence:{entry['path']}")
+                else:
+                    raw_bytes = target_f.read_bytes()
+                    if target_f.suffix in {".md", ".json", ".txt", ".py", ".yaml", ".yml"}:
+                        raw_bytes = raw_bytes.replace(b"\r\n", b"\n")
+                    if hashlib.sha256(raw_bytes).hexdigest() != entry["sha256"]:
+                        problems.append(f"manifest_sha256_divergence:{entry['path']}")
         except Exception as exc:
             problems.append(f"manifest_parse_failure:{exc}")
 

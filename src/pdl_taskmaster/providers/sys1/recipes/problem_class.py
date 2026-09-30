@@ -19,8 +19,7 @@ _COMBINATORIAL_PATTERNS = re.compile(
     r"subset\s*sum|exact\s+cover|(?:graph\s+)?(?:\d+-)?coloring|graph\s+color|clique\b|hamiltonian\b|"
     r"boolean\s+satisfiability|\bsat\s+solver|combinatorial\s+(?:existence|structure|optimization)|"
     r"minimal\s+(?:cut|partition)\s+palindrome|palindrome\s+partitioning|"
-    r"does\s+(?:there\s+exist|a\s+valid\s+partition\s+exist)|is\s+it\s+possible\s+to\s+partition|"
-    r"sisters?|brothers?|how\s+many\s+sisters|family\s+relationship|logic\s+puzzle|riddle)\b"
+    r"does\s+(?:there\s+exist|a\s+valid\s+partition\s+exist)|is\s+it\s+possible\s+to\s+partition)\b"
 )
 
 
@@ -49,8 +48,8 @@ class ProblemClassRecipe(Sys1Recipe):
                 "solution with a checkable witness."
             ),
             "STANDARD_EXECUTION": (
-                "The task is standard programming, drafting, text manipulation, explanation, or does not require "
-                "deterministic combinatorial witness verification."
+                "The task is standard programming, drafting, text manipulation, explanation, analytical reasoning, "
+                "symbolic/algebraic deduction, word problems, or does not require deterministic combinatorial witness verification."
             ),
         }
         question = Sys1Question(

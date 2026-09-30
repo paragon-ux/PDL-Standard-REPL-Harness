@@ -1,6 +1,6 @@
 # ADR-0015: Model-Synthesized Verification and Confinement Boundaries in Ephemeral Sandboxes
 
-- **Status:** PROPOSED
+- **Status:** ACCEPTED (shipped in v2.5.0)
 - **Date:** 2026-09-27
 - **Related:** [ADR-0011 In-memory VFS & microVM sandboxing](0011-in-memory-vfs-and-microvm-sandboxing.md), [ADR-0013 Substantive correctness verification](0013-substantive-correctness-verification.md), [ADR-0014 Dual-plane boundary architecture](0014-dual-plane-boundary-and-wire-conformance.md)
 - **Evidence:** `session9-v-2-4-0.txt` (witness retention gap), `session10-v-2-4-0.txt` (external repo `FileNotFoundError` on `RESULT_STANDARD.md` disk read), and review analysis of runaway verifier accumulation.

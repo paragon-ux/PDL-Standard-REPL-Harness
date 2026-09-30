@@ -4,14 +4,58 @@ Validates that:
 1. Every triple [a, b, c] satisfies the sum property (x + y == z).
 2. All triples are disjoint (no duplicate values across triples).
 3. All required input elements are partitioned completely without extras or omissions.
-4. For negative claims, search_exhausted is strictly True.
+4. For negative claims, search_exhausted is strictly True and nodes_explored > 0.
 """
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any, Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError, model_validator
 
 from pdl_taskmaster.verification.checkers.base import BaseChecker, VerificationVerdict
+
+
+class PartitionSumTriplesData(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    triples: list[list[int]]
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_triples(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "triples" not in data:
+                for alt_key in ("solution", "partition", "result", "partitions"):
+                    if alt_key in data:
+                        cand = data[alt_key]
+                        if isinstance(cand, list) and all(isinstance(x, (list, tuple)) and len(x) == 3 for x in cand):
+                            return {**data, "triples": [list(x) for x in cand]}
+        return data
+
+
+class PartitionSumTriplesPositiveWitness(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    polarity: Literal["positive"]
+    data: PartitionSumTriplesData
+    evidence: Optional[dict[str, Any]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_data(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "data" not in data:
+                for alt_key in ("triples", "solution", "partition", "result", "partitions"):
+                    if alt_key in data:
+                        return {**data, "data": {alt_key: data[alt_key]}}
+        return data
+
+
+class PartitionSumTriplesNegativeWitness(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    polarity: Literal["negative"]
+    search_exhausted: Literal[True] = True
+    nodes_explored: PositiveInt
+    method: str = Field(min_length=3)
+    evidence: Optional[dict[str, Any]] = None
 
 
 class PartitionSumTriplesChecker(BaseChecker):
@@ -29,19 +73,10 @@ class PartitionSumTriplesChecker(BaseChecker):
         body: str | None = None,
     ) -> VerificationVerdict:
         if witness is None:
-            if body:
-                extracted = self._extract_triples_from_text(body)
-                if extracted:
-                    witness = {
-                        "polarity": "positive",
-                        "evidence": {"path": "execution://body"},
-                        "data": {"triples": extracted},
-                    }
-            if witness is None:
-                return VerificationVerdict(
-                    valid=False,
-                    diagnostic="Missing witness in Result IR for sum-triples partition task.",
-                )
+            return VerificationVerdict(
+                valid=False,
+                diagnostic="Missing witness in Result IR for sum-triples partition task.",
+            )
 
         # Convert Pydantic model to dict if needed
         if hasattr(witness, "model_dump"):
@@ -56,9 +91,25 @@ class PartitionSumTriplesChecker(BaseChecker):
 
         polarity = w_dict.get("polarity")
         if polarity == "positive":
+            try:
+                PartitionSumTriplesPositiveWitness.model_validate(w_dict)
+            except ValidationError as val_err:
+                err_msg = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in val_err.errors())
+                return VerificationVerdict(
+                    valid=False,
+                    diagnostic=f"Invalid positive witness structure: {err_msg}",
+                )
             return self._check_positive(w_dict, constraints)
         elif polarity == "negative":
-            return self._check_negative(w_dict, constraints)
+            try:
+                PartitionSumTriplesNegativeWitness.model_validate(w_dict)
+            except ValidationError as val_err:
+                err_msg = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in val_err.errors())
+                return VerificationVerdict(
+                    valid=False,
+                    diagnostic=f"Invalid negative witness structure: {err_msg}",
+                )
+            return self._check_negative(w_dict, constraints, body=body)
         else:
             return VerificationVerdict(
                 valid=False,
@@ -120,7 +171,6 @@ class PartitionSumTriplesChecker(BaseChecker):
 
         # Check disjointness / uniqueness across triples
         if len(all_elements) != len(set(all_elements)):
-            # Find duplicate elements
             seen = set()
             duplicates = set()
             for x in all_elements:
@@ -133,15 +183,22 @@ class PartitionSumTriplesChecker(BaseChecker):
             )
 
         # Check coverage against expected input elements if provided
-        input_elements = constraints.get("input_elements") or constraints.get("integers")
+        input_elements = (
+            constraints.get("input_elements")
+            or constraints.get("integers")
+            or constraints.get("supplied_input")
+        )
+        if isinstance(input_elements, str):
+            tokens = [tok.strip(",.[](){}") for tok in input_elements.split()]
+            input_elements = [int(tok) for tok in tokens if tok.isdigit()]
         if input_elements is None:
             p_text = constraints.get("prompt_body") or constraints.get("user_message") or ""
             if p_text:
-                import re
                 for line in p_text.splitlines():
-                    nums_in_line = re.findall(r"\b\d+\b", line)
-                    if len(nums_in_line) >= 9:
-                        input_elements = [int(x) for x in nums_in_line]
+                    tokens = [tok.strip(",.[](){}") for tok in line.split()]
+                    nums = [int(tok) for tok in tokens if tok.isdigit()]
+                    if len(nums) >= 9:
+                        input_elements = nums
                         break
         if input_elements is not None:
             expected_set = set(int(x) for x in input_elements)
@@ -170,6 +227,8 @@ class PartitionSumTriplesChecker(BaseChecker):
         self,
         witness: dict[str, Any],
         constraints: dict[str, Any],
+        *,
+        body: str | None = None,
     ) -> VerificationVerdict:
         search_exhausted = witness.get("search_exhausted")
         if search_exhausted is not True:
@@ -179,10 +238,10 @@ class PartitionSumTriplesChecker(BaseChecker):
             )
 
         nodes_explored = witness.get("nodes_explored")
-        if not isinstance(nodes_explored, int) or nodes_explored < 0:
+        if not isinstance(nodes_explored, int) or nodes_explored <= 0:
             return VerificationVerdict(
                 valid=False,
-                diagnostic="Negative witness must include non-negative integer 'nodes_explored'.",
+                diagnostic=f"Negative witness must include positive integer 'nodes_explored' (> 0), got {nodes_explored!r}.",
             )
 
         if nodes_explored <= 1:
@@ -215,13 +274,4 @@ class PartitionSumTriplesChecker(BaseChecker):
                 "method": method,
             },
         )
-
-    @staticmethod
-    def _extract_triples_from_text(text: str) -> list[list[int]] | None:
-        import re
-        pattern = r"[\(\[]\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*[\)\]]"
-        matches = re.findall(pattern, text)
-        if matches and len(matches) >= 3:
-            return [[int(a), int(b), int(c)] for a, b, c in matches]
-        return None
 

@@ -55,6 +55,9 @@ IGNORED_SCAN_PARTS = {
     ".ruff_cache",
     "site-packages",
     "node_modules",
+    "runs",
+    ".waymark",
+    "scratch",
 }
 
 REQUIRED_FILES = (
@@ -166,6 +169,21 @@ def _failures() -> list[str]:
             except (ValueError, ModuleNotFoundError):
                 problems.append(f"missing_repl_subprocess_module:{match}")
 
+    # 1e. Hash-pinned Contract Manifest integrity (ADR-0008 / GUARD-05).
+    manifest_path = ROOT / "contracts" / "CONTRACT_MANIFEST.json"
+    if manifest_path.is_file():
+        try:
+            m_data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            import hashlib
+            for entry in m_data.get("files", []):
+                target_f = ROOT / entry["path"]
+                if not target_f.is_file():
+                    problems.append(f"manifest_missing_file:{entry['path']}")
+                elif hashlib.sha256(target_f.read_bytes()).hexdigest() != entry["sha256"]:
+                    problems.append(f"manifest_sha256_divergence:{entry['path']}")
+        except Exception as exc:
+            problems.append(f"manifest_parse_failure:{exc}")
+
     # 2. Broken imports.
     try:
         from pdl_taskmaster.host.app import PDLtHost  # noqa: F401
@@ -175,10 +193,18 @@ def _failures() -> list[str]:
     except Exception as exc:
         problems.append(f"import_failure:{exc}")
 
+    def _iter_repo_files() -> list[Path]:
+        res: list[Path] = []
+        for dirpath, dirnames, filenames in os.walk(ROOT):
+            dirnames[:] = [d for d in dirnames if d not in IGNORED_SCAN_PARTS]
+            for f in filenames:
+                res.append(Path(dirpath) / f)
+        return res
+
+    repo_files = _iter_repo_files()
+
     # 3. External-source-repo leakage.
-    for path in ROOT.rglob("*"):
-        if any(part in IGNORED_SCAN_PARTS for part in path.parts) or not path.is_file():
-            continue
+    for path in repo_files:
         if path.name == "SOURCE_PROVENANCE.json":
             continue  # provenance must record source repository paths by design
         try:
@@ -218,9 +244,7 @@ def _failures() -> list[str]:
             problems.append(f"fixture_hash_mismatch:{entry.get('source')}")
 
     # 5. Forbidden terms / secrets (classification; absolute source paths above are fatal).
-    for path in ROOT.rglob("*"):
-        if any(part in IGNORED_SCAN_PARTS for part in path.parts) or not path.is_file():
-            continue
+    for path in repo_files:
         if path.name == "verify_repl_baseline.py":
             continue  # scanner's own source contains forbidden terms by definition
         try:

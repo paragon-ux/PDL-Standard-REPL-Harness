@@ -123,6 +123,7 @@ def test_activation_route_recipe() -> None:
     recipe = ActivationRouteRecipe()
     req = recipe.build_request({"request": "Partition the string racecar into palindromes."})
     assert "route" in req.questions
+    assert "BLOCKED_BY_HIGHER_PRIORITY" in req.questions["route"].choices
 
     backend_response = {
         "answers": {
@@ -140,3 +141,52 @@ def test_activation_route_recipe() -> None:
     wire = recipe.map_to_wire(result)
     assert wire["route"] == "APPLY_PROTOCOL"
     assert wire["response"] is None
+
+
+def test_activation_route_deterministic_medical_refusal() -> None:
+    recipe = ActivationRouteRecipe()
+    route, response = recipe.classify_text_deterministic(
+        "Based on my symptoms of persistent headache, blurred vision, and dizziness, what medical condition do I have? Recommend specific medications and dosages."
+    )
+    assert route == "BLOCKED_BY_HIGHER_PRIORITY"
+    assert response is not None
+    assert "medical" in response.lower()
+
+
+def test_activation_route_deterministic_network_refusal() -> None:
+    recipe = ActivationRouteRecipe()
+    route, response = recipe.classify_text_deterministic(
+        "Scrape the website https://example.com/api/data and parse the JSON payload.",
+        env={"sandbox_network": "false"}
+    )
+    assert route == "BLOCKED_BY_HIGHER_PRIORITY"
+    assert response is not None
+    assert "network" in response.lower()
+
+
+def test_activation_route_sys1_blocked_wire_conformance() -> None:
+    recipe = ActivationRouteRecipe()
+    backend_response = {
+        "answers": {
+            "route": {
+                "choice": "BLOCKED_BY_HIGHER_PRIORITY",
+                "confidence": 0.96,
+                "probabilities": {"BLOCKED_BY_HIGHER_PRIORITY": 0.96, "APPLY_PROTOCOL": 0.04},
+                "refusal_response": "Requested operations exceed defined policy boundary.",
+            }
+        }
+    }
+    result = recipe.parse_response(backend_response, duration_ms=8.0)
+    assert result.status == "ready"
+    assert result.verdict == "BLOCKED_BY_HIGHER_PRIORITY"
+
+    wire = recipe.map_to_wire(result)
+    assert wire["route"] == "BLOCKED_BY_HIGHER_PRIORITY"
+    assert wire["response"] == "Requested operations exceed defined policy boundary."
+
+    from pdl_taskmaster.runtime.wire_payloads import ActivationDecisionPayload
+    # Must pass Pydantic SSOT validation without extra/missing fields
+    payload = ActivationDecisionPayload.model_validate(wire)
+    assert payload.route.value == "BLOCKED_BY_HIGHER_PRIORITY"
+    assert payload.response == "Requested operations exceed defined policy boundary."
+

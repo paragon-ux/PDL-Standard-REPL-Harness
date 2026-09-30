@@ -127,3 +127,43 @@ def test_cli_keyboard_interrupt_clean_exit(monkeypatch, capsys) -> None:
     assert code == 130
     captured = capsys.readouterr()
     assert "[session terminated by user]" in captured.err
+
+
+def test_repl_headless_exit_waiting_input_code_3(monkeypatch, capsys, tmp_path: Path) -> None:
+    """Non-interactive runs halting at WAITING_INPUT must exit code 3 (REG-013 / ADR-0019)."""
+    from pdl_taskmaster.host import repl
+
+    class MockHost:
+        def status(self):
+            return {"controller_state": {"stage": "WAITING_INPUT"}}
+
+    class MockRuntime:
+        def __init__(self, session_dir):
+            self.host = MockHost()
+            self.session_dir = session_dir
+            self.exit_on_close = True
+            transcript_file = session_dir / "transcript.txt"
+            self.transcript = transcript_file.open("w", encoding="utf-8")
+        def close(self):
+            self.transcript.close()
+
+    monkeypatch.setattr(repl, "open_session", lambda *args, **kwargs: MockRuntime(tmp_path))
+    def mock_eof(prompt="> "):
+        raise EOFError()
+    monkeypatch.setattr(repl, "_read_repl_input", mock_eof)
+    monkeypatch.setattr(repl, "_disable_bracketed_paste", lambda: None)
+
+    monkeypatch.setattr(sys, "argv", [
+        "pdlt",
+        "--non-interactive",
+        "--candidate-repo", str(ROOT),
+        "--evidence", str(FIXTURE),
+        "--worker", "recorded",
+        "--session-id", "mock-waiting-input",
+    ])
+    code = repl.main()
+    assert code == 3
+    captured = capsys.readouterr()
+    assert "[headless halt] Session paused at stage 'WAITING_INPUT' (input requested). Exiting (code 3)." in captured.err
+
+

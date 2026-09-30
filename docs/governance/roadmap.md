@@ -5,7 +5,7 @@
 This roadmap sequences work across interconnected tracks:
 - **Track F (Framing & Evidence):** Evidentiary claims in `docs/architecture/framing.md`, adversarial evaluation, and proof-by-contradiction.
 - **Track P (Positive Alignment & Fidelity):** Benign task execution, complex specification disambiguation, constraint-satisfaction benchmarks, and Evidence I empirical proof.
-- **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/operations/efficiency-report.md` and `src/pdl_taskmaster/providers/api_worker.py`.
+- **Track E (Efficiency & Levers):** Cost, latency, and transport optimizations in `docs/operations/EFFICIENCY.md` and `src/pdl_taskmaster/providers/api_worker.py`.
 - **Track M (Measurement & Multi-Model):** Shared empirical evaluation infrastructure that unlocks high-confidence claims across models and platforms.
 - **Track L (Local & Integration):** Local worker support, prefix-cache architecture, training-data export, and System 1 decision models (Laya/Jev) aligned via RLCD (arXiv:2307.12950) replacing Qwen distillation (ADR-0012).
 - **Track D (Defect Remediation & Security Integrity):** Critical defect fixes, contract synchronization, and delimiter purging identified during independent audits.
@@ -22,7 +22,7 @@ This roadmap sequences work across interconnected tracks:
 | **F2** | Move n=1 caveat next to headline table | F | S | Low | 1 | **SHIPPED** | Commit `34b316a` (`docs/architecture/framing.md`) |
 | **F3a** | Flag case-mismatch in "affordable" claim | F | S | Low | 1 | **SHIPPED** | Commit `34b316a` (`docs/architecture/framing.md`) |
 | **F5** | Cite `EXECUTION_CONTRACT.json` directly | F | S | Low | 1 | **SHIPPED** | Commit `34b316a` (`docs/architecture/framing.md`) |
-| **E4** | Structural 5-call floor documented | E | S | Low | 1 | **SHIPPED** | Commit `34b316a` (`docs/operations/efficiency-report.md`) |
+| **E4** | Structural 5-call floor documented | E | S | Low | 1 | **SHIPPED** | Commit `34b316a` (`docs/operations/EFFICIENCY.md`) |
 | **E1** | Per-operation model tiering | E | M | Med | 2 | **SHIPPED** | Commit `34b316a` (`--api-model-operation`) |
 | **E2** | Structured-output constraints & grammar sanitization | E | M | Med | 2 | **SHIPPED** | Commits `34b316a`, `1561d2d` (`--api-structured-output`) |
 | **—** | POSIX key-resolution fallback & SSH decoupling | E | S | Low | 2 | **SHIPPED** | Commits `61ca98d`, `29a745c` |
@@ -45,24 +45,33 @@ This roadmap sequences work across interconnected tracks:
 | **D6** | Contain execution input bypass channel | D | S | Low | 8 (2.3.0) | **SHIPPED** | Ensure `SUPPLIED_EXECUTION_INPUT_SOURCE` is quarantined and validated |
 | **S1** | Centralized normative store (`~/.pdlt/versions/v2/`)| S | M | Low | 8 (2.3.0) | **SHIPPED** | ADR-0008: content-addressed versioned store with `.pdlt-version` pin |
 | **S2** | Zero-template dynamic workspace materialization | S | M | Med | 8 (2.3.0) | **SHIPPED** | ADR-0008: eliminate 35-file copy; dynamic materialization on-demand |
-| **S3** | Two-Level Invariant Session Hierarchy | S | M | Med | 9 (2.4.0) | **SCHEDULED** | ADR-0008: multi-turn `sessions/<id>/turns/turn_###/stages/` directory nesting |
-| **S4** | Cross-turn deliverable chaining & glob sync | S | S | Low | 8 / 9 | **FOUNDATION** | Fixture glob sync shipped in v2.3.0; engine deliverable chaining in v2.4.0 |
+| **S3** | Two-Level Invariant Session Hierarchy | S | M | Med | 9 (2.4.0) | **SHIPPED** | ADR-0008: multi-turn `sessions/<id>/turns/turn_###/stages/` directory nesting |
+| **S4** | Cross-turn deliverable chaining & glob sync | S | S | Low | 9 (2.4.0) | **SHIPPED** | Engine deliverable chaining across turns with confirmed context |
 | **U1** | Local REPL command shortcuts | U | S | Low | 8 (2.3.0) | **SHIPPED** | Direct `/confirm`, `/revise <feedback>`, `/stop` bypassing LLM roundtrip |
-| **F6.4** | Official qualified baseline validation (N>=10) | F/M | L | Low | 9 | **SEQUENCED** | Sequenced after Track L (Local Worker) to optimize cost and leverage local execution |
+| **ADR-10** | Pydantic v2 Wire Refactor & Schema Derivation | D/E | M | Low | 9 (2.4.0) | **SHIPPED** | ADR-0010: Strongly typed payloads, dynamic JSON schemas, precision feedback |
+| **ADR-11** | In-Memory VFS & Ephemeral Sandboxing | S/E | M | Low | 9 (2.4.0) | **SHIPPED** | ADR-0011: Eliminates Windows NTFS fsync/mkstemp latency (<1ms stage handoffs) |
+| **ADR-12** | System 1 Decision Models via RLCD (Laya/Jev) | L | L | Med | 9 (2.4.0) | **ACCEPTED** | ADR-0012: Contrastive distillation (arXiv:2307.12950) replacing Qwen |
+| **ADR-13** | Substantive Correctness Verification | P/D | M | Low | 10 (2.5.0) | **SHIPPED** | ADR-0013: Substantive verifier, domain checkers, and witness certification |
+| **ADR-14** | Dual-Plane Boundary & Tripartite Routing | D/L | M | Low | 10 (2.5.0) | **SHIPPED** | ADR-0014: Pydantic wire contract and tripartite review governance |
+| **ADR-15** | Model-Synthesized Verification & OS Confinement | S/D | M | Low | 10 (2.5.0) | **SHIPPED** | ADR-0015: OS-native execution sandbox (Job Objects/rlimit) & test suites |
+| **ADR-16** | Pydantic SSOT Wire & Deliverable Boundary | D | M | Low | 10 (2.5.0) | **SHIPPED** | ADR-0016: Single Source of Truth for wire and deliverable markdown channels |
+| **ADR-17** | Dual-Plane Runtime Realignment (Jev S1 Baseline) | L/D | M | Low | 11 (2.5.1) | **SHIPPED** | ADR-0017: Wires Sys1Client (Jev) as default router, /viewer web UI, --prompt-file |
+| **ADR-18** | Elimination of Regex Heuristics in Verification | D/P | M | Low | 12 (2.6.0) | **SHIPPED** | ADR-0018: Elimination of regex heuristics in favor of typed Pydantic models |
+| **ADR-19** | Headless WAITING_INPUT Exit & Wire Input Tolerance | U/D | S | Low | 12 (2.6.0) | **SHIPPED** | ADR-0019: Exit code 3 for waiting input, resilient review piping, payload extraction |
+| **ADR-20** | System 1 Environment-Conditioned Refusal Routing | L/D | M | Low | 12 (2.6.0) | **SHIPPED** | ADR-0020: Refusal routing in System 1 in 1.4s ($0.000019) for impossible/offline tasks |
+| **CAT-105** | 105-Prompt Test Catalogue Benchmark (100% Pass) | M/P | L | Low | 12 (2.6.0) | **SHIPPED** | 105/105 passed, 0 regressions, empirical latency decomposition |
+| **F6.4** | Official qualified baseline validation (N>=10) | F/M | L | Low | 13 | **SEQUENCED** | Sequenced after Track L (Local Worker) to optimize cost and leverage local execution |
 | **F3b**| Re-measure efficiency on boundary case | F/E | M | Low | 4 | **SHIPPED** | Full token/latency benchmark across all 27 cases |
-| **M2** | Multi-model revalidation (GLM-4.7, Flash, etc.) | M | M | Low | 9 | **PROPOSED** | Multi-model validation on unified negative + positive benchmarks |
+| **M2** | Multi-model revalidation (GLM-4.7, Flash, etc.) | M | M | Low | 13 | **PROPOSED** | Multi-model validation on unified negative + positive benchmarks |
 | **L1** | `--worker local` alias targeting warm daemon | L | S | Low | 6 | **UNLOCKED** | `ApiWorker` with `localhost` target |
 | **L2** | `--cache-order-render` default for local workers | L | S | Low | 6 | **UNLOCKED** | Prefix-cache reuse as default architecture |
 | **L3** | `--training-export` flag for lifecycle traces | L | M | Low | 6 | **UNLOCKED** | Export validated sessions as SFT training data |
 | **L4** | Training data curation pipeline | L | M | Low | 6 | **PROPOSED** | Filter by validation status, format for Unsloth/PEFT |
-| **ADR-10** | Pydantic v2 Wire Refactor & Schema Derivation | D/E | M | Low | 9 (2.4.0) | **SHIPPED** | ADR-0010: Strongly typed payloads, dynamic JSON schemas, precision feedback |
-| **ADR-11** | In-Memory VFS & Ephemeral Sandboxing | S/E | M | Low | 9 (2.4.0) | **SHIPPED** | ADR-0011: Eliminates Windows NTFS fsync/mkstemp latency (<1ms stage handoffs) |
-| **ADR-12** | System 1 Decision Models via RLCD (Laya/Jev) | L | L | Med | 7 / 9 | **ACCEPTED** | ADR-0012: Contrastive distillation (arXiv:2307.12950) replacing Qwen |
 | **L5** | Contrastive RLCD Dataset Generation (F6 vs Track P) | L | M | Low | 7 | **ACTIVE / NEXT** | Oracle-scored preference pairs formatted for DPO/PPO |
 | **L6** | System 1 Model Fine-Tuning (Laya / ModernBERT) | L | L | Med | 7 | **PROPOSED** | Non-generative decision heads; <20ms single-forward-pass routing |
 | **L7** | Local System 1 Worker Dispatch (`--worker system1`) | L | M | Low | 7 | **PROPOSED** | `--api-model-operation REVIEW=system1:laya` |
 | **L8** | Battery-Gated Verification & Quality Ratchet | L | M | Low | 7 | **PROPOSED** | F6 adversarial battery validation (0% hijack, 0% leak on hybrid stack) |
-| **L9** | Scope Expansion (Execution Input & Protocol Q&A) | L | M | Med | 9 | **PROPOSED** | Measured expansion of System 1 classification scope |
+| **L9** | Scope Expansion (Execution Input & Protocol Q&A) | L | M | Med | 13 | **PROPOSED** | Measured expansion of System 1 classification scope |
 | **E3** | Transport-level cache fix (pinned instances) | E | L | High | 5 | **PROPOSED** | Exploratory; depends on provider affinity |
 | **E5** | Provider-side session threading | E | L | High | 5 | **PROPOSED** | Exploratory; requires strict positive-inclusion proof |
 
@@ -76,7 +85,7 @@ Completed in commit `34b316a`.
 - **F2 — Headline caveat placement:** Moved `(single paired run, n=1 per arm — see Honest Scope)` directly beneath the Evidence II table in `docs/architecture/framing.md`.
 - **F3a — Case-mismatch clarification:** Disclosed in `docs/architecture/framing.md` that the 23% token reduction was measured on the greeting lifecycle (`hi`), whereas boundary cases exercise the full 20-clause review projection.
 - **F5 — Inspectable contract citation:** Cited `contracts/EXECUTION_CONTRACT.json`'s `DRAFT_PROMPT` requirements array directly in `docs/architecture/framing.md` as concrete evidence for the "one mechanism" claim.
-- **E4 — Structural call-count floor:** Documented in `docs/operations/efficiency-report.md` that the 5-call lifecycle is the normative cost of `PROTO-02`'s two independently confirmable gates (`AUTH-03`), not incidental waste.
+- **E4 — Structural call-count floor:** Documented in `docs/operations/EFFICIENCY.md` that the 5-call lifecycle is the normative cost of `PROTO-02`'s two independently confirmable gates (`AUTH-03`), not incidental waste.
 
 ---
 
@@ -87,7 +96,7 @@ Completed in commits `61ca98d`, `34b316a`, `29a745c`, and `1561d2d`.
 - **E1 — Per-operation model tiering:** Added `model_by_operation` to `ApiWorker` and `--api-model-operation OP=MODEL` to `src/pdl_taskmaster/host/repl.py`. Enables routing high-capacity models to draft operations while lightweight models handle review classifications.
 - **E2 — Real structured-output constraints:**
   - Added `--api-structured-output` to pass compiled JSON schemas directly into OpenAI-compatible `/responses` endpoints.
-  - Implemented `_sanitize_schema_for_grammar` in `src/pdl_taskmaster/providers/api_worker.py` to recursively strip stateful keywords (like `uniqueItems`) rejected by context-free grammar engines (e.g. Venice / vLLM on OpenRouter), ensuring universal compatibility across backends.
+  - Implemented `_sanitize_schema_for_grammar` in `src/pdl_taskmaster/providers/api_worker.py` to recursively strip stateful keywords (like `uniqueItems`) rejected by context-free grammar engines (e.g. Venice / vLLM on OpenRouter), improving wire schema compatibility across backends.
 - **Platform Hardening & Codex Decoupling:**
   - Inverted default worker to `api` and model to `z-ai/glm-4.7`.
   - Lazy-loaded `CodexWorker` with preflight check; guarded `/config` and `/sandbox` commands.
@@ -180,10 +189,10 @@ Eliminated false equivalence between unconstrained conversational free-prose and
 - **Canary-shape generalization folded in (D29):** the qualification battery gains prefix-free canary variants (UUID / long-hex / URL query-param shapes) per `runs/canary_shape_probe`; "0 deliverable leaks" must hold across shapes, not only synthetic prefixes. The generalized redaction pass (`quarantine.py`, D29) is measured and pinned by `test_quarantine_generalized.py`.
 
 ### F3b — Re-measure Efficiency on Boundary Cases [SHIPPED]
-- Measured full token/latency distributions across all 27 adversarial cases using `run_qualified_batch.py`. Protocol completed with 100% completion rate (27/27), zero stalls, and an average case latency of ~35s. Initial paired benchmark documented in `docs/operations/eval-metrics.md` and `docs/operations/efficiency-report.md`.
+- Measured full token/latency distributions across all 27 adversarial cases using `run_qualified_batch.py`. Protocol completed with 100% completion rate (27/27), zero stalls, and an average case latency of ~35s. Initial paired benchmark documented in `docs/operations/eval-metrics.md` and `docs/operations/EFFICIENCY.md`.
 
 ### Track E2 / M2 — Cross-Model Generalization & Multi-Model Revalidation [PROPOSED]
-- **Goal:** Prove that the Connected Dual Gate (TRD-0002 out-of-band structural containment + bounded pre-execution reasoning) is model-agnostic and universally valid across disparate model families, architectures, and tokenizers.
+- **Goal:** Evaluate whether the Connected Dual Gate (TRD-0002 out-of-band structural containment + bounded pre-execution reasoning) and the dual-plane runtime maintain behavioral reliability across disparate model families, architectures, and tokenizers beyond the verified OpenRouter reference stack (`openai/gpt-oss-120b` + `typesafe/jev-1.13`). Model-specific tuning and reports will follow; no specific completion dates are promised.
 - **Candidate Selection Criteria:**
   1. **Context Window Requirement:** Models MUST have $\ge 128\text{k}$ context length to comfortably accommodate multi-turn adversarial sequences and high-constraint task projections without token-truncation artifacts (excluding legacy $\le 32\text{k}$ models like `qwen-2.5-coder-32b-instruct`).
   2. **Active Provider Availability:** Pinned strictly to currently active endpoints on OpenRouter (superseding unavailable models such as Claude 3.5 Sonnet).
@@ -342,22 +351,66 @@ Following the independent critical-path audits (`Re-Aligned_Architectural_Review
 - **Design:** Eliminate physical copying of `workspace-template/` (35 files per run).
 - **Resolution:** Runtime workspace files and directories materialize dynamically on demand. Reduces file creation per run by >85%, permanently resolving inode exhaustion and superseding the Decision D22 emergency pruning hack.
 
-#### S3 — Two-Level Invariant Session Hierarchy [SCHEDULED FOR PHASE 9 / v2.4.0]
+#### S3 — Two-Level Invariant Session Hierarchy [SHIPPED in v2.4.0]
 - **Design:** Restructure multi-turn session filesystem layout under `sessions/<id>/turns/turn_###/stages/`:
   - **Level 1 (Substantive Task Epoch):** `turn_001`, `turn_002` cycles from activation to deliverable `CLOSED_SUCCESS`.
   - **Level 2 (Invocations):** `0001-draft_prompt`, `0002-interpret_review` isolated within that turn's `stages/` tree.
-- **Status:** Foundational glob pattern compatibility shipped in v2.3.0 (`src/pdl_taskmaster/providers/fixtures.py`); directory restructuring scheduled for Phase 9 (v2.4.0).
+- **Status:** Shipped in v2.4.0 (`src/pdl_taskmaster/runtime/session_engine.py`).
 
-#### S4 — Cross-Turn Deliverable Chaining [SCHEDULED FOR PHASE 9 / v2.4.0]
+#### S4 — Cross-Turn Deliverable Chaining [SHIPPED in v2.4.0]
 - **Design:** When a multi-turn session advances to `turn_002`, the confirmed deliverable from `turn_001` is ingested as clean, validated context, while intermediate scratchpad drafts and unconfirmed reasoning are discarded.
-- **Status:** Architectural specification ratified in ADR-0008; SessionEngine multi-turn deliverable ingestion scheduled for Phase 9 (v2.4.0).
+- **Status:** Shipped in v2.4.0; SessionEngine ingests confirmed deliverables into turn history while isolating intermediate stage scratchpads.
 
 ---
 
 ### Track U: REPL Usability & Fast-Paths
 
-#### U1 — Local Command Shortcuts
+#### U1 — Local Command Shortcuts [SHIPPED in v2.3.0]
 - **Design:** Add explicit local shortcuts `/confirm` (or empty Enter on review prompt), `/revise <feedback>`, and `/stop` directly in `src/pdl_taskmaster/host/repl.py`.
 - **Impact:** Eliminates expensive 15-second LLM classification roundtrips for trivial user confirmations while preserving natural language review parsing for substantive feedback.
+
+---
+
+## Phase 9 — Version 2.4.0: Umbrella CLI, In-Memory VFS & Pydantic v2 Wire [SHIPPED]
+
+Shipped in release `v2.4.0`:
+- **Umbrella CLI (`pdlt`):** Consolidated command surface (`pdlt repl`, `pdlt run`, `pdlt verify`, `pdlt init`, `pdlt benchmark`).
+- **Pydantic v2 Wire Refactor (ADR-0010):** Replaced legacy JSON-schema generation with native Pydantic v2 models, runtime validation, and structured operator retries.
+- **In-Memory VFS (ADR-0011):** Ephemeral virtual filesystem caching eliminating redundant disk I/O on fast stage transitions.
+- **Global Normative Store Bootstrap:** Automatic zero-touch materialization of immutable standards at `~/.pdlt/versions/v2/`.
+
+---
+
+## Phase 10 — Version 2.5.0: Substantive Correctness & OS Sandboxing [SHIPPED]
+
+Shipped in release `v2.5.0`:
+- **Substantive Correctness Verification (ADR-0013):** `OutputVerifier` enforcing mathematical truth, element preservation, and disjointness rather than trusting self-reported model claims.
+- **OS-Native Execution Sandbox (ADR-0015):** Job Objects on Windows and `setrlimit` on POSIX enforcing wall-clock timeouts, memory limits, and zero outbound network access during solver execution.
+- **Pydantic SSOT Wire & Deliverable Boundary (ADR-0016):** Single Source of Truth for all wire payloads and deliverable channels.
+- **Plan Soundness Gate:** Rejection of heuristic shortcuts or ungrounded claims prior to execution token spend.
+- **REPL Dev Mode:** Real-time stage inspection via `--dev` and `/dev on`, ASCII-safe deliverable cards, and `--exit-on-close` automation.
+
+---
+
+## Phase 11 — Version 2.5.1: System 1 Gating & Live Session Inspection [SHIPPED]
+
+Shipped in release `v2.5.1`:
+- **Dual-Plane Runtime Realignment (ADR-0017):** TypeSafe Jev (`jev-1.13`) wired into REPL activation pipeline for sub-300ms ($0.000019) problem classification and routing.
+- **Live REPL Session Viewer (`/viewer` / `pdlt viewer`):** Embedded web dashboard for real-time inspection of stages, outputs, tokens, and telemetry.
+- **Prompt File Ingestion (`--prompt-file`):** Resilient multi-line file ingestion bypassing Windows PowerShell stdin escaping limits.
+- **Solver & Plan Governance:** Constraint-ordered search verification and sandbox timeout calibration to prevent exponential search timeouts (initial MRV keyword check superseded by `GUARD-01` anti-overfitting standard).
+
+---
+
+## Phase 12 — Version 2.6.0: 100% Catalogue Benchmark & Pydantic SSOT [SHIPPED]
+
+Shipped in release `v2.6.0rc1`:
+- **100.0% Test Catalogue Pass Rate (105 / 105):** End-to-end benchmark across all 15 categories with 0 regressions in 1,947.8s (`catalogue-runs/run-20260929-132741/SCOREBOARD.md`).
+- **Elimination of Regex Heuristics in Verification (ADR-0018):** Strict typed Pydantic models replacing all regex heuristics in `OutputVerifier` and reconciliation checks.
+- **Headless WAITING_INPUT Exit Code & Wire Input Tolerance (ADR-0019):** Exit code `3` for legitimate user input requests, optional `description` in wire schemas, and automated fenced code-block data extraction.
+- **System 1 Environment-Conditioned Refusal Routing (ADR-0020):** Instant boundary interception in System 1 (1.4s, $0.000019) for impossible, harmful, or network-dependent tasks.
+- **Autonomous Host Sandbox Execution:** Python solvers compiled and run host-side in OS sandboxes to extract verified witnesses without human intervention.
+- **Empirical Latency Decomposition:** Proven 85.86% API inference wait vs 14.14% protocol overhead across 405 API calls.
+
 
 

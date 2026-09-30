@@ -1,7 +1,7 @@
 # Controller-Gated Pseudocode Protocols: Achieving Provable Adversarial Containment and High-Fidelity LLM Execution via Structural Out-of-Band Contexts
 
 **PDLt Architectural Whitepaper** · PDL-Standard-REPL-Harness (PDL Taskmaster)
-· v2.3.0 · 2026-09-17
+· Release Candidate 2.6.0 · 2026-09-29
 
 ---
 
@@ -9,20 +9,22 @@
 
 Software that delegates work to a language model inherits a problem older
 models of computation never had: the thing carrying out the task is also the
-thing deciding what the task *means*. PDLt resolves this with one mechanism —
-**interpretation before execution, confirmed at separate gates, with the
-model's generation left free at every stage**.
+thing deciding what the task *means*, and the thing reporting whether the code
+worked is the same thing that wrote it. PDLt resolves this with an integrated
+architecture — **interpretation before execution, confirmed at separate gates,
+executed host-side in an OS-native sandbox, with the model's generation left
+free at every stage**.
 
-The architecture makes three distinct claims that must not be conflated:
+The architecture makes four distinct claims that must not be conflated:
 
 1. **The defensive improvement is structural, not cognitive.** Adversarial
    containment comes from the Interpretable Context Methodology (ICM)
    workflow — the filesystem-as-architecture protocol workflow that routes
-   raw untrusted content through a single perimeter read and never lets it
-   re-enter compilation or execution contexts. Containment is context
-   routing, and is **empirically reasoning-invariant**: it holds identically
-   at zero reasoning tokens and at full reasoning budgets. No output-space
-   constraint, grammar, or decoding pin is involved at any stage.
+   raw untrusted content through a single perimeter read into out-of-band fields
+   (`task_summary` vs `risk_notes`) and never lets it re-enter compilation or
+   execution contexts. Containment is context routing, and is **empirically
+   reasoning-invariant**: it holds identically at zero reasoning tokens and at
+   full reasoning budgets.
 2. **The alignment improvement — positive and negative, both sides of the
    same coin — comes from the multi-stage confirmation taskmaster.** Prompt
    Pseudocode and Response Plan Pseudocode are two separate, publicly
@@ -33,17 +35,22 @@ The architecture makes three distinct claims that must not be conflated:
    conversation hides — while **never collapsing the response distribution**:
    the model is an interpreter and approach-compiler into structured-English
    intermediate representations, not a constrained decoder.
-3. **The clearest rationale for inferential improvement is the PDL itself.**
-   Program Design Language — readable structured English with sequence,
-   indentation, decisions, loops, procedure calls, and action verbs — provides
-   the shared semantic surface that makes interpretation confirmable, without
-   inventing a formalism that would create a second interpretation problem.
+3. **Substantive correctness requires autonomous host-side execution and witness verification.**
+   Asking an LLM to self-certify compliance produces ungrounded confabulation.
+   In v2.5.0–v2.6.0, deliverables are executed within an OS-native sandbox
+   (Windows Job Objects / POSIX `setrlimit`, ADR-0015), with stdout witnesses
+   mechanically verified against strict Pydantic SSOT models (ADR-0016, ADR-0018).
+4. **The single-model hypothesis was falsified and replaced by the Dual-Plane Runtime.**
+   Asking a single LLM to act as its own classifier, planner, coder, and verifier
+   causes review drift and refusal blindness. Today's runtime decouples non-generative
+   semantic gating in System 1 (TypeSafe Jev 1.13 / ModernBERT, ~140ms, $0.000019)
+   from frontier deliberative synthesis in System 2 and mechanical gating in the Host.
 
 These are enforced by a deterministic mechanical controller that owns the
-state machine and the user-owned confirmation boundary. This paper documents
-the structural lineage, the seven certified architectural supersessions
-between TRD-0001 and TRD-0002, the empirical program that produced the
-Connected Dual Gate, and the Brain/Hands storage architecture that makes the
+state machine and the confirmation boundaries. This paper documents the
+structural lineage, the eleven certified architectural supersessions through
+ADR-0020, the empirical program from the Connected Dual Gate to the 100% 105-prompt
+catalogue benchmark, and the Brain/Hands storage architecture that makes the
 protocol's evidence trail auditable by construction.
 
 ---
@@ -190,9 +197,9 @@ is architecturally stronger *because it carries nothing else*. This finding
 directly informs local-worker development: instruction-lightness is a
 requirement, not a preference.
 
-## 4. The Seven Supersessions (TRD-0001 → TRD-0002)
+## 4. The Eleven Certified Supersessions (TRD-0001 → v2.6.0)
 
-Certified by the independent Architectural Supersession Report (PDLt critical-path review, ACTIVE); all four of its Priority Actions were closed by v2.3.0.
+Certified across TRD-0002, the independent Architectural Supersession Report, and ADR-0012 through ADR-0020:
 
 | # | Architectural Domain | Original (TRD-0001 / Early ADRs) | Superseding (TRD-0002 / Ratified Decisions) | Verdict |
 |---|---|---|---|:---:|
@@ -203,6 +210,10 @@ Certified by the independent Architectural Supersession Report (PDLt critical-pa
 | 5 | **Negative constraints** | Procedural thoroughness bias (active assertion wrappers) | Operationalization by structural omission (`PLAN-10`, `EXEC-05`, ADR-0007, D26) | Overwhelmingly net positive |
 | 6 | **Execution data plane** | `REQUIRED_TASK_INPUTS` side-channel data plane | Hardcoded rejection of shadow data planes (TRD-0002 §3.1 Non-Goal 1); `EXEC-01` runtime input requests; supplied input quarantined through the semantic read (D6) | Net positive (channel sealed) |
 | 7 | **Evaluation philosophy** | Independent negative containment scoring (Track A only) | Connected Dual-Gate Invariant — "if either fails, both fail" (D24) | Strongly net positive |
+| 8 | **Model topology & review routing** | Monolithic single-model state machine (v2.0–v2.3) | Heterogeneous Dual-Plane Runtime: System 1 (Jev/ModernBERT) non-generative routing + System 2 frontier reasoning (ADR-0012, ADR-0017) | Decisive net positive |
+| 9 | **Execution & correctness verification** | Textual Result IR self-reporting by model without sandboxing (v2.0–v2.4) | Host-side OS-Native Execution Sandbox (Windows Job Objects / POSIX `setrlimit`) + stdout witness extraction (ADR-0013, ADR-0015) | Decisive net positive |
+| 10 | **Domain dispatch & wire integrity** | Heuristic regex domain detection in `OutputVerifier` | Schema-first Pydantic SSOT models with alias coercion (ADR-0016, ADR-0018) | Net positive |
+| 11 | **Environment & boundary refusal** | System 2 conversational refusal prompted in natural language | System 1 environment-conditioned refusal routing in 1.4s ($0.000019) (ADR-0020) | Net positive |
 
 Two retired mechanisms deserve their epilogue. The *sanctioned evidence sink*
 (D17, option a′) — requiring the model to emit verbatim literals only into a
@@ -278,28 +289,41 @@ asserted at runtime, parity audits gated by the same battery — and the
 documentation set is organized to be site-buildable so external-facing claims
 and internal provenance (append-only `docs/adr/`, `docs/trd/`) never blur.
 
-## 7. Empirical Scorecard
+## 7. Empirical Scorecard & Tiered Evidence Framework
+
+To preserve construct validity across model transitions, empirical evidence is split into two sequential tiers:
+
+### Tier 1: Request-Path Governance & Injection Containment (GLM-4.7 & DeepSeek)
+*Focus: Out-of-band instruction isolation, Prompt Pseudocode semantic attribution, and multi-turn defense before host-side solver execution was introduced.*
 
 | Measurement | Condition | Control | Protocol |
 |---|---|---|---|
 | v2 Gate, full battery (27 cases × 3 × both arms, GLM-4.7) | unassisted out-of-band containment | 0 deliverable leaks, 19 hijacks, clean 74.1% | **0 leaks, 0 hijacks, 0 wire errors**, clean 93.8% (p < 0.0001), replicated ×3 |
-| Decision hijacking, multi-turn chains | same | 86.7% (per-chain) | **0.0%** |
+| Decision hijacking, multi-turn chains | same | 86.7% (per-chain) | **0.0%** (0 / 27) |
 | Cross-tier steelman (DeepSeek V4.1 Flash, 30 trials) | stronger control | 4/30 hijacks | **0/30**, 3 honest refusals |
 | Certification battery (MC-06, ACTOR-02, DISAMB-03 n=3; 27-case sweep) | ADR-0007 + entity channel live | — | negative adherence 0.0→1.0; 3/3 clean per case; 27/27 clean deliverables |
 | Fidelity uplift sweep (13 cases, n=1) | unified config | recall 1.0, fidelity 1.0 | recall 1.0, fidelity 0.92–0.96 → **1.0/1.0** with mechanical entity channel |
 | Instruction-level skill suite (PDL behavioral foundation) | 40-case public suite | — | targeted 15/15 PASS, 30/30 PDL quality; baseline 38/40, 0 critical |
 | Live dual-gate probe post-v2.3.0 restructure (GLM-4.7) | unassisted | 2/3 adversarial failures; fidelity 1.0 | **3/3 clean; fidelity 1.0** |
 
-**Honest scope.** The claim-grade adversarial record is the 162-trial n=3
-battery; publication-grade claims require the N ≥ 10 connected dual battery
-(F6.4 + Track P), sequenced after local-worker economics (Track L). Live
-sessions are labeled development/demonstration conditions. The PDL rationale's
-efficiency claims (token/latency/correction-time) are explicitly architectural
-until the controlled comparisons it specifies are run. Scorer of Record
-invariance (D8) has been maintained through every scoring-policy change, each
-of which is a numbered, owner-ratified decision (D0–D27).
+### Tier 2: Substantive Correctness & Autonomous Execution (`gpt-oss-120b` + Jev 1.13)
+*Focus: Verified mathematical truth, combinatorial search, $O(1)$ systems engineering, and full catalogue pass rates under host-side OS execution sandboxes and Pydantic SSOT.*
 
-## 8. Theoretical Guarantees and Their Boundaries
+| Benchmark | Architecture & Model | Verification Mechanism | Outcome & Performance |
+|---|---|---|---|
+| **Schur Triples Partition ($N=15$)** | Dual-Plane (`gpt-oss-120b` + Jev) | OS `ExecutionSandbox` + Pydantic `OutputVerifier` | **VERIFIED GREEN (15/15 disjoint triples in 815ms)**. Control failed (hallucinated negative after 1 node). |
+| **$O(1)$ LFU Cache with LRU Tie-Breaking** | Dual-Plane (`gpt-oss-120b` + Jev) | Model-Synthesized Assertions + OS Sandbox | **100% PASS (Zero bespoke host checkers)**. Min_freq and LRU ties verified. |
+| **Fast Boundary Refusal** | System 1 Jev `ActivationRouteRecipe` | Deterministic fail-closed termination | **Terminated in 1.4s ($0.000019)**. Unharnessed model wasted 20–60s in reasoning loops. |
+| **Full 105-Prompt Test Catalogue** (All 15 Categories) | Dual-Plane (`gpt-oss-120b` + Jev) | Headless REPL + Sandbox + Pydantic SSOT | **100.0% PASS (105 / 105)**, 0 regressions hit, 1,947.8s elapsed time. |
+
+### The 4 Evidentiary Proofs Countering the "No Control" Objection
+
+1. **Pre-Fix Historical Controls:** The identical model (`openai/gpt-oss-120b`) failed consistently prior to v2.6.0 fixes (`01-01` regex routing failure, `11-06` and `08-06` input extraction stall, `13-05` refusal blindness). The failure sessions in [`docs/governance/regressions_log.md`](../governance/regressions_log.md) are the exact empirical control group.
+2. **Deterministic Ground Truth vs. Self-Reported Compliance:** Correctness is verified exclusively by host OS sandbox execution and Pydantic validation, rather than trusting unverified model text.
+3. **Compute and Latency Asymmetry on Refusals:** System 1 fast-path refusal terminates impossible tasks in **1.4s for $0.000019**, compared to 20–60s of unharnessed frontier reasoning loops.
+4. **Canonical Ablation Controls:** Documented in [`docs/ABLATIONS.md`](../ABLATIONS.md) across the three canonical ablation arms.
+
+## 8. Theoretical Guarantees, Boundaries, and Worker Portability
 
 **What is structural (model-independent by construction):** compilation
 placement (standards as clause-level requirements in every call), mechanical
@@ -311,24 +335,33 @@ and deterministic wire validation. These held across model tiers, providers,
 and reasoning levels — including zero-reasoning configurations.
 
 **What is graded (model-dependent):** semantic fidelity under compression,
-entity preservation, review-intent classification (observed: a specialist
-coder model classifying bare confirmations as non-progression), and SEM-06
-raw-token echo discipline in analytical notes (observed once, contained at
-egress with zero deliverable breach). These are ledger metrics per model
-class, reported and never averaged away.
+entity preservation, review-intent classification, and algorithmic reasoning
+capacity for hard combinatorial search.
 
-**The boundary statement:** the harness enforces the *request* path —
-interpretation, confirmation, output contract. It is not a sandbox; execution-
-stage tool access remains governed by worker-level sandboxing, a separate
-layer with its own threat model.
+**The execution boundary reconciled:** while early versions governed purely
+the request path, v2.5.0 incorporated OS-native execution sandboxing
+(Windows Job Objects / POSIX `setrlimit`, ADR-0015) into the host layer to
+execute model-synthesized solver code in ephemeral environments, enforcing
+wall-clock ceilings and network isolation.
+
+**System 2 worker portability and scope of qualification:** generalization
+no longer implies that a single unassisted LLM runs the entire state machine alone.
+The Dual-Plane harness provides a **standardized execution substrate**:
+the Host Controller, System 1 Jev router, OS sandbox, and Pydantic verifiers
+remain constant, communicating over standard OpenAI wire protocols.
+However, full end-to-end qualification (105/105 PASS) is verified strictly on the
+OpenRouter reference stack: `openai/gpt-oss-120b` (System 2) + `typesafe/jev-1.13` (System 1).
+We do not claim plug-and-play parity for other backends (GLM-4.7, DeepSeek-V3,
+Qwen3-Coder, Claude), where backend schema strictness and tokenization nuances differ.
+Cross-model qualification is queued under Roadmap Track M2.
 
 ---
 
 *Companion documents: `docs/architecture/framing.md` (the alignment frame),
 `docs/architecture/whitepaper.md` provenance — PDL rationale and evidence map
 (`PDL-Standard/docs/architecture/pdl-rationale.md`),
-`docs/governance/experiment-log.md` (D0–D27 decision register with
+`docs/governance/experiment-log.md` (D0–D29 decision register with
 pre-registrations and failure-mode rules), `docs/governance/roadmap.md`
 (sequenced tracks), `docs/operations/eval-metrics.md` and
-`docs/operations/efficiency-report.md` (measured baselines and NO-GO
-verdicts), `docs/adr/` and `docs/trd/` (internal append-only provenance).*
+`docs/operations/EFFICIENCY.md` (reference stack efficiency profile and latency data),
+`docs/adr/` (ADR-0001–0020) and `docs/trd/` (internal append-only provenance).*

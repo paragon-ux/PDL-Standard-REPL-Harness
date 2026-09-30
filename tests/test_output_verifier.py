@@ -114,7 +114,7 @@ def test_partition_sum_triples_incomplete_negative_failure():
     }
     verdict = checker.check(witness, {})
     assert not verdict.valid
-    assert "search_exhausted must be True" in verdict.diagnostic
+    assert "search_exhausted" in verdict.diagnostic
 
 
 def test_fallback_checker():
@@ -234,5 +234,97 @@ def test_partition_sum_triples_rejects_incomplete_partition():
     verdict = verifier.check(incomplete_witness, {"prompt_body": prompt})
     assert not verdict.valid
     assert "Partition misses required elements" in verdict.diagnostic
+
+
+def test_partition_sum_triples_detect_domain_divided():
+    from pdl_taskmaster.verification.output_verifier import OutputVerifier
+
+    verifier = OutputVerifier()
+    domain = verifier.detect_domain("can be divided into 15 disjoint triples (a_i, b_i, c_i)")
+    assert domain == "partition_sum_triples"
+
+
+def test_reject_zero_nodes_explored_negative_witness():
+    from pdl_taskmaster.verification.checkers.partition_sum_triples import PartitionSumTriplesChecker
+    from pdl_taskmaster.verification.checkers.fallback import FallbackChecker
+
+    pst = PartitionSumTriplesChecker()
+    fb = FallbackChecker()
+
+    dummy_neg = {
+        "polarity": "negative",
+        "evidence": {"path": "execution://witness"},
+        "search_exhausted": True,
+        "nodes_explored": 0,
+        "method": "MRV backtracking",
+    }
+    v_pst = pst.check(dummy_neg, {"prompt_body": "test problem"}, body="dummy code")
+    assert not v_pst.valid
+    assert "nodes_explored" in v_pst.diagnostic
+    assert "greater than 0" in v_pst.diagnostic
+
+    v_fb = fb.check(dummy_neg, {})
+    assert not v_fb.valid
+    assert "nodes_explored" in v_fb.diagnostic
+    assert "greater than 0" in v_fb.diagnostic
+
+
+def test_reject_contradictory_reconciliation(tmp_path):
+    from pdl_taskmaster.runtime.result_ir import validate_result_ir
+
+    ir = {
+        "files": [
+            {
+                "filename": "solver.py",
+                "satisfies": ["R1", "R2", "R3"],
+                "evidence": {"path": "execution://body", "observed": "import sys"},
+            }
+        ],
+        "reconciliation": [
+            {
+                "requirement": "R1",
+                "status": "satisfied",
+                "evidence": {"path": "execution://body", "observed": "import sys"},
+            },
+            {
+                "requirement": "R2",
+                "status": "satisfied",
+                "evidence": {"path": "execution://witness", "observed": 'polarity": "negative"'},
+            },
+        ],
+        "open_defects": [],
+        "witness": {
+            "polarity": "negative",
+            "evidence": {"path": "execution://witness"},
+            "search_exhausted": True,
+            "nodes_explored": 500,
+            "method": "MRV backtracking",
+        },
+    }
+    requirements = [
+        "R1: VERIFY whether a partition exists.",
+        "R2: GENERATE one concrete example of 15 triples.",
+    ]
+    errors, normalized = validate_result_ir(
+        ir,
+        workspace_path=tmp_path,
+        requirements=requirements,
+        execution_body="import sys",
+    )
+    assert errors
+    assert any("A negative witness cannot satisfy a generation requirement" in e for e in errors)
+
+
+def test_problem_domain_enum_routing():
+    from pdl_taskmaster.verification.checkers.base import ProblemDomain
+    from pdl_taskmaster.verification.output_verifier import OutputVerifier
+
+    verifier = OutputVerifier()
+    domain = verifier.detect_domain(ProblemDomain.PARTITION_SUM_TRIPLES)
+    assert domain == "partition_sum_triples"
+    checker = verifier.get_checker(ProblemDomain.PARTITION_SUM_TRIPLES)
+    assert checker.name == "partition_sum_triples"
+
+
 
 

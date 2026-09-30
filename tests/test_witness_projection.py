@@ -134,7 +134,22 @@ def test_parse_sandbox_witness_and_body_projection():
     assert cand2["polarity"] == "positive"
     assert cand2["data"]["triples"] == [[1, 2, 3], [4, 5, 9], [6, 7, 13]]
 
-    # 3. Test body fallback in verifier when witness is None
+    # 3. Test labeled path/solution stdout parsing (e.g. Hamiltonian path)
+    out3 = "Hamiltonian path found: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]"
+    cand3 = _parse_sandbox_witness(out3)
+    assert cand3 is not None
+    assert cand3["polarity"] == "positive"
+    assert cand3["data"]["solution"] == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+    # 4. Test structured negative search stdout parsing
+    out4 = 'WITNESS = {"polarity": "negative", "search_exhausted": true, "nodes_explored": 42, "method": "dfs"}'
+    cand4 = _parse_sandbox_witness(out4)
+    assert cand4 is not None
+    assert cand4["polarity"] == "negative"
+    assert cand4["search_exhausted"] is True
+    assert cand4["nodes_explored"] == 42
+
+    # 5. Test that missing witness fails closed without regex-scraping body text (ADR-0018 / GUARD-03)
     verifier = OutputVerifier()
     body_with_triples = "The solution triples are (1, 2, 3), (4, 5, 9), and (6, 7, 13)."
     verdict = verifier.check(
@@ -142,6 +157,7 @@ def test_parse_sandbox_witness_and_body_projection():
         {"prompt_body": "PARTITION list into sum triples", "supplied_input": "1, 2, 3, 4, 5, 9, 6, 7, 13"},
         body=body_with_triples,
     )
-    assert verdict.valid is True
-    assert verdict.details["triples_verified"] == 3
+    assert verdict.valid is False
+    assert "Missing witness in Result IR" in (verdict.diagnostic or "")
+
 

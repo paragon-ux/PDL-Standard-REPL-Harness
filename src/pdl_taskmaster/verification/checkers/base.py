@@ -4,7 +4,27 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Optional
+
+
+class ProblemDomain(str, Enum):
+    """Canonical domain identifier for substantive verification."""
+
+    PARTITION_SUM_TRIPLES = "partition_sum_triples"
+    EXACT_COVER = "exact_cover"
+    SUBSET_SUM = "subset_sum"
+    GENERAL = "general"
+
+    @classmethod
+    def from_string(cls, val: str | None) -> ProblemDomain | None:
+        if not val:
+            return None
+        cleaned = val.strip().lower()
+        for member in cls:
+            if member.value == cleaned:
+                return member
+        return None
 
 
 @dataclass(frozen=True)

@@ -14,11 +14,14 @@
 | [ADR-0010](0010-pydantic-wire-enforcement.md) | Accepted | Pydantic v2 schema enforcement and automated operator retry corrections for wire contracts. |
 | [ADR-0011](0011-in-memory-vfs-and-microvm-sandboxing.md) | Accepted | Software-defined in-memory VFS context flow and ephemeral MicroVM agent sandboxing via MCP. |
 | [ADR-0012](0012-system-1-decision-models-via-rlcd.md) | Accepted | Realign Track L to System 1 decision models (Laya/Jev) aligned via RLCD contrastive distillation. |
-| [ADR-0013](0013-substantive-correctness-verification.md) | Proposed | Verified execution and bidirectional witness retention for substantive correctness. |
+| [ADR-0013](0013-substantive-correctness-verification.md) | Accepted | Verified execution and bidirectional witness retention for substantive correctness. |
 | [ADR-0014](0014-dual-plane-boundary-and-wire-conformance.md) | Accepted | Dual-plane boundary architecture: positive structural guidance, wire-level Pydantic contract enforcement, and tripartite clause governance. |
-| [ADR-0015](0015-model-synthesized-verification-and-confinement-boundaries.md) | Proposed | Model-synthesized verification and confinement boundaries in ephemeral sandboxes. |
+| [ADR-0015](0015-model-synthesized-verification-and-confinement-boundaries.md) | Accepted | Model-synthesized verification and confinement boundaries in ephemeral sandboxes. |
 | [ADR-0016](0016-pydantic-ssot-wire-and-deliverable-boundary-enforcement.md) | Accepted | Pydantic Single Source of Truth (SSOT) for wire and deliverable boundary enforcement. |
 | [ADR-0017](0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md) | Accepted | Dual-Plane Runtime Realignment: System 1 (Jev) Baseline & Constraint-Ordered Solver Governance. |
+| [ADR-0018](0018-elimination-of-regex-heuristics-in-verification-and-reconciliation-integrity.md) | Accepted | Elimination of Regex Heuristics in Substantive Verification & Reconciliation Semantic Integrity. |
+| [ADR-0019](0019-headless-waiting-input-exit-and-wire-tolerance.md) | Accepted | Headless WAITING_INPUT Exit Code & Execution Wire Input Tolerance. |
+| [ADR-0020](0020-system-1-environment-conditioned-refusal-routing.md) | Accepted | System 1 Environment-Conditioned Boundary Interception & Immediate Refusal Routing. |
 
 The records are intentionally separated so UI, context construction, execution
 isolation, output representation, and reasoning policy can evolve without

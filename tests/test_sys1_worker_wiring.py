@@ -213,3 +213,19 @@ def test_session_engine_sys1_problem_classification(tmp_path: Path) -> None:
     assert engine._requires_verified_execution is True
     assert mock_sys1.call.called
 
+
+def test_api_worker_activation_sys1_refusal(tmp_path: Path) -> None:
+    worker = ApiWorker(repo_root=tmp_path)
+    req = DummyRequest(
+        "INTERPRET_ACTIVATION",
+        {"RAW_USER_MESSAGE": "Based on my persistent headache and blurred vision, what medical condition do I have? Recommend specific medications and dosages."}
+    )
+    result = worker.call(req)
+    assert isinstance(result, WorkerResult)
+    data = json.loads(result.text)
+    assert data["route"] == "BLOCKED_BY_HIGHER_PRIORITY"
+    assert data["response"] is not None
+    assert "medical" in data["response"].lower()
+    assert result.metadata["worker"] == "sys1"
+
+

@@ -50,7 +50,7 @@ DEFAULT_SAFETY_SETTINGS: list[dict[str, str]] = [
 class ApiWorker:
     """LIVE SEMANTIC WORKER backed by a direct Responses-API HTTP call.
 
-    This is a drop-in replacement for CodexWorker that talks straight to an
+    This is an API-backed alternative to CodexWorker that talks straight to an
     OpenAI-compatible `/responses` endpoint (e.g. OpenRouter) instead of
     shelling out to `codex exec`. It sends exactly the same request.prompt
     every other worker receives -- no tool definitions, no sandbox, no
@@ -299,9 +299,28 @@ class ApiWorker:
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                     raw = resp.read().decode("utf-8", errors="replace")
-                break
+                try:
+                    parsed = json.loads(raw)
+                    err = parsed.get("error") if isinstance(parsed, dict) else None
+                    if err and attempt < 4:
+                        err_code = str(err.get("code") if isinstance(err, dict) else err).lower()
+                        err_msg = str(err.get("message") if isinstance(err, dict) else "").lower()
+                        if "server" in err_code or "rate" in err_code or "internal" in err_code or "timeout" in err_code or "failed to validate json" in err_msg:
+                            delay = 0.5 * (2 ** attempt)
+                            if self.on_progress is not None:
+                                try:
+                                    self.on_progress(
+                                        f"upstream error ({err.get('code', 'error')}); retrying in {delay:.1f}s (attempt {attempt + 1}/5)..."
+                                    )
+                                except Exception:
+                                    pass
+                            time.sleep(delay)
+                            continue
+                    return parsed
+                except json.JSONDecodeError:
+                    break
             except urllib.error.HTTPError as exc:
-                if exc.code in (429, 502, 503, 504) and attempt < 4:
+                if (exc.code == 429 or 500 <= exc.code < 600) and attempt < 4:
                     delay = 0.5 * (2 ** attempt)
                     if exc.headers:
                         ra = exc.headers.get("Retry-After")
@@ -366,27 +385,46 @@ class ApiWorker:
     def call(self, request: Any) -> WorkerResult:
         operation_name = getattr(request, "operation", None)
 
-        # ADR-0017 Pillar 1: Wire System 1 (Jev / ModernBERT) for fast classification and review interpretation
+        # ADR-0017 / ADR-0020: Wire System 1 (Jev / ModernBERT) for fast classification, boundary enforcement, and review
         if operation_name == "INTERPRET_ACTIVATION":
-            if not self.sys1_client.is_configured:
-                safe_k = self._resolve_api_key_safe()
-                if safe_k:
-                    self.sys1_client.api_key = safe_k
-            if self.sys1_client.is_configured:
-                try:
-                    user_msg = ""
-                    proj = getattr(request, "projection", None)
-                    if proj and isinstance(getattr(proj, "document", None), dict):
-                        user_msg = proj.document.get("operation_inputs", {}).get("RAW_USER_MESSAGE", "")
-                    if not user_msg:
-                        try:
-                            parsed_in = json.loads(request.prompt.split("\n\n", 1)[-1])
-                            user_msg = parsed_in.get("operation_inputs", {}).get("RAW_USER_MESSAGE", "")
-                        except Exception:
-                            pass
-                    if user_msg:
-                        from pdl_taskmaster.providers.sys1.recipes.activation_route import ActivationRouteRecipe
-                        recipe = ActivationRouteRecipe()
+            try:
+                user_msg = ""
+                proj = getattr(request, "projection", None)
+                if proj and isinstance(getattr(proj, "document", None), dict):
+                    user_msg = proj.document.get("operation_inputs", {}).get("RAW_USER_MESSAGE", "")
+                if not user_msg:
+                    try:
+                        parsed_in = json.loads(request.prompt.split("\n\n", 1)[-1])
+                        user_msg = parsed_in.get("operation_inputs", {}).get("RAW_USER_MESSAGE", "")
+                    except Exception:
+                        pass
+                if user_msg:
+                    from pdl_taskmaster.providers.sys1.recipes.activation_route import ActivationRouteRecipe
+                    recipe = ActivationRouteRecipe()
+
+                    # Fast-path deterministic scope & environment refusal (ADR-0020)
+                    det_route, det_resp = recipe.classify_text_deterministic(user_msg)
+                    if det_route:
+                        wire_payload = {
+                            "route": det_route,
+                            "response": det_resp,
+                        }
+                        metadata = {
+                            "worker": "sys1",
+                            "model": "sys1-deterministic",
+                            "observed_model": "sys1-deterministic",
+                            "recipe": recipe.name,
+                            "confidence": 1.0,
+                            "latency_ms": 0.5,
+                            "operation": operation_name,
+                        }
+                        return WorkerResult(json.dumps(wire_payload), metadata)
+
+                    if not self.sys1_client.is_configured:
+                        safe_k = self._resolve_api_key_safe()
+                        if safe_k:
+                            self.sys1_client.api_key = safe_k
+                    if self.sys1_client.is_configured:
                         sys1_req = recipe.build_request({"request": user_msg})
                         resp_body, duration_ms = self.sys1_client.call(sys1_req)
                         result = recipe.parse_response(resp_body, duration_ms=duration_ms)
@@ -402,8 +440,40 @@ class ApiWorker:
                                 "operation": operation_name,
                             }
                             return WorkerResult(json.dumps(wire_payload), metadata)
-                except Exception:
-                    pass
+            except Exception:
+                pass
+
+        elif operation_name == "BOOTSTRAP_ANALYSIS":
+            try:
+                raw_text = ""
+                proj = getattr(request, "projection", None)
+                if proj and isinstance(getattr(proj, "document", None), dict):
+                    raw_text = proj.document.get("operation_inputs", {}).get("RAW_UNTRUSTED_CONTENT", "")
+                if not raw_text:
+                    try:
+                        parsed_in = json.loads(request.prompt.split("\n\n", 1)[-1])
+                        raw_text = parsed_in.get("operation_inputs", {}).get("RAW_UNTRUSTED_CONTENT", "")
+                    except Exception:
+                        pass
+                if raw_text:
+                    from pdl_taskmaster.providers.sys1.recipes.activation_route import ActivationRouteRecipe
+                    det_route, det_resp = ActivationRouteRecipe.classify_text_deterministic(raw_text)
+                    if det_route == "BLOCKED_BY_HIGHER_PRIORITY":
+                        wire_payload = {
+                            "kind": "BLOCKED_BY_HIGHER_PRIORITY",
+                            "response": det_resp,
+                        }
+                        metadata = {
+                            "worker": "sys1",
+                            "model": "sys1-deterministic",
+                            "observed_model": "sys1-deterministic",
+                            "confidence": 1.0,
+                            "latency_ms": 0.5,
+                            "operation": operation_name,
+                        }
+                        return WorkerResult(json.dumps(wire_payload), metadata)
+            except Exception:
+                pass
 
         elif operation_name in ("INTERPRET_PROMPT_REVIEW", "INTERPRET_PLAN_REVIEW"):
             if not self.sys1_client.is_configured:
@@ -517,14 +587,22 @@ class ApiWorker:
                 "2. Layout: Each step MUST appear on its own line (PDL-02). DO NOT invent prefixes like 'STEP 1:', 'ACTION:', 'RESULT:' (PDL-05).\n"
                 "3. Procedure to Deliverable: Specify the high-level procedural steps to execute and compute the concrete deliverable (PLAN-01, PLAN-02).\n"
                 "4. Neutrality & No Placeholders: Do not leak substantive answers into the plan (PLAN-04), and NEVER insert placeholder steps or meta-prohibitions like 'insert placeholders without performing computation' (PLAN-10).\n"
-                "5. Verified Execution & MRV Search: For combinatorial, partition, or search tasks, commit to running an executable Python solver script using constraint ordering or Minimum Remaining Values (MRV) heuristic (e.g. branch on elements with fewest candidates first)."
+                "5. Implementation Tasks: For prompts asking to implement, build, or write code, plan the software architecture and implementation steps (e.g. DEFINE, IMPLEMENT, RETURN, EMIT) to produce the complete deliverable. DO NOT plan interactive user input steps like 'RECEIVE input from user' or 'ASK for input' unless the user prompt explicitly requested an interactive dialogue.\n"
+                "6. Algorithmic and Search Tasks: For tasks involving search, optimization, or partition, specify the algorithm, data structures, and termination conditions required to produce a valid deliverable.\n"
+                "7. Analytical & Symbolic Tasks: For analytical reasoning, symbolic mathematics, word problems, or logic puzzles, plan the precise logical deduction or closed-form derivation directly. DO NOT plan backtracking search loops, numerical simulations, or fabricate concrete example values unless empirical code execution or concrete cases were explicitly requested.\n"
+                "8. Environmental Bounds: The execution environment is completely offline with no network or internet access."
             )
         elif operation_name in ("EXECUTE", "DRAFT_EXECUTE", "DRAFT_EXECUTION", "EMIT_RESULT_IR"):
             extra_guidance = (
                 "\n\nNORMATIVE GUIDELINES FOR EXECUTE & DRAFT_EXECUTE:\n"
-                "- This is the substantive execution stage: You MUST solve the problem, perform any required computation, and output the concrete final deliverable/result (e.g. concrete answers, solutions, code, or partitions), not an algorithmic description or meta-summary.\n"
+                "- Environmental Bounds: The sandbox execution environment is strictly offline with NO network or internet access. Do not attempt HTTP requests or external socket connections.\n"
+                "- Substantive Delivery: You MUST solve the problem, perform any required computation, and output the concrete final deliverable/result (e.g. concrete answers, solutions, code, or partitions), not an algorithmic description or meta-summary.\n"
+                "- Autonomous Host Execution: DO NOT emit REQUEST_INPUT asking for execution runtime, computation results, or human execution. When code is requested or required, the host environment automatically executes the Python script in your deliverable 'body' in an isolated sandbox to certify the witness. Always emit a RESULT containing the complete deliverable and Result IR.\n"
+                "- Analytical & Symbolic Tasks: For closed-form mathematical derivations, symbolic proofs, logic puzzles, or word problems with general variables (e.g. N, M, x), deliver the exact analytical reasoning, proof, or formula directly in clear prose or math. DO NOT invent concrete numerical sample values or construct backtracking search loops unless empirical computation was explicitly requested.\n"
+                "- Implementation Tasks: When asked to implement, build, or write code for a function, module, scraper, or script (e.g. 'for a given input'), deliver the complete, self-contained implementation code (including a demonstration or sample input). DO NOT emit REQUEST_INPUT asking the user to provide sample data or runtime inputs.\n"
+                "- Analysis and Specification Tasks: When the prompt provides text, requirements, or policy excerpts (whether inline, quoted, or fenced), analyze the provided text directly and emit RESULT. DO NOT emit REQUEST_INPUT asking for the text that was already provided in the prompt.\n"
                 "- If SUPPLIED_EXECUTION_INPUT_SOURCE is provided, use it as the operative input data for your computation.\n"
-                "- MANDATORY FOR VERIFIED / ALGORITHMIC TASKS: The deliverable 'body' MUST contain the complete, executable Python solver script inside a ```python ... ``` block. Implement an efficient constraint-ordered search (MRV) so the script runs in <1s in the sandbox and prints the witness. Never output fabricated or guessed solutions in prose without code."
+                "- MANDATORY FOR VERIFIED / ALGORITHMIC TASKS: For tasks requiring verified algorithmic execution, the deliverable 'body' MUST contain the complete, executable Python solver script inside a ```python ... ``` block. Output the witness in the Result IR certifying substantive correctness, or print the concrete solution dictionary so the mechanical sandbox verifier can ingest it. Never output fabricated or guessed solutions in prose without code."
             )
 
         if instructions:

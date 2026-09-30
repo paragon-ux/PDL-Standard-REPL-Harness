@@ -1,8 +1,11 @@
 # Definition of Done: Substantive Correctness & Verification Architecture
 
-- **Status:** DRAFT (v2 — supersedes v1; reflects real paths and the
-  merged Claude/Gemini roadmap)
-- **Target Version:** v2.4.2
+> [!NOTE]
+> **Archived Historical Planning Artifact:**
+> This document is an unratified historical draft for `v2.4.2`. Its architectural objectives were formally superseded and shipped in `v2.5.0`–`v2.6.0` under [ADR-0013](../../adr/0013-substantive-correctness-verification.md) through [ADR-0020](../../adr/0020-system-1-environment-conditioned-refusal-routing.md), governed by [GUARD-01 through GUARD-05](../../guardrails/ANTI_OVERFITTING_AND_BENCHMARK_INTEGRITY.md). It is retained for provenance only.
+
+- **Status:** ARCHIVED / HISTORICAL (Draft v2 targeting v2.4.2)
+- **Target Version:** v2.4.2 (Shipped in v2.5.0–v2.6.0)
 - **Related Plan:** [substantive-correctness-verification.md](../implementation-plans/substantive-correctness-verification.md)
 - **Related Decision:** [ADR-0013](../../adr/0013-substantive-correctness-verification.md)
 

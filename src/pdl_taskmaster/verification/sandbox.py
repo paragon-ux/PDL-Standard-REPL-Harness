@@ -136,7 +136,7 @@ def validate_ast_anti_patterns(code_text: str) -> list[str]:
                     if size > 10 and (r_val is None or r_val > 5):
                         issues.append(
                             f"Prohibited anti-pattern: itertools.permutations called directly on a container of size {size} > 10 without candidate pruning. "
-                            "Use backtracking with MRV degree pruning or constraint propagation instead."
+                            "Use constraint propagation or candidate pruning instead."
                         )
     return issues
 

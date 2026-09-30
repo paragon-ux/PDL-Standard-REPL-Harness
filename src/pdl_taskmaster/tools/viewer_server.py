@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-PDLT_TEST_ROOT = Path(r"C:\Users\USER\Desktop\Frameworks\PDLt-Test")
+PDLT_TEST_ROOT = Path(os.environ.get("PDLT_TEST_ROOT", REPO_ROOT.parent / "PDLt-Test"))
 SESSIONS_DIR = REPO_ROOT / "runs" / "live-sessions"
 
 
@@ -100,21 +100,53 @@ def get_session_telemetry(session_dir: Path | None = None) -> dict[str, Any]:
     if latest_ws:
         exec_out_dir = latest_ws / "turns" / "turn_001" / "stages" / "50_execution" / "output"
         if exec_out_dir.is_dir():
-            model_resp_files = sorted(exec_out_dir.rglob("model-response.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
-            if model_resp_files:
+            current_md = exec_out_dir / "current.md"
+            if current_md.is_file():
                 try:
-                    resp_text = model_resp_files[0].read_text(encoding="utf-8", errors="replace")
-                    if "```python" in resp_text:
-                        py_match = re.search(r"```python\s*\n(.*?)```", resp_text, re.S)
-                        if py_match:
-                            code_snippet = py_match.group(1).strip()
-                    try:
-                        resp_json = json.loads(resp_text)
-                        witness_data = resp_json.get("result_ir", {}).get("witness") or resp_json.get("witness")
-                    except Exception:
-                        pass
+                    c_text = current_md.read_text(encoding="utf-8", errors="replace")
+                    py_match = re.search(r"```(?:python|py)\s*\n(.*?)```", c_text, re.S)
+                    if py_match:
+                        code_snippet = py_match.group(1).strip()
+                    else:
+                        ir_split = re.split(r"```(?:json)?\s*\{", c_text)
+                        if ir_split and any(kw in ir_split[0] for kw in ("import ", "def ", "class ", " = ", "for ")):
+                            code_snippet = ir_split[0].strip()
+
+                    ir_match = re.search(r"```(?:json)?\s*(\{.*?\"witness\".*?\})\s*```", c_text, re.S)
+                    if ir_match:
+                        try:
+                            ir_obj = json.loads(ir_match.group(1))
+                            witness_data = ir_obj.get("witness")
+                        except Exception:
+                            pass
                 except Exception:
                     pass
+
+            if not code_snippet or not witness_data:
+                model_resp_files = sorted(exec_out_dir.rglob("model-response.txt"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if model_resp_files:
+                    try:
+                        resp_text = model_resp_files[0].read_text(encoding="utf-8", errors="replace")
+                        if not code_snippet:
+                            py_match = re.search(r"```(?:python|py)?\s*\n(.*?)```", resp_text, re.S)
+                            if py_match:
+                                code_snippet = py_match.group(1).strip()
+                            else:
+                                try:
+                                    resp_json = json.loads(resp_text)
+                                    b_code = resp_json.get("body", "")
+                                    if b_code and any(kw in b_code for kw in ("import ", "def ", "class ", " = ")):
+                                        code_snippet = b_code.strip()
+                                except Exception:
+                                    pass
+                        if not witness_data:
+                            try:
+                                resp_json = json.loads(resp_text)
+                                witness_data = resp_json.get("result_ir", {}).get("witness") or resp_json.get("witness")
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
 
     return {
         "session_id": session_dir.name,

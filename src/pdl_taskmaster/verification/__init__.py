@@ -4,6 +4,7 @@ from pdl_taskmaster.verification.checkers import (
     BaseChecker,
     FallbackChecker,
     PartitionSumTriplesChecker,
+    ProblemDomain,
     VerificationVerdict,
 )
 from pdl_taskmaster.verification.output_verifier import OutputVerifier
@@ -20,6 +21,7 @@ __all__ = [
     "OutputVerifier",
     "PartitionSumTriplesChecker",
     "PlanSoundnessResult",
+    "ProblemDomain",
     "SandboxResult",
     "VerificationVerdict",
     "validate_plan_soundness",

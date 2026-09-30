@@ -9,7 +9,9 @@ silently passing it through as verified.
 from __future__ import annotations
 
 from typing import Any
+from pydantic import ValidationError
 
+from pdl_taskmaster.runtime.wire_payloads import NegativeWitness, PositiveWitness
 from pdl_taskmaster.verification.checkers.base import BaseChecker, VerificationVerdict
 
 
@@ -45,6 +47,14 @@ class FallbackChecker(BaseChecker):
 
         polarity = w_dict.get("polarity")
         if polarity == "positive":
+            try:
+                PositiveWitness.model_validate(w_dict)
+            except ValidationError as val_err:
+                err_msg = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in val_err.errors())
+                return VerificationVerdict(
+                    valid=False,
+                    diagnostic=f"Invalid positive witness structure: {err_msg}",
+                )
             data = w_dict.get("data")
             if not isinstance(data, dict) or not data:
                 return VerificationVerdict(
@@ -58,11 +68,13 @@ class FallbackChecker(BaseChecker):
                 details={"polarity": "positive", "data_keys": list(data.keys())},
             )
         elif polarity == "negative":
-            search_exhausted = w_dict.get("search_exhausted")
-            if search_exhausted is not True:
+            try:
+                NegativeWitness.model_validate(w_dict)
+            except ValidationError as val_err:
+                err_msg = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in val_err.errors())
                 return VerificationVerdict(
                     valid=False,
-                    diagnostic="Negative witness search_exhausted must be True to claim non-existence.",
+                    diagnostic=f"Invalid negative witness structure: {err_msg}",
                 )
             return VerificationVerdict(
                 valid=True,

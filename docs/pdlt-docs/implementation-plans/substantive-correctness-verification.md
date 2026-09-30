@@ -1,9 +1,11 @@
 # Implementation Plan: Substantive Correctness & Verification Architecture
 
-- **Status:** PROPOSED (v2 — supersedes the v1 draft; incorporates real
-  repository paths, stage names, and on-disk evidence, plus a joint
-  Claude/Gemini review of `session-20260927-052351`)
-- **Target Version:** v2.4.2
+> [!NOTE]
+> **Archived Historical Planning Artifact:**
+> This document is an unratified historical draft for `v2.4.2`. Its architectural objectives were formally superseded and shipped in `v2.5.0`–`v2.6.0` under [ADR-0013](../../adr/0013-substantive-correctness-verification.md) through [ADR-0020](../../adr/0020-system-1-environment-conditioned-refusal-routing.md), governed by [GUARD-01 through GUARD-05](../../guardrails/ANTI_OVERFITTING_AND_BENCHMARK_INTEGRITY.md). It is retained for provenance only.
+
+- **Status:** ARCHIVED / HISTORICAL (Draft v2 targeting v2.4.2)
+- **Target Version:** v2.4.2 (Shipped in v2.5.0–v2.6.0)
 - **Related Decisions:** [ADR-0013](../../adr/0013-substantive-correctness-verification.md), [ADR-0014](../../adr/0014-dual-plane-boundary-and-wire-conformance.md)
 - **Evidence Trace:** `session2-v-2-4-0.txt` (plan-soundness failure — no-backtrack greedy), `session9-v-2-4-0.txt` (witness/confabulation failure — correct answer, fabricated justification), `runs/live-sessions/session-20260927-052351/workspaces/.../turn_001/stages/50_execution/output/0004-execute/model-response.txt` (raw `result_ir` confirming the empty witness)
 

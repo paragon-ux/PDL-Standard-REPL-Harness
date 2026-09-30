@@ -80,9 +80,9 @@ def render_instructions(
     if requires_verified_execution:
         base += (
             "\n\nWITNESS REQUIREMENT (ADR-0013 / ADR-0015): Because this task requires verified execution, your Result IR MUST include a 'witness' field certifying substantive correctness:\n"
-            "- If a partition exists: {\"polarity\": \"positive\", \"evidence\": {\"path\": \"execution://witness\"}, \"data\": {\"triples\": [[a1, b1, c1], [a2, b2, c2], ...]}} where each triple satisfies a + b = c and all input integers are partitioned without duplicates.\n"
-            "- If no partition exists: {\"polarity\": \"negative\", \"evidence\": {\"path\": \"execution://witness\"}, \"search_exhausted\": true, \"nodes_explored\": <integer count of search states explored, > 1>, \"method\": \"<search algorithm name>\"}\n\n"
-            "COMPUTATIONAL SEARCH & SYNTHESIS (ADR-0017): To solve and verify large inputs within the sandbox time ceiling, implement an efficient constraint-ordered backtracking search in a ```python ... ``` block. Crucial for combinatorial partitioning: always pick the unused element with the minimum remaining candidate triples (MRV / most constrained element first) to prune the search space to sub-second runtime. Print the resulting triples in format: print(solution) or WITNESS: {...}. The host executes your script in an isolated sandbox to certify the witness."
+            "- If a valid solution or partition exists: {\"polarity\": \"positive\", \"evidence\": {\"path\": \"execution://witness\"}, \"data\": {\"solution\": <list, path, partition triples, or mapping of verified result>}}\n"
+            "- If no solution exists: {\"polarity\": \"negative\", \"evidence\": {\"path\": \"execution://witness\"}, \"search_exhausted\": true, \"nodes_explored\": <integer count of search states explored, > 1>, \"method\": \"<search algorithm name>\"}\n\n"
+            "GROUNDED EXECUTION & WITNESS CERTIFICATION: When code execution is required, include the complete executable script in your deliverable. Record the verified solution or negative search certificate in the Result IR 'witness' field. The host sandbox executes deliverable code to certify the witness against grounded output."
         )
     return base
 
@@ -319,14 +319,29 @@ def validate_result_ir(
                 if "data" not in witness or not isinstance(witness["data"], dict):
                     errors.append("'witness.data' must be an object for positive polarity")
             elif polarity == "negative":
-                if "search_exhausted" not in witness or not isinstance(witness["search_exhausted"], bool):
-                    errors.append("'witness.search_exhausted' must be a boolean for negative polarity")
-                if "nodes_explored" not in witness or not isinstance(witness["nodes_explored"], int):
-                    errors.append("'witness.nodes_explored' must be an integer for negative polarity")
-                if "method" not in witness or not isinstance(witness["method"], str):
-                    errors.append("'witness.method' must be a string for negative polarity")
+                if "search_exhausted" not in witness or witness["search_exhausted"] is not True:
+                    errors.append("'witness.search_exhausted' must be True for negative polarity")
+                if "nodes_explored" not in witness or not isinstance(witness["nodes_explored"], int) or witness["nodes_explored"] <= 0:
+                    errors.append("'witness.nodes_explored' must be a positive integer (> 0) for negative polarity")
+                if "method" not in witness or not isinstance(witness["method"], str) or not witness["method"].strip():
+                    errors.append("'witness.method' must be a non-empty string for negative polarity")
             if "evidence" in witness:
                 _resolve_evidence(witness.get("evidence"), ws, errors, "witness", execution_body)
+
+    # Phase 3: Reconciliation Semantic Integrity
+    # A negative witness (non-existence) cannot satisfy a requirement that demands generating/constructing an instance
+    if witness and isinstance(witness, dict) and witness.get("polarity") == "negative":
+        for i, entry in enumerate(recon, 1):
+            if isinstance(entry, dict) and entry.get("status") == "satisfied":
+                rid = str(entry.get("requirement", "")).strip()
+                req_idx = int(rid[1:]) - 1 if rid.startswith("R") and rid[1:].isdigit() else -1
+                req_text = requirements[req_idx] if 0 <= req_idx < len(requirements) else ""
+                req_upper = req_text.upper()
+                if any(w in req_upper for w in ("GENERATE", "PROVIDE ONE CONCRETE", "CONSTRUCT", "PRODUCE AN EXAMPLE")):
+                    errors.append(
+                        f"reconciliation[{i}] ({rid}): requirement '{rid}' demands generating an example/instance, "
+                        f"but witness polarity is 'negative' (non-existence). A negative witness cannot satisfy a generation requirement."
+                    )
 
     return errors, (ir if not errors else {})
 
@@ -446,7 +461,7 @@ def arithmetic_checks(typed_entities: list[dict]) -> list[str]:
       the wire_format's leading string-field width when both are declared
       (catches b'WAL01' truncated by a '4s' field).
     """
-    import struct as _struct
+    import struct
     errors: list[str] = []
     wire = [e for e in typed_entities if e["kind"] == "wire_format"]
     for e in wire:
@@ -454,8 +469,8 @@ def arithmetic_checks(typed_entities: list[dict]) -> list[str]:
         if not fmt or declared is None:
             continue
         try:
-            actual = _struct.calcsize(fmt)
-        except struct.error as exc:
+            actual = struct.calcsize(fmt)
+        except Exception as exc:
             errors.append(f"wire_format {fmt!r}: invalid struct format ({exc})")
             continue
         if actual != declared:

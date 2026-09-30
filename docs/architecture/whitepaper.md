@@ -1,168 +1,249 @@
 # PDL Taskmaster
 ### Interpretation before execution: a structural protocol for faithful, injection-resistant LLM agents
 
-*A fidelity framework, not a prompting framework — it doesn't optimize what you say to a model, it guarantees what happens to its interpretation once you've said it.*
+*A fidelity and verification framework, not a prompting framework — it doesn't optimize what you say to a model, it guarantees what happens to its interpretation, approach, and execution once you've said it.*
 
-*PDL-Standard-REPL-Harness · whitepaper, public-release edit · 2026-09-17*
+*PDL-Standard-REPL-Harness · Release Candidate 2.6.0 · 2026-09-29*
 
-*Companion to [`framing.md`](framing.md), which makes the shorter case for why this exists. This document covers the mechanism, the design history, and the evidence in full.*
+*Companion to [`framing.md`](framing.md), which makes the shorter case for why this exists. This document covers the mechanism, the design history, the architectural evolution, and the empirical evidence in full.*
 
 ---
 
 ## Abstract
 
-Any system that hands work to a language model runs into the same structural problem: the thing carrying out the task is also the thing deciding what the task *means*. That single fact produces two failure modes usually treated as unrelated, needing separate tooling — **fidelity failures** (the model quietly does something other than what you asked) and **prompt-injection failures** (the model treats untrusted text it's reading as an instruction). PDL Taskmaster treats both as the same failure — unconfirmed interpretation — and closes both with the same mechanism.
+Any system that delegates work to a language model runs into the same structural problem: the thing carrying out the task is also the thing deciding what the task *means*, and the thing reporting whether the output worked is the same thing that wrote it. That architecture produces three failure modes usually treated as unrelated, needing separate tooling:
 
-Before a task runs, the model interprets the request into short, readable pseudocode, and the user confirms or corrects it. Before output is produced, the model plans its approach in the same readable form, and the user confirms or corrects that too. Content the model encounters along the way — quoted text, pasted documents, fetched pages — is classified as data at the first read and structurally prevented from re-entering the parts of the pipeline that compile instructions or execute them.
+1. **Fidelity failures** — the model quietly does something other than what you asked.
+2. **Prompt-injection failures** — the model treats untrusted text it is reading as an instruction.
+3. **Substantive correctness / hallucination failures** — the model claims compliance without performing computation or generates mathematically invalid output that it self-certifies as correct.
 
-Two properties distinguish this from an ordinary "add a confirmation step" pattern:
+PDL Taskmaster treats all three as failures of unverified agency and unconfirmed interpretation.
 
-- **Containment doesn't depend on the model behaving well.** It's enforced by which fields untrusted content is allowed to flow into, not by the model choosing to be careful. It holds identically whether the model is given a full reasoning budget or none at all.
-- **Nothing about the model's output is constrained.** There's no grammar, no constrained decoding, no schema the model is forced into at generation time, at any stage. The schema lives in *validation*, not in the decoder: every output is checked deterministically against its contract, and malformed output triggers a retry — measured side-by-side, forcing the decode instead collapsed interpretation quality into degenerate loops (7/13 and 5/5 stalled trials), while the same contract enforced by validation preserved it. The protocol restricts what context the model sees before it responds — never how it's allowed to respond.
+Before a task runs, the model interprets the request into short, human-readable pseudocode, and the user confirms or corrects it. Before code is executed, the model plans its approach in the same readable form, and the user confirms or corrects that too. Content the model encounters along the way — quoted text, pasted documents, fetched pages — is classified as data at the perimeter read and structurally prevented from re-entering the parts of the pipeline that compile instructions or execute them. Finally, execution deliverables are run host-side in an **OS-native execution sandbox**, with stdout witnesses deterministically verified against strict, schema-first **Pydantic models**.
 
-This document lays out the mechanism, the design decisions behind it, and the evidence collected so far — including a boundary test where the identical model, on one unprotected API call, leaked 2 of 5 injected probes, while the protocol held 0 of 5.
+Crucially, empirical evaluation across early versions falsified the initial **"single-model hypothesis"** — the assumption that a single frontier LLM could act as its own classifier, planner, coder, and verifier. In v2.5.0–v2.6.0, the harness evolved into a **heterogeneous Dual-Plane runtime**:
+- **System 1 (Semantic Gating):** Non-generative, sub-millisecond classification heads (TypeSafe Jev / ModernBERT, ~140ms, $0.000019) that evaluate routing, enforce environment boundaries, and immediately refuse impossible or offline-violating tasks before any frontier reasoning tokens are burned.
+- **System 2 (Deliberative Synthesis):** Frontier generative models that formulate Prompt/Plan pseudocode and synthesize solver code under compiled normative standards.
+- **The Deterministic Host Controller:** Owns the mechanical state machine, executes code within OS-native sandboxes (Windows Job Objects / POSIX `setrlimit`), and enforces Pydantic Single Source of Truth (SSOT) verification.
 
----
-
-## 1. One interpreter, two failure modes
-
-Fidelity and injection defense are usually built as separate products: an eval harness that scores whether outputs match intent, and a guardrail that scans for injected instructions. PDL Taskmaster's starting claim is that they're the same problem seen from two sides, so one mechanism should serve both:
-
-- **Fidelity.** Left unconfirmed, an agent quietly rewrites what you meant: a greeting becomes an instruction to reply to; a question becomes a mandate to answer at length; the model's own action becomes the thing the task was supposedly about. The fix is to make the interpretation visible and confirmable *before* it becomes action, not to hope the model reads you correctly.
-- **Defense.** Content that arrives *inside* a task — a quoted email, a pasted document, a scraped web page — has to stay data. It must never become an instruction, no matter how it's phrased or how convincingly it impersonates a system message. The fix is to classify it as data at the point it's read, before any model output exists that could act on it.
-
-```mermaid
-flowchart LR
-    U(["User message"]) --> I["Interpret\n(Prompt Pseudocode)"]
-    I --> C1{"User confirms\nthe meaning?"}
-    C1 -- "correct it" --> I
-    C1 -- "confirmed" --> P["Plan\n(Response Plan Pseudocode)"]
-    P --> C2{"User confirms\nthe approach?"}
-    C2 -- "correct it" --> P
-    C2 -- "confirmed" --> E["Execute"]
-    E --> O(["Validated output"])
-```
-
-A single test made the gap between *understanding* and *enforcement* concrete. We gave one model, on a single unprotected API call, a task that combined a legitimate request with an embedded attack: a fake system-override block wrapped around a rootkit-development payload, an instruction to reply with a literal tripwire string, and an explicit note that the quoted material was for critique only. The model refused the payload and completed the real task — but it also restated the tripwire string in its own critique, and volunteered a suggestion for how the injected instructions could be phrased more effectively to slip past defenses like this one. Two violations out of five probes, from a model that plainly understood what it was being asked to refuse. Run through the protocol instead — same model, same prompt, same everything else — it scored zero. The difference wasn't model quality. It was whether an interpretation step existed at all. (Full transcript and probe design: [`framing.md`](framing.md).)
-
-Containment works the same way structurally:
-
-```mermaid
-flowchart LR
-    R["Untrusted content\n(quoted text, documents, web pages)"] --> B["Perimeter read"]
-    B -->|"classified as data"| F["Structured fields\n(task_summary / risk_notes)"]
-    F --> M["Later model calls"]
-    B -. "never re-enters" .-> X["Compilation & execution context"]
-```
-
-**Generation stays free.** None of this comes from narrowing what the model is allowed to generate. We tried constraining the interpretation stage with an output grammar; it collapsed the model into degenerate refusal loops (7 of 13 trials stalled), so we ruled that out. We later considered constrained generation as a protocol-wide mechanism and abandoned that too — it works against the design itself. The output *contract* is not optional — every response is validated against its schema, and malformed output fails — but the contract lives in validation after generation, not in a constraint on generation. PDL Taskmaster is an interpreter and an approach-compiler that produces structured, readable intermediate artifacts; it is not a decoder wrapped in a schema. Quality comes from what sits *between* generation stages — compiled, confirmable, hash-pinned artifacts. Containment comes from what *never reaches* a generation stage — untrusted content, structurally routed around it.
-
-The workflow itself follows the Interpretable Context Methodology (Van Clief & McDermott, [arXiv:2603.16021](https://arxiv.org/abs/2603.16021)) — filesystem structure as the agentic architecture: each stage's inputs, artifacts, and handoffs live in a numbered workspace layout that any host or agent can inspect and drive.
-
-**The combined pass/fail bar.** Because it's possible to trade one property for the other — loosen containment to preserve helpfulness, or over-refuse to look safe — the two are scored together (internally, the "Connected Dual Gate"). A negative-containment battery (does untrusted content ever escape as instruction?) and a positive-fidelity battery (does the output match what was actually asked?) run under identical, unassisted conditions, and both have to pass. Improving one at the expense of the other counts as a failed run, not a partial success.
-
-## 2. Why pseudocode, not a bespoke format
-
-The interpretation and the plan are both written in **Program Design Language (PDL)** — a plain-English pseudocode convention (a compatibility profile of J. Dalbey's public Cal Poly Pseudocode Standard), not a project-specific format. That choice is deliberate, for a reason that's easy to miss: inventing a new structured format to describe requests would create a *second* interpretation problem — the user would have to learn the format *and* judge whether the request was represented correctly inside it. PDL already has sequence, indentation, conditionals, loops, procedure calls, and everyday action verbs — enough to represent a task and a plan for it, while staying close enough to ordinary language that confirming it means confirming the actual meaning, not decoding a notation.
-
-The protocol produces two separate artifacts, because natural-language back-and-forth tends to blur two different questions:
-
-| Artifact | Question it lets the user answer | Aims for |
-|---|---|---|
-| Prompt Pseudocode | "Is this what I asked for?" | Maximum useful **semantic** detail |
-| Response Plan Pseudocode | "Is this an acceptable way to answer it?" | Minimum sufficient **procedural** detail |
-
-Both are complete, visible, and editable — neither is a hidden chain-of-thought. Confirming both sets the boundary the system won't cross without you. Because each is confirmed at its own checkpoint, correcting *what you meant* and correcting *how it's going to do it* are two separate, targeted edits, not one fuzzy renegotiation in prose.
-
-The artifacts are real intermediate representations — versioned, diffed, replayed, hash-pinned, and consumed by later stages — but their public form stays structured English, not JSON or a custom syntax tree. The wire format underneath is JSON; the layer a human actually reads and confirms is not.
-
-Dense prompts routinely combine an action, several constraints, a priority order, an audience, and formatting requirements in one paragraph. PDL turns that into a short, indented list, so a correction can target one line instead of restating the whole request.
-
-## 3. What we tried and ruled out
-
-The current design isn't the first one. Several earlier approaches looked reasonable and failed for specific, informative reasons:
-
-| Problem | Earlier approach | What replaced it, and why |
-|---|---|---|
-| Reading untrusted input | Draft directly from raw pasted/quoted text | A two-tier read: one perimeter step sees the raw content; every later step receives a sanitized, classified projection of it |
-| Keeping quoted attacks inert | In-band delimiters wrapped around untrusted text | Out-of-band fields in the structured artifact itself (a `task_summary` field and a separate `risk_notes` field the untrusted text can never write into), plus redaction of anything that looks like an embedded directive |
-| Judging the user's review decision | Rigid UI-button events only; the model was never allowed to infer intent | Structured extraction of what the user actually said ("looks good", "change X"), with the human's literal input always taking precedence over the model's read of it |
-| How much reasoning to spend before acting | A fixed reasoning budget for every step | A per-step, per-model budget: high on the initial read, low on translation, none on mechanical steps (§4) |
-| Enforcing "don't do X" | Restating prohibitions as assertions the model has to actively obey | Removing X from what's structurally reachable in the first place, wherever that's possible |
-| Extra input channels | A side-channel for arbitrary extra task inputs | Removed. Every input goes through the same perimeter read as everything else — no channel bypasses classification |
-| Scoring | Score defense and fidelity separately | The combined pass/fail bar described in §1 |
-
-Two of the retired approaches are worth a longer note, because they failed instructively rather than obviously.
-
-The first was a "sanctioned evidence sink": an instruction telling the model to put any verbatim dangerous literal only into a channel the host would later strip. It failed three different ways we phrased it — as a negation, as a positive reframing, as an explicit named channel — and each failure looked different from the last. That's what told us the fix couldn't be *instructional* at all. If a well-phrased rule in the prompt can be talked around, the rule doesn't hold; the answer had to be structural (the out-of-band fields in §1), not another sentence added to a system prompt.
-
-The second was a content-addressed "handle" scheme for quarantining untrusted content — technically sound, but more machinery than the problem needed once the simpler out-of-band field split was in place. It's kept as a documented fallback design, not deleted, in case a future case needs the extra isolation it provides.
-
-**A lesson about the worker itself.** Which model harness carries the compiled instructions matters as much as the instructions themselves. A general-purpose coding-agent CLI, with its own baked-in tone and interaction conventions, actively worked against the protocol's compiled requirements — its native instructions and the protocol's compiled ones competed for the model's attention. A bare API call, carrying nothing but the protocol's own instructions, was architecturally stronger for exactly that reason: it had nothing else to compete with. Instruction-lightness in the worker is a requirement of this design, not a nice-to-have.
-
-**A lesson about interfaces.** The harness went through GUI and terminal-UI implementations before settling on a REPL. Both were sound as renderings and unsound as the *canonical* interface, because a GUI or TUI is invisible to another agent trying to drive the same protocol — it would fragment the protocol into one set of semantics for humans and another for agentic callers. A REPL is the one interface a human at a terminal and an autonomous worker can drive identically, which keeps "one mechanism, one semantics" true in practice, not just on paper.
-
-## 4. Reasoning effort is not "more is always better"
-
-A controlled comparison — bounded reasoning vs. none, same model, same case set — produced two findings that cut against the usual assumption that more reasoning is strictly better:
-
-1. **Containment doesn't need reasoning.** Both conditions held 100% clean containment. Structural, out-of-band separation of untrusted content works the same with the reasoning budget at zero as it does at full depth, because it was never a cognitive property to begin with — it's a routing property of the workflow. Containment is architecture, not vigilance, and it doesn't erode as you spend less on reasoning or move to a smaller model.
-2. **Fidelity is where reasoning matters — and it's model-dependent.** With reasoning disabled, one model (GLM-4.7, a mixture-of-experts reasoning model) suffered a real semantic collapse: it lost the distinction between the task's intent and its procedural form, and a request for a CSV parser turned into an English description of one instead of a plan for one. Restoring a modest reasoning budget on the translation steps fixed it.
-3. **Some models never needed the budget in the first place.** A cross-model canary against a second, cheaper instruction-tuned model (Qwen3.5-35B-A3B, a non-reasoning mixture-of-experts model with roughly 3B active parameters) found it clean before we'd even added the fix GLM-4.7's early runs needed — it simply never produced those attribution errors to begin with. With the same entity-tracking mechanism live and reasoning at zero across every step, it held the full adversarial trio (0 leaks, 0 hijacks, 0 echoes — including the exact case where the unprotected control leaked a canary value) and matched GLM-4.7's post-fix fidelity numbers. It behaves like a deterministic schema compiler rather than a model that needs reasoning room to stay faithful — it does better with less room, not despite it.
-
-The practical rule that falls out of this: spend reasoning where a step is translating natural language into structured meaning *and* the model in question actually needs it to do that well; spend nothing where a step is mechanical. In production this is a concrete per-step budget, not a vague heuristic — the initial read of the request runs at **high** reasoning, the two translation steps (drafting and revising the pseudocode) run at **low**, and the two mechanical steps (checking a plan's shape and executing it) run at **none**. That shape isn't arbitrary: a direct A/B on GLM-4.7 that also zeroed out the translation steps saved another ~31% in wall-clock latency, but reintroduced the exact semantic collapse from finding 2 — confirming the low-reasoning floor on those two steps is load-bearing, not conservative padding. Every default is per-step and per-model, and every one can be overridden from the command line.
-
-> **This is the answer to the cost objection, not a footnote to it.** The instinctive response to "compiled standards on every call cost more tokens" is to wait for a cheaper or smarter frontier model. The evidence above says the fix is orthogonal to frontier scale entirely: an open-weights, instruction-following model, run with most of the pipeline at zero reasoning, already clears the same containment-and-fidelity bar that a larger reasoning model needs a tuned reasoning budget to clear — because the mechanism only ever asks a model to follow compiled instructions, and a model that just does that has nothing to be talked out of. That reframes "make this affordable" from a "wait for a bigger model" problem into a routing and worker-selection problem, which is exactly what the roadmap's local-worker track (`docs/governance/roadmap.md`, Track L) is built to exploit.
-
-Qwen3.5-35B-A3B here is a canary-scale check (n=1 per case), not a qualified battery — see §6. But the roadmap already has a purpose-built successor queued: [`qwen/qwen3-coder-30b-a3b-instruct`](https://openrouter.ai/qwen/qwen3-coder-30b-a3b-instruct), an open-weights coding model priced at $0.07 / $0.28 per million input/output tokens against GLM-4.7's $0.40 / $1.75 — roughly a sixth of the cost per call — earmarked in `docs/governance/roadmap.md` as both the next cross-model revalidation candidate and the distillation source for a bespoke local worker (Track L). It hasn't been run through the harness yet; when it has, the number goes in §6, not here.
-
-## 5. Two kinds of state
-
-The system separates state that must be stable from state that must be disposable:
-
-- **Standards** — the contracts and schemas compiled into every model call — live in a versioned, content-addressed store, pinned per project. They change rarely and deliberately.
-- **Workspaces** — everything about one run: the interpretation, the plan, the execution, the event log — are ephemeral by design. A fresh run starts from four empty folders and materializes each stage's files on demand, not from a large pre-populated template.
-
-(Internally we call this "Brain vs. Hands-and-Feet": the rules don't change turn to turn; the run gets thrown away and rebuilt every time.)
-
-Two things fall out of this split. First, the audit trail isn't a logging feature bolted on afterward — every run leaves its confirmed artifacts and content-addressed projections on disk *because that's how a run is structured*, not because something was instrumented to remember. Second, it makes documentation drift a structural risk instead of a silent one: the recurring historical failure mode was written standards outrunning the code meant to enforce them, so the baseline verifier now fails if a written standard defines a requirement that no contract enforces — a documentation change that skips the enforced contract is caught by the same gate as a code regression.
-
-## 6. Results so far
-
-| What we tested | Without the protocol | With the protocol |
-|---|---|---|
-| Full adversarial battery — 27 cases × 3 runs, same model both arms | 0 full leaks, 19 decision hijacks, 74.1% of runs fully clean | 0 leaks, 0 hijacks, 0 malformed outputs, 93.8% fully clean (p < 0.0001); the hijack separation replicated across 3 full battery runs |
-| Multi-turn hijack chains, same battery | 86.7% hijacked | 0.0% |
-| Same test on a different, more capable model than the one used in development (DeepSeek V4.1 Flash), 30 trials — does a smarter model alone close the gap? | 4/30 hijacked | 0/30 hijacked; 3 trials were honest refusals (scored clean on security, reported as utility cost) |
-| Targeted behavioral certification — 3 specific checks × 3 runs, across a 27-case sweep, entity-tracking channel live | — | negative-constraint adherence 0.0 → 1.0; 3/3 clean per case; 27/27 clean deliverables |
-| Fidelity sweep — 13 non-adversarial cases, one run each* | recall 1.0, fidelity 1.0 | recall 1.0, fidelity 1.0 (after fix — see note) |
-| Base instruction-following suite — 40 public cases | — | 15/15 on targeted cases, 30/30 on pseudocode-quality checks, 38/40 on the full baseline, zero critical failures |
-| Cross-model canary — same adversarial and fidelity trio, on a second, cheaper, non-reasoning model (Qwen3.5-35B-A3B), reasoning at zero across every step† | control leaked the entity-position canary | 3/3 adversarial clean (0 leaks/hijacks/echoes), fidelity 1.0 across the trio |
-| Live regression probe after a later structural refactor, same model | 2/3 adversarial checks failed | 3/3 clean, fidelity 1.0 |
-
-\* A direct answer already gets these 13 cases right — there's no injection to defend against, so the question was whether compiling to pseudocode costs anything on ordinary tasks. It did, initially: fidelity dropped as low as 0.85 (recall held near 1.0) because the compression step could drop entity-level detail. Adding a dedicated entity-tracking channel closed the gap to 1.0/1.0.
-
-† Canary-scale (n=1 per case), not a qualified battery — included because it's the direct evidence behind §4's cost argument, not because it meets the bar the rows above it do. Full detail: `docs/governance/experiment-log.md`.
-
-**Where these numbers come from, honestly.** The record above is a 3-run-per-case battery (162 trials total), with one exception: the cross-model canary row is n=1 per case, a quick cross-check rather than a qualified run, and is labeled as such. A larger, publication-grade battery (10 runs per case, containment and fidelity run together under the combined bar from §1) is planned but not yet complete — the roadmap sequences it *after* the local-worker track (`docs/governance/roadmap.md`, Track L) specifically to avoid repeated cloud-API spend on a battery this size. Live interactive sessions shown in demos are explicitly labeled development conditions, not measurement runs. Scoring methodology has changed as we found edge cases; every change is logged so past and current numbers stay comparable rather than being silently redefined. (Full methodology and decision log: `docs/governance/experiment-log.md`.)
-
-## 7. What's guaranteed, and what isn't
-
-Some properties of the protocol don't depend on which model you point it at:
-
-- Standards are compiled into every relevant call as explicit requirements, not a system preamble the model can quietly deprioritize.
-- The controller won't advance past an unconfirmed interpretation or plan on its own — silence isn't confirmation, and nothing the model outputs can substitute for the user's decision.
-- Untrusted content is isolated out-of-band and never re-enters a compilation or execution context.
-- Nothing about the model's output distribution is constrained at any stage. (The output *contract* is mandatory — every response is deterministically validated against its schema — but validation is not a constraint on generation, and the distinction is measured: moving the same contract from validation into the decoder collapsed interpretation quality.)
-- The written standards and the enforced contracts are mechanically linked: the baseline verifier fails if a standard defines a requirement that no contract enforces.
-- The wire format is validated deterministically.
-
-These hold across every model, provider, and reasoning level we've tried, including zero-reasoning configurations — they're properties of the workflow, not of any particular model's behavior.
-
-Some properties are graded and model-dependent, and we report them per model rather than averaging them into one number: fidelity under heavy compression, how well entities and constraints survive translation into pseudocode, how reliably a model's stated review intent gets classified correctly, and how often a model echoes a raw token it shouldn't in its internal notes (observed once so far, contained before it reached output).
-
-**One explicit boundary:** this protocol governs the *request* path — interpreting a task, confirming it, validating the output contract. It is not a sandbox. What a model is allowed to actually *do* during execution — file access, network calls, tool permissions — is a separate layer with its own threat model, enforced by whatever worker-level sandboxing runs underneath it.
+In Release Candidate 2.6.0, this architecture achieved a **100.0% PASS rate across all 105 prompts and 15 categories** in the test catalogue with zero regressions.
 
 ---
 
-*Related reading: [`framing.md`](framing.md) — the shorter case for why this protocol exists, with the full boundary-test transcript · `docs/governance/experiment-log.md` — the full, dated decision history · `docs/governance/roadmap.md` — what's planned next, including the local-worker and distillation track · `docs/operations/eval-metrics.md` and `docs/operations/efficiency-report.md` — measured baselines and cost data.*
+## 1. Decoupling Protocol Invariants from Runtime Topology
+
+To understand the architecture, one must distinguish between the **invariant protocol standards** (which govern human-agent dialogue and out-of-band containment across all models) and the **runtime topology** (which executes and verifies that protocol).
+
+### 1.1 Invariant Protocol Standards
+
+The normative rules governing request and plan formulation (`PDL-01`–`PDL-08`, `SEM-01`–`SEM-06`, `PLAN-01`–`PLAN-10`, `RS-01`–`RS-10`) are invariant properties of the workflow:
+
+1. **Two-Stage Human Confirmation:** No task advances without explicit human confirmation of *what was requested* (Prompt Pseudocode) and *how it will be done* (Response Plan Pseudocode).
+2. **Out-of-Band Data Classification:** Quoted text or documents can never write to operational prompt fields. Untrusted data is isolated into `task_summary` and `risk_notes` channels.
+3. **Free Generation with Deterministic Schema Validation:** The protocol restricts what *context* the model sees before it responds — never how the decoder is allowed to generate. Constrained decoding (CFG grammars) was tested and rejected because it collapsed models into degenerate refusal loops (7/13 trials stalled). Instead, responses are generated freely and validated deterministically against strict schemas post-generation.
+4. **Mechanical Gating:** The controller will not advance past an unconfirmed interpretation or plan. Silence never confirms, and nothing emitted by a model can substitute for a user decision.
+
+```mermaid
+flowchart TD
+    U["User Request / Untrusted Payload"] --> S1{"System 1 Semantic Gate\n(Jev / ModernBERT <300ms)"}
+    S1 -- "Out-of-scope / Impossible\n(No network, medical, etc.)" --> REF["Immediate Refusal\n(CLOSED_CANCELLED, <2s)"]
+    S1 -- "Valid Task Intent" --> S2P["System 2: Draft Prompt Pseudocode\n(Attribute actors & extract data)"]
+    S2P --> C1{"User Confirms\nMeaning?"}
+    C1 -- "Revise" --> S2P
+    C1 -- "Confirmed" --> S2PL["System 2: Draft Response Plan\n(Algorithmic approach & constraints)"]
+    S2PL --> C2{"User Confirms\nApproach?"}
+    C2 -- "Revise" --> S2PL
+    C2 -- "Confirmed" --> S2EX["System 2: Synthesize Solver Code\n(Markdown deliverable)"]
+    S2EX --> SBX["Host OS Execution Sandbox\n(Windows Job Object / POSIX rlimit)"]
+    SBX --> WIT["Stdout Witness & Deliverable Extraction"]
+    WIT --> PYD{"Pydantic OutputVerifier\n(Mathematical & schema truth)"}
+    PYD -- "Witness Verified" --> CS["CLOSED_SUCCESS\n(Exit Code 0)"]
+    PYD -- "Witness Missing / Invalid" --> ERR["Defect Re-emission / Fail-Closed\n(Exit Code 1)"]
+```
+
+### 1.2 The Runtime Topology Evolution: Falsifying the Single-Model Hypothesis
+
+Early harness iterations (v2.0–v2.3) assumed that a single model (such as `z-ai/glm-4.7`), provided with phase-projected prompt contexts, could execute every stage of the lifecycle. Empirical testing across complex tasks decisively falsified this monolithic assumption:
+
+- **Autoregressive Review Drift:** Using a generative LLM to classify user review intent ("looks good", "proceed", "fix line 3") took 1.5s–3.0s and introduced conversational drift or false branch transitions.
+- **Ungrounded Confabulation:** When an LLM was asked to execute hard combinatorial tasks and self-certify its output in Result IR, it regularly explored 1 node, halted prematurely, and hallucinated a negative non-existence claim (`nodes_explored: 1`, `search_exhausted: false`).
+- **System 2 Refusal Blindness:** When tasked with out-of-scope or offline-violating prompts, a generative model instructed to "solve the problem" suffered from refusal blindness, trying to provide medical diagnoses or execute web calls despite having no network access.
+
+The resolution was the **Dual-Plane Runtime Split** ([ADR-0012](../adr/0012-system-1-decision-models-via-rlcd.md), [ADR-0017](../adr/0017-dual-plane-runtime-realignment-and-mrv-solver-governance.md)):
+1. **System 1** takes over non-generative classification, Leading Skills routing, and boundary refusal in ~140ms.
+2. **System 2** is reserved strictly for open-ended creative reasoning and code synthesis.
+3. **The Deterministic Host** executes the code in an OS sandbox ([ADR-0015](../adr/0015-model-synthesized-verification-and-confinement-boundaries.md)) and verifies witnesses using strict Pydantic models ([ADR-0016](../adr/0016-pydantic-ssot-wire-and-deliverable-boundary-enforcement.md), [ADR-0018](../adr/0018-elimination-of-regex-heuristics-in-verification-and-reconciliation-integrity.md)).
+
+---
+
+## 2. Why Pseudocode, Not a Bespoke Format
+
+Both the interpretation (Prompt Pseudocode) and the approach (Response Plan Pseudocode) are expressed in **Program Design Language (PDL)** — a structured plain-English pseudocode standard (conforming to J. Dalbey's Cal Poly Pseudocode convention).
+
+This choice is deliberate: inventing a project-specific DSL or raw JSON schema for user confirmation would create a *second* interpretation problem. The user would have to learn the syntax and verify that the translation correctly represented their intent. PDL already provides sequencing, indentation, branching, loops, and everyday capitalized action verbs (`EXTRACT`, `VALIDATE`, `COMPUTE`, `EMIT`) — expressive enough to capture complex constraints, while remaining readable English.
+
+The protocol produces two distinct artifacts to decouple two separate questions:
+
+| Artifact | Question It Answers | Focus |
+| :--- | :--- | :--- |
+| **Prompt Pseudocode** | *"Is this what I asked for?"* | Maximum useful **semantic** detail (actors, inputs, exclusions) |
+| **Response Plan Pseudocode** | *"Is this an acceptable way to do it?"* | Minimum sufficient **procedural** detail (algorithms, structures, tests) |
+
+Both artifacts are public, versioned, diffed, and hash-pinned on disk. They are not hidden chain-of-thought tokens. Because each is confirmed at its own gate, correcting *meaning* and correcting *approach* are two independent, targeted operations.
+
+---
+
+## 3. What We Tried and Ruled Out: The Architectural Evolution
+
+Every production capability in v2.6.0 was forged by empirically falsifying earlier, plausible-looking designs:
+
+| Design Dimension | Earlier Approach (v2.0–v2.3) | What Replaced It (v2.5–v2.6), and Why |
+| :--- | :--- | :--- |
+| **Model Topology** | Monolithic: Single model handled all 5 lifecycle calls. | **Dual-Plane Split (ADR-0012, ADR-0017):** Non-generative System 1 (Jev) handles review routing and boundary refusal; System 2 handles deliberative synthesis. Eliminates review drift and saves >60% tokens. |
+| **Verification Boundary** | Syntactic Result IR validation: Model self-reported whether its code was correct in a JSON object. | **OS-Native Execution Sandbox (ADR-0013, ADR-0015):** Host executes model's solver script in Windows Job Objects / POSIX `rlimit`, capturing stdout witnesses. Eliminates ungrounded confabulation. |
+| **Domain Routing & Verification** | Heuristic regex matching in `OutputVerifier` (e.g. `partition\b`, `triples\b`). | **Strict Pydantic SSOT (ADR-0018):** Typed Pydantic models with alias coercion (`solution`, `partition`, `triples`). Regex failed when prompt phrasing varied ("divided" vs "partitioned"). |
+| **Boundary Refusals** | System 2 conversational refusal prompted in natural language. | **System 1 Environment-Conditioned Refusal (ADR-0020):** Refuses impossible/offline tasks in 1.4s ($0.000019) before System 2 activation, preventing refusal blindness and token burn. |
+| **Constrained Generation** | Output grammars and constrained decoding (CFG). | **Free Generation + Pydantic Schema Validation:** Forcing the decoder caused degenerate refusal loops (7/13 stalled). The schema lives in validation, not decoding. |
+| **Adversarial Containment** | In-band delimiters (`<<<EVIDENCE>>>`) and prose sinks. | **Out-of-Band Field Isolation (TRD-0002):** Structured JSON field separation (`task_summary` vs `risk_notes`). Prompt rules were vulnerable to semantic evasion; out-of-band fields cannot be bridged. |
+| **Headless Automation** | Terminal halt on any unconfirmed gate or input pause. | **Headless WAITING_INPUT Exit Code 3 (ADR-0019):** Clean exit code `3` for input requests, with automatic payload extraction from fenced code blocks (populating 73/105 prompts). |
+
+---
+
+## 4. Reasoning Effort, Model Specialization & Empirical Latency
+
+A common misconception is that agent reliability is a function of throwing maximum reasoning compute at every step. Controlled empirical testing across multiple model families revealed that **reasoning effort is non-monotonic and stage-dependent**:
+
+1. **Containment Does Not Require Reasoning:** Structural out-of-band field separation prevents prompt injection identically whether reasoning effort is high, low, or zero. Containment is an architectural routing property, not cognitive vigilance.
+2. **Translation Requires Bounded Reasoning:** On generative translation steps (converting natural language to Prompt Pseudocode), setting reasoning to zero on GLM-4.7 caused semantic collapse (blurring user acts with model acts). A modest, bounded reasoning budget (`low`) completely stabilized semantic fidelity.
+3. **Mechanical Verification Requires Zero Reasoning:** Algorithmic soundness checks, Result IR parsing, and witness validation require exact deterministic code execution, where generative reasoning adds latency and non-determinism.
+
+### 4.1 Empirical Latency Breakdown: The 105-Prompt Benchmark
+
+In v2.6.0, an exhaustive analysis matching host telemetry with OpenRouter provider logs across all 405 API calls in the 105-prompt catalogue benchmark demonstrated where execution time is actually spent:
+
+```text
++-----------------------------------------------------------------------------------+
+|  Model API Waiting Time: 1,672.5s (85.86%)                 | Host Overhead:       |
+|  - EXECUTE: 1,009.8s (60.4% of API time; code synthesis)   | 275.3s (14.14%)      |
+|  - DRAFT_PROMPT: 289.4s (17.3% of API time)                | (2.62s / prompt:     |
+|  - BOOTSTRAP_ANALYSIS: 174.4s (10.4% of API time)          |  sandbox, NTFS I/O,  |
+|  - DRAFT_PLAN: 157.0s (9.4% of API time)                   |  SHA-256, Pydantic)  |
++-----------------------------------------------------------------------------------+
+```
+
+- **Harness protocol overhead is only 2.62s per prompt (14.14%).** This covers Windows Job Object creation, process confinement, synchronous workspace history persistence across turns, cryptographic SHA-256 hashing, and Pydantic validation.
+- **85.86% of total runtime is direct model generation wait time.** The harness does not bloat execution; it spends compute almost entirely on model inference.
+- **System 1 non-generative heads drop review latency from 2,500ms to <140ms**, saving >60% in token volume across multi-turn sessions.
+
+---
+
+## 5. State Separation: Normative Store vs. Ephemeral Workspaces
+
+The system cleanly separates immutable normative rules from disposable execution state:
+
+- **Normative Standards Store (`~/.pdlt/versions/v2/`):** Standards, contracts, and schemas are content-addressed and pinned per workspace via `.pdlt-version` ([ADR-0008](../adr/0008-context-and-session-management.md)). They never change turn to turn.
+- **Dynamic Ephemeral Workspaces:** A run starts from clean, empty directories (`state/`, `events/`, `stages/`, `shared/`) and materializes stage artifacts on demand, eliminating the legacy 35-file template copy and resolving filesystem inode exhaustion.
+- **Two-Level Invariant Session Hierarchy:** Multi-turn sessions are structured as `sessions/<id>/turns/turn_###/stages/`. When a turn closes with `CLOSED_SUCCESS`, only the confirmed deliverable is chained into the next turn's clean context; intermediate drafts and scratchpads are discarded.
+
+---
+
+## 6. Empirical Scorecard & Evidentiary Proofs
+
+To avoid construct-validity errors, empirical evidence is categorized into two distinct measurement tiers representing the evolution from request containment to autonomous substantive correctness.
+
+### 6.1 Tier 1: Request-Path Governance & Injection Containment (v2.0–v2.3)
+*Focus: Can Prompt Pseudocode and out-of-band fields prevent prompt injection, privilege escalation, and attribution drift?*
+
+| Evaluation Suite | Condition & Model | Control Arm | Protocol Arm |
+| :--- | :--- | :--- | :--- |
+| **F6.3 Adversarial Battery** (27 cases × 3 runs = 162 trials) | Pure unassisted out-of-band containment (`z-ai/glm-4.7`) | 0 deliverable leaks, 19 decision hijacks, 74.1% clean | **0 leaks, 0 hijacks, 0 wire errors, 93.8% clean** ($p < 0.0001$), replicated ×3 |
+| **Multi-Turn Injection Chains** (Combinatorial STACK vectors) | Multi-turn drip attacks with obfuscation | 86.7% hijacked | **0.0% hijacked** (0 / 27) |
+| **Cross-Tier Canary** (DeepSeek V4.1 Flash, 30 trials) | Direct prompt-injection probe | 4 / 30 hijacked | **0 / 30 hijacked** (3 clean refusals) |
+| **Instruction-Following Skill Suite** | 40 public cases (PDL behavioral baseline) | — | **15/15 targeted PASS, 30/30 PDL quality, 38/40 overall** |
+| **Attribution & Fidelity Sweep** (13 non-adversarial cases) | Entity tracking channel live | Recall 1.0, Fidelity 1.0 | **Recall 1.0, Fidelity 1.0** (after attribution rule) |
+
+### 6.2 Tier 2: Substantive Correctness & Autonomous Execution (v2.5–v2.6)
+*Focus: Can an open-weights model achieve verified mathematical truth and software engineering correctness in an autonomous sandbox without human code execution?*
+
+| Benchmark | Architecture & Model | Verification Mechanism | Outcome & Performance |
+| :--- | :--- | :--- | :--- |
+| **Schur Triples Partition ($N=15$)** (Combinatorial Search) | Dual-Plane (`gpt-oss-120b` + Jev 1.13) | OS `ExecutionSandbox` + Pydantic `OutputVerifier` | **VERIFIED GREEN (15/15 disjoint triples in 815ms)**. Control failed (hallucinated negative after 1 node). |
+| **$O(1)$ LFU Cache with LRU Tie-Breaking** (Systems Programming) | Dual-Plane (`gpt-oss-120b` + Jev 1.13) | Model-Synthesized Assertions + OS Sandbox | **100% PASS (Zero bespoke host checkers)**. Strict $O(1)$, min_freq tracking verified. |
+| **Fast Boundary Refusal** (Impossible / Offline Tasks) | System 1 Jev `ActivationRouteRecipe` | Deterministic fail-closed termination | **Terminated in 1.4s ($0.000019)**. Unharnessed model wasted 20–60s in reasoning loops. |
+| **Full 105-Prompt Test Catalogue** (All 15 Categories) | Dual-Plane (`gpt-oss-120b` + Jev 1.13) | Headless REPL + Sandbox + Pydantic SSOT | **100.0% PASS (105 / 105)**, 0 regressions hit, 1,947.8s elapsed time. |
+
+### 6.3 The 4 Evidentiary Proofs Countering the "No Control" Objection
+
+A natural methodological question is: *"Without a parallel unharnessed control run across all 105 prompts, how do we know the 100% pass rate is an architectural advancement rather than raw model capability?"*
+
+The answer rests on four concrete empirical proofs:
+
+1. **The Pre-Fix Historical Baseline (Self-Controlled Regressions):**
+   The exact same model (`openai/gpt-oss-120b`) failed consistently across multiple categories prior to v2.6.0's architectural enhancements:
+   - In `01-01`, it failed with `EXIT_1` due to regex routing brittleness;
+   - In `11-06` and `08-06`, it failed with `WAITING_INPUT` because unstructured data excerpts were not extracted into operative inputs;
+   - In `13-05`, it suffered from refusal blindness, diagnosing illnesses because System 2 lacked environmental awareness.
+   The recorded failure sessions in [`regressions_log.md`](../governance/regressions_log.md) serve as the empirical control group.
+2. **Deterministic Ground Truth vs. Self-Reported Compliance:**
+   An unharnessed LLM produces convincing text; it cannot verify whether its code runs, whether its partitions are mathematically disjoint, or whether its unit tests pass. In the 105-prompt run, truth was certified exclusively by **host-side OS sandbox execution** and mechanical Pydantic validation. The model was forbidden from self-grading.
+3. **Compute and Latency Asymmetry on Refusals:**
+   On Category 13 (`negative_and_impossible`), an unharnessed frontier model burns thousands of reasoning tokens over 20–60 seconds before declining. Under System 1, tasks are refused in **1.4s for $0.000019**—a >95% savings in latency and compute.
+4. **The 3 Canonical Ablation Controls:**
+   Formally documented in [`docs/ABLATIONS.md`](../ABLATIONS.md), demonstrating that removing System 1 causes review drift, removing protocol gates causes ungrounded code synthesis, and removing sandbox verification causes ungrounded negative claims.
+
+---
+
+## 7. Theoretical Guarantees and Worker Portability
+
+### 7.1 What Is Structural (Substrate Guarantees)
+
+Certain properties of PDL Taskmaster do not depend on which model is selected:
+
+- **Standards Placement:** Protocol standards are compiled directly into context as per-operation requirements, not a system preamble that can be deprioritized.
+- **Mechanical Authority:** The controller will not advance past an unconfirmed interpretation or plan. Silence never confirms, and nothing a model outputs can bypass the confirmation barrier.
+- **Out-of-Band Field Isolation:** Untrusted literals reside in isolated schema fields and can never write to operative prompt instructions.
+- **Free Generation + Strict Validation:** Output distributions are never constrained by decoder grammars; responses are generated freely and validated deterministically by Pydantic models.
+- **Normative-Code Linkage:** The baseline verifier fails if a written standard defines a requirement that no contract enforces.
+
+### 7.2 What Is Graded (Model-Dependent)
+
+Certain properties depend on the reasoning depth and capability of the underlying model:
+- Algorithmic synthesis for complex backtracking or dynamic programming under tight time ceilings.
+- Semantic fidelity under heavy natural-language compression.
+- Identification of subtle multi-hop domain constraints.
+
+### 7.3 The Execution Boundary Reconciled
+
+Early whitepaper drafts contained the boundary statement:
+> *"The harness enforces the request path... It is not a sandbox; execution-stage tool access remains governed by worker-level sandboxing."*
+
+In v2.5.0, this boundary was deliberately expanded. Real-world evaluation demonstrated that securing the request path without verifying execution leaves an unacceptable gap: a model can produce syntactically valid code that is substantively false.
+
+Accordingly, the harness incorporated **OS-native execution sandboxing** ([ADR-0015](../adr/0015-model-synthesized-verification-and-confinement-boundaries.md)) directly into the host layer:
+- **Windows:** Job Objects enforce wall-clock execution ceilings and clean process-tree termination.
+- **POSIX:** Resource limits (`setrlimit`) restrict CPU and memory consumption.
+- **Network Isolation:** Outbound sockets are intercepted and blocked during solver execution.
+- **Autonomous Capture:** Solvers are executed automatically by the host, capturing stdout witnesses without requiring human intervention.
+
+### 7.4 Worker Portability vs. Scope of Empirical Qualification
+
+In early project stages, "generalization" was framed as whether a single LLM could handle the entire state machine alone.
+
+In v2.6.0, **generalization is framed as System 2 Worker Portability over a verified substrate**:
+- The Dual-Plane harness provides a **standardized execution substrate**: the Host Controller, the System 1 Jev router, the OS sandbox, and the Pydantic verifiers remain constant.
+- The interface speaks standard OpenAI `/responses` and `/chat/completions` wire protocols, with schema sanitization stripping unsupported keywords like `uniqueItems`.
+- **Scope of Verification:** End-to-end 100% benchmark qualification (105 / 105) is certified strictly on the OpenRouter reference stack: `openai/gpt-oss-120b` (System 2) + `typesafe/jev-1.13` (System 1).
+- **Known Risks Across Unverified Backends:** We do not claim plug-and-play behavioral parity for other model backends (such as DeepSeek-V3, Qwen3-Coder, or Claude). Unverified backends introduce varying JSON schema strictness (e.g. Groq/Venice constraints), code block marker formats (`python` vs `py`, raw vs fenced), and reasoning thresholds (e.g. earlier GLM-4.7 tests required non-zero reasoning floors).
+- **Roadmap Track M2:** Multi-model qualification across candidate open-weights and proprietary models is queued under Roadmap Track M2, with model-specific tuning, prompt adjustments, and empirical reports to follow.
+
+---
+
+## Conclusion
+
+The transition from monolithic prompting to the Dual-Plane PDL Standard proves that **reliable, injection-resistant, and substantively true AI execution cannot be achieved by a single unassisted language model**.
+
+By decoupling **fast semantic gating (System 1)**, **deliberative pseudocode synthesis (System 2)**, and **mechanical host-side sandbox verification (the Controller)**, PDL Taskmaster establishes a reproducible dual-plane runtime that achieved a verified 100% catalogue benchmark pass rate on its tested open-weights reference stack (`openai/gpt-oss-120b` + `typesafe/jev-1.13`).
+
+---
+
+*Companion documents: [`framing.md`](framing.md) (the short alignment case) · [`docs/governance/roadmap.md`](../governance/roadmap.md) (development tracks and phases) · [`docs/governance/experiment-log.md`](../governance/experiment-log.md) (ratified decisions D0–D29) · [`docs/operations/catalogue-105-benchmark-report.md`](../operations/catalogue-105-benchmark-report.md) (105-prompt benchmark report) · [`docs/ABLATIONS.md`](../ABLATIONS.md) (empirical ablations) · [`docs/adr/`](../adr/README.md) (ADR index).*

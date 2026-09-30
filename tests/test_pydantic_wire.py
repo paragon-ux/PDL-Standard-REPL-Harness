@@ -248,3 +248,34 @@ def test_validate_result_ir_pydantic_first(tmp_path: Path) -> None:
     assert len(errors) > 0
     assert any("reconciliation.0.status" in e or "Input should be 'satisfied'" in e for e in errors)
 
+
+def test_execution_request_input_optional_description() -> None:
+    from pdl_taskmaster.runtime.wire_payloads import ExecutionRequestInputData
+
+    # 1. With explicit description
+    explicit = ExecutionRequestInputData(
+        body="Please supply database engine.",
+        expected_type="string",
+        description="Database engine prompt",
+    )
+    assert explicit.description == "Database engine prompt"
+
+    # 2. With omitted description: synthesized from body
+    omitted = ExecutionRequestInputData(
+        body="Please provide table schemas.\nAdditional context follows.",
+        expected_type="object",
+    )
+    assert omitted.description == "Please provide table schemas."
+
+    # 3. Via BRIDGE.parse_execution
+    payload = json.dumps({
+        "kind": "REQUEST_INPUT",
+        "body": "Clarification needed:\n- query text\n- table schema",
+        "expected_type": "string",
+    })
+    outcome = BRIDGE.parse_execution(payload)
+    assert outcome.kind == "REQUEST_INPUT"
+    assert outcome.description == "Clarification needed:"
+    assert outcome.expected_type == "string"
+
+

@@ -102,7 +102,7 @@ def validate_plan_soundness(
         matched = unpruned_match.group(0).strip()
         violations.append(
             f"Plan proposes an unpruned brute-force search ('{matched}'). "
-            "Incorporate constraint pruning, MRV (minimum remaining values) heuristics, or early-exit bounds to prevent catastrophic factorial complexity."
+            "Incorporate constraint pruning or early-exit bounds to prevent catastrophic factorial complexity."
         )
 
     # 4. Execution commitment check
@@ -112,24 +112,5 @@ def validate_plan_soundness(
             "Plan for verified execution task does not commit to concrete code execution or a complete search algorithm. "
             "Commit to running a Python solver script or exhaustive search."
         )
-
-    # 5. MRV / Constraint ordering check for combinatorial partitioning (ADR-0017)
-    is_combinatorial = bool(
-        re.search(
-            r"(?i)\b(?:schur\s+triples?|partitioned?\b[^.\n]*\btriples?|exact\s+cover|subset\s*sum|triples\s+satisfying)\b",
-            text,
-        )
-    )
-    if is_combinatorial:
-        has_mrv = bool(
-            re.search(
-                r"(?i)\b(?:mrv|minimum\s+remaining\s+values?|most\s+constrained|fewest\s+(?:candidate|overlap|choices?)|branch\s+on\s+element|constraint\s+(?:propagation|ordering|pruning)|overlap\s+ordering|forward\s+checking|degree\s+heuristic)\b",
-                text,
-            )
-        )
-        if not has_mrv:
-            violations.append(
-                "Plan for combinatorial partition/search must specify constraint-ordered branch selection or Minimum Remaining Values (MRV) heuristic (e.g. branch on elements with fewest candidate triples first) to prevent exponential search timeouts."
-            )
 
     return PlanSoundnessResult(valid=len(violations) == 0, violations=violations)

@@ -1,7 +1,7 @@
 # ADR-0017: Dual-Plane Runtime Realignment: System 1 (Jev) Baseline & Constraint-Ordered Solver Governance
 
-**Status:** Accepted  
-**Date:** September 29, 2026  
+**Status:** Accepted (Pillar 2 Deprecated and Superseded by GUARD-01 & GUARD-04)  
+**Date:** September 29, 2026 (Amended September 30, 2026)  
 **Deciders:** Core Protocol & Runtime Engineering  
 **Consulted:** ADR-0012, ADR-0013, ADR-0014, ADR-0015, ADR-0016  
 **Informed:** REPL Host, Catalogue Evaluation Suite, Continuous Integration  
@@ -10,7 +10,7 @@
 
 ## Context & Problem Statement
 
-In the rollout of PDL Taskmaster v2.5.0, empirical ablations (`docs/ABLATIONS.md`) and catalogue runs (`PDLt-Test/catalogue-runs`) demonstrated that protocol fidelity and mechanical verification gates achieve reasoning parity with proprietary frontier models on open weights (`openai/gpt-oss-120b`).
+In the rollout of PDL Taskmaster v2.5.0, empirical ablations (`docs/ABLATIONS.md`) and catalogue runs (`PDLt-Test/catalogue-runs`) demonstrated that protocol fidelity and mechanical verification gates enable open weights (`openai/gpt-oss-120b`) to solve complex combinatorial and systems problems that fail in unharnessed configurations.
 
 However, forensic analysis of live user sessions (`session12` through `session16`, `session-20260929-045948`) and catalogue runs (`run-20260928-090451`, `run-20260928-093759`) revealed three critical runtime vulnerabilities when running System 2 (`gpt-oss-120b`) without active System 1 (Jev) integration:
 
@@ -40,11 +40,18 @@ The runtime topology of PDL Taskmaster SHALL be realigned under four normative p
 3. If System 1 is unconfigured or fails confidence gating ($\theta_{\text{floor}} < 0.85$ or $\Delta p < 0.40$), the harness SHALL fail-closed to protocol application and deterministic local rules.
 4. Generative models (`openai/gpt-oss-120b`) SHALL be reserved strictly for System 2 generative tasks (`DRAFT_PROMPT`, `DRAFT_PLAN`, `EXECUTE`).
 
-### Pillar 2: Mandate Minimum Remaining Values (MRV) in Plan Soundness Gate
-1. For combinatorial search, partitioning, and CSP tasks requiring verified execution, the **Plan Soundness Gate** (`validate_plan_soundness`) SHALL mechanically verify that the response plan specifies **constraint-ordered search / Minimum Remaining Values (MRV)** rather than naive unconstrained search.
-2. Acceptable plan signatures MUST include explicit constraint propagation or variable ordering (e.g., *"branch on elements with fewest candidate triples"*, *"minimum remaining values"*, or *"most constrained element first"*).
-3. Response plans specifying naive loop iterations over all candidate triples without element-level constraint ordering SHALL be rejected prior to execution, triggering a plan redraft with feedback.
-4. Computational search instructions injected into `REQUIRED_TASK_INPUTS` SHALL explicitly instruct the model to order branch selection by MRV.
+### Pillar 2: Mandate Minimum Remaining Values (MRV) in Plan Soundness Gate [DEPRECATED & SUPERSEDED]
+> [!IMPORTANT]
+> **Normative Amendment (September 30, 2026 — GUARD-01 / GUARD-04):**
+> Pillar 2 has been **formally deprecated, repealed, and purged from runtime implementation**. Mandating specific algorithmic strategies (such as MRV) in the Plan Soundness Gate and injecting strategy instructions into `REQUIRED_TASK_INPUTS` violated `GUARD-01` (*Zero Prescriptive Approach Injection*) and `GUARD-04` (*Separation of Protocol Governance from Task Performance*).
+> 
+> The harness acts strictly as a neutral protocol referee. The choice of algorithm belongs entirely to the worker model based on the user's prompt. Plan soundness checks verify procedural commitment and completeness without requiring algorithmic keywords.
+> 
+> *(The historical clauses below are retained for provenance only:)*
+1. *(Repealed)* For combinatorial search, partitioning, and CSP tasks requiring verified execution, the **Plan Soundness Gate** (`validate_plan_soundness`) SHALL mechanically verify that the response plan specifies constraint-ordered search rather than naive unconstrained search.
+2. *(Repealed)* Acceptable plan signatures MUST include explicit procedural commitment to constraint handling.
+3. *(Repealed)* Naive loops without procedural commitment to solving the problem are rejected prior to execution.
+4. *(Repealed - Prohibited by GUARD-01)* Computational search instructions MUST NOT inject prescriptive algorithmic hints (such as MRV or backtracking) into worker prompts.
 
 ### Pillar 3: Enforce Absolute Prohibition of Deferral Meta-Rules (`PROMPT-01` / `PDL-08`)
 1. In accordance with normative standard `PDL-08` and `PROMPT-01`, prompt pseudocode is strictly descriptive of the task objective and SHALL NOT contain procedural deferrals, prohibitions against computation, or drafting meta-rules.

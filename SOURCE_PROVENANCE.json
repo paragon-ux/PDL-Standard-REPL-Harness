@@ -3,11 +3,11 @@
   "product": "PDL-Standard-REPL-Harness",
   "source_repositories": {
     "PDL-Standard-R2S": {
-      "path": "C:\\Users\\USER\\Desktop\\Frameworks\\PDL-Standard-R2S",
+      "path": "../PDL-Standard-R2S",
       "HEAD": "0503f98141a439679a4a59dba6c21524b78d762f"
     },
     "PDL-Standard-R2S-Lab": {
-      "path": "C:\\Users\\USER\\Desktop\\Frameworks\\PDL-Standard-R2S-Lab",
+      "path": "../PDL-Standard-R2S-Lab",
       "HEAD": "c2e0af9b5c3acc70062d60d2f62a752c0bbdf4d7"
     }
   },

@@ -9,6 +9,14 @@ from pathlib import Path
 from pdl_taskmaster import __protocol_version__, __version__
 from pdl_taskmaster.runtime.normative_store import NormativeStore
 
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
 
 def _cmd_version() -> int:
     manifest_version = "unknown"

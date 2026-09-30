@@ -24,11 +24,11 @@ tests/                     pytest suite and vendored self-contained test fixture
   fixtures/                vendored recorded cases and adversarial/fidelity batteries
 docs/                      documentation
   architecture/            framing.md, whitepaper.md, protocol specs
-  operations/              eval-metrics.md, efficiency-report.md
+  operations/              eval-metrics.md, EFFICIENCY.md, catalogue-105-benchmark-report.md
   governance/              roadmap.md, experiment-log.md (full decision history)
-  releases/                v2.5.0.md release notes
+  releases/                v2.6.0.md (RC1), v2.5.1.md (Alpha), v2.5.0.md (Alpha)
   ABLATIONS.md             substantive correctness and dual-plane empirical ablations
-  adr/ trd/                background architecture-decision records (history, not required reading)
+  adr/ trd/                architecture decision records (ADR-0001–0020)
 ```
 
 The package ships with self-contained test fixtures vendored under `tests/fixtures/`, enabling 100% offline testing. Historical run ledgers and large evaluation archives are kept in external archives outside this repository and resolve via `PDLT_FIXTURES_PATH` (fixtures) and `PDLT_RUNS_ROOT` (evaluation runs).
@@ -62,6 +62,7 @@ pdlt version                # Print package version, protocol spec, and manifest
 pdlt init --global          # Initialize standards in ~/.pdlt/versions/v2/contracts/
 pdlt init --local           # Seed standards into ./contracts/ in current directory
 pdlt verify                 # Run deterministic baseline verification gate
+pdlt viewer                 # Launch the Live Session Viewer web dashboard
 pdlt                        # Launch interactive REPL (default)
 ```
 
@@ -69,7 +70,7 @@ pdlt                        # Launch interactive REPL (default)
 
 ```powershell
 pdlt verify                 # Deterministic baseline verifier
-pytest                      # Run complete test suite (offline, 174 passed, 2 skipped)
+pytest                      # Run complete test suite (offline, 192 passed, 2 skipped)
 ```
 
 The verifier checks required runtime/instructional files, imports, the zero-template workspace invariant, fixture hashes, REPL subprocess-script presence, source-repository isolation, a fresh-workspace lifecycle test (prompt → plan → execute → result), and resuming that same workspace. All verifier workspaces are temporary.
@@ -109,7 +110,19 @@ pdlt --dev --exit-on-close  # Headless test run: exit when CLOSED_SUCCESS or err
 - **Interactive Telemetry Inspector**: Displays real-time controller stage transitions, entity drops, and verification events.
 - **Substantive Witness Verification & OS Sandbox**: For combinatorial and algorithmic tasks, execution occurs within an OS-confined sandbox (Job Objects on Windows, `rlimit` on POSIX) with deterministic witness verification ([ADR-0013](docs/adr/0013-substantive-correctness-verification.md), [ADR-0015](docs/adr/0015-model-synthesized-verification-and-confinement-boundaries.md)).
 - **Deliverable Formatting**: Automatic ASCII-safe human/agent deliverable cards (`format_friendly_deliverable`) replacing raw Result IR wire blocks in user view.
+- **Headless Process Exit Codes**: `0`: `CLOSED_SUCCESS` (deliverable verified); `1`: `CLOSED_CANCELLED` (failed verification or aborted); `2`: `UNCONFIRMED_GATE` (non-interactive halt at review gate); `3`: `WAITING_INPUT` (clean pause awaiting external execution input / clarification, [ADR-0019](docs/adr/0019-headless-waiting-input-exit-and-wire-tolerance.md)).
+- **Prompt Catalogue Benchmark (100.0% Pass Rate)**: Verified across all 105 prompts and 15 categories with 0 regressions on the OpenRouter reference stack (`openai/gpt-oss-120b` + `typesafe/jev-1.13`). Full scoreboard, archetype analyses, and empirical latency breakdown: [`docs/operations/catalogue-105-benchmark-report.md`](docs/operations/catalogue-105-benchmark-report.md).
 - **Empirical Benchmarks & Ablations**: Full evaluation results comparing System 1, ungrounded System 2, and the dual-plane harness: [`docs/ABLATIONS.md`](docs/ABLATIONS.md).
+
+### Catalogue Runner (`PDLt-Test`)
+
+```powershell
+# Run full 105-prompt catalogue test battery with immediate failure halting
+python catalogue-runs/run_catalogue.py --fail-fast
+
+# Run targeted categories
+python catalogue-runs/run_catalogue.py --categories 01,09,13,14 --fail-fast
+```
 
 ### Efficiency flags (`--worker api`)
 
@@ -119,7 +132,7 @@ pdlt --dev --exit-on-close  # Headless test run: exit when CLOSED_SUCCESS or err
 - `--render-compact` / `--render-pretty` — how the interpretation/plan is serialized on the wire (compact is the default for `--worker api`).
 - `--cache-order-render` — opt-in reordering for provider-side prefix caching.
 
-Per-call cost data, and which optimizations were tried and rejected: [`docs/operations/efficiency-report.md`](docs/operations/efficiency-report.md).
+Reference stack efficiency profile, pricing, and latency data: [`docs/operations/EFFICIENCY.md`](docs/operations/EFFICIENCY.md).
 
 ## Adversarial evaluation
 

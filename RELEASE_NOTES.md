@@ -40,7 +40,7 @@ deterministic replay.
 
 Full per-call data, NO-GO verdicts (draft-stage low reasoning, aggressive
 static-prefix cache strategy, review-scope clause subset), and hidden
-findings: `docs/operations/efficiency-report.md`.
+findings: `docs/operations/EFFICIENCY.md`.
 
 ## New flags
 
@@ -57,8 +57,8 @@ findings: `docs/operations/efficiency-report.md`.
   prompt-injection defense (negative alignment) as one protocol, with the
   SEM-05 fidelity case and the boundary-test results (control 2/5 latent-probe
   violations vs protocol 0/5) as headline evidence.
-- `docs/operations/efficiency-report.md`: official efficiency measurements and NO-GO
-  verdicts.
+- `docs/operations/EFFICIENCY.md`: reference stack efficiency profile, pricing,
+  and empirical latency breakdown.
 - `scripts/tracking/log_live_session.py`: `--worker-profile` flag; the REPL passes the
   active worker identity so MLflow params are correctly labeled.
 - `scripts/eval/control_api_call.py`: plain-call control harness used for

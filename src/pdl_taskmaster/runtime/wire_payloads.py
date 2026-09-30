@@ -7,6 +7,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PositiveInt,
     TypeAdapter,
     ValidationError,
     model_validator,
@@ -331,12 +332,15 @@ class NegativeWitness(BaseModel):
     model_config = ConfigDict(extra="forbid")
     polarity: Literal["negative"] = "negative"
     evidence: Evidence = Field(default_factory=lambda: Evidence(path="execution://witness"))
-    search_exhausted: bool
-    nodes_explored: int
-    method: str
+    search_exhausted: Literal[True] = True
+    nodes_explored: PositiveInt
+    method: str = Field(min_length=3)
 
 
-WitnessPayload = Union[PositiveWitness, NegativeWitness]
+WitnessPayload = Annotated[
+    Union[PositiveWitness, NegativeWitness],
+    Field(discriminator="polarity"),
+]
 
 
 class FileItem(BaseModel):
@@ -365,7 +369,7 @@ class ResultIRData(BaseModel):
     files: list[FileItem] = Field(default_factory=list)
     reconciliation: list[ReconciliationItem] = Field(default_factory=list)
     open_defects: list[DefectItem] = Field(default_factory=list)
-    witness: Optional[Union[PositiveWitness, NegativeWitness]] = None
+    witness: Optional[WitnessPayload] = None
 
 
 class ResultIRRepairPayload(BaseModel):
@@ -378,7 +382,7 @@ class ExecutionRequestInputData(BaseModel):
     kind: Literal["REQUEST_INPUT"] = "REQUEST_INPUT"
     body: str
     expected_type: str
-    description: str
+    description: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_fields(self) -> ExecutionRequestInputData:
@@ -386,8 +390,9 @@ class ExecutionRequestInputData(BaseModel):
             raise ValueError("execution_body: body must not be empty")
         if not self.expected_type.strip():
             raise ValueError("execution_expected_type: expected_type must not be empty")
-        if not self.description.strip():
-            raise ValueError("execution_description: description must not be empty")
+        if not self.description or not self.description.strip():
+            first_line = self.body.strip().splitlines()[0]
+            self.description = first_line[:120]
         return self
 
 

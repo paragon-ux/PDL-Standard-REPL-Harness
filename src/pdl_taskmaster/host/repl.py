@@ -856,6 +856,17 @@ def main() -> int:
         action="store_true",
         help="Exit REPL when protocol reaches a closed state (CLOSED_SUCCESS or CLOSED_CANCELLED)",
     )
+    parser.add_argument(
+        "--prompt-file",
+        type=Path,
+        default=None,
+        help="path to file containing initial prompt to execute",
+    )
+    parser.add_argument(
+        "--prompt",
+        default=None,
+        help="initial prompt string to execute",
+    )
     args = parser.parse_args()
 
     if args.worker != "codex":
@@ -954,15 +965,30 @@ def main() -> int:
         )
     _write_transcript("WORKER: DEVELOPMENT / LIVE DEMONSTRATION; NOT A QUALIFIED R2S MEASUREMENT CONDITION")
     _enable_bracketed_paste()
+    initial_prompt = None
+    if getattr(args, "prompt", None):
+        initial_prompt = args.prompt.strip()
+    elif getattr(args, "prompt_file", None):
+        p_file = Path(args.prompt_file)
+        if p_file.is_file():
+            try:
+                initial_prompt = p_file.read_text(encoding="utf-8-sig").strip()
+            except Exception as e:
+                print(f"[warning: failed to read --prompt-file: {e}]", flush=True)
+
     try:
         while True:
             sys.stdout.flush()
-            try:
-                line = _read_repl_input("> ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print("", flush=True)
-                _write_transcript("=== session closed (EOF/interrupted) ===")
-                break
+            if initial_prompt is not None:
+                line = initial_prompt
+                initial_prompt = None
+            else:
+                try:
+                    line = _read_repl_input("> ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    print("", flush=True)
+                    _write_transcript("=== session closed (EOF/interrupted) ===")
+                    break
             if not line:
                 continue
             _write_transcript("USER> " + line)
@@ -1331,6 +1357,13 @@ def main() -> int:
                     flush=True,
                 )
                 return 1
+            if final_stage == "WAITING_INPUT":
+                print(
+                    f"[headless halt] Session paused at stage 'WAITING_INPUT' (input requested). Exiting (code 3).",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                return 3
             if final_stage != "CLOSED_SUCCESS":
                 print(
                     f"[headless halt] Session ended at non-terminal stage '{final_stage}'. Exiting fail-closed (code 2).",

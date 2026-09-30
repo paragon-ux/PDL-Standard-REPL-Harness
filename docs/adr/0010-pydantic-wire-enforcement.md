@@ -36,7 +36,7 @@ Every semantic operation output SHALL be modeled as a Pydantic `BaseModel` with 
 
 ### 2. Single Source of Truth for Structured Output Grammars
 - Provider-level JSON Schemas passed to `--api-structured-output` SHALL be dynamically derived via `PayloadModel.model_json_schema()`.
-- State-dependent or context-free incompatible schema keywords (`uniqueItems`) SHALL be stripped deterministically at the provider bridge level, ensuring universal compatibility across vLLM, SGLang, and OpenRouter endpoints.
+- State-dependent or context-free incompatible schema keywords (`uniqueItems`) SHALL be stripped deterministically at the provider bridge level, improving schema compatibility across diverse inference engines (such as vLLM, SGLang, and OpenRouter endpoints) without asserting cross-model behavioral parity.
 
 ### 3. Precision Operator Corrections
 - When model deserialization fails a Pydantic contract, `SessionEngine._call` SHALL format `ValidationError.errors()` into explicit, field-localized operator correction prompts:

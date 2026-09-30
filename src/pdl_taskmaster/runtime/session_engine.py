@@ -36,30 +36,70 @@ def _extract_data_payload(raw_text: str) -> str | None:
     """Extract candidate literal execution data blocks from raw user input.
 
     Recognizes explicit input/data labels (e.g. Input:, Data:, Dataset:,
-    Payload:, Target:, Sample:, String:, etc.) or labeled structured blocks.
+    Payload:, Target:, Sample:, String:, etc.) or labeled structured blocks,
+    as well as fenced or backticked data blocks (e.g. ```csv, ```tsv, ```json, ```data).
     Returns the raw extracted payload string, or None if no data block is found.
     """
     if not raw_text or not raw_text.strip():
         return None
 
-    # Search for an explicit input/data section delimiter or variable assignment with data literal
+    # 1. Search for fenced or backticked data blocks (e.g. csv, json, data, tsv, yaml, xml)
+    m_fence = re.search(
+        r"(?:```|`)(?:csv|tsv|json|data|text|xml|yaml)?\s*\n(.*?)(?:```|`)",
+        raw_text,
+        re.DOTALL,
+    )
+    if m_fence:
+        fenced = m_fence.group(1).strip()
+        # Avoid matching python code definitions
+        if fenced and not fenced.startswith("def ") and ("\n" in fenced or "," in fenced or "{" in fenced or "[" in fenced):
+            return fenced
+
+    # 2. Search for an explicit input/data section delimiter or variable assignment with data literal
     m = re.search(
-        r"(?im)^\s*(?:input|inputs|data|dataset|payload|sample\s*input|test\s*cases?|target|query|string|text|array|nums|matrix|sequence|[a-z0-9_-]+\s*[:=]\s*[\{\[\(\"'\d])\s*[:=]?",
+        r"(?im)^\s*(?:input|inputs|data|dataset|payload|sample\s*input|test\s*cases?|target|query|string|text|array|nums|matrix|trace|sequence|(?:(?!pipeline|step)[a-zA-Z0-9_\s()-]+?)\s*[:=]\s*[\{\[\(\"'\d])\s*[:=]?",
         raw_text,
     )
-    if not m:
-        return None
+    if m:
+        candidate = raw_text[m.start():].strip()
+        # If there is a trailing note or instruction separated by double newlines, trim it
+        parts = re.split(r"\n\s*\n(?=(?:pipeline|steps|for each|note|please|make sure|confirm|do not)\b)", candidate, flags=re.IGNORECASE)
+        if parts and parts[0].strip():
+            return parts[0].strip()
 
-    candidate = raw_text[m.start():].strip()
-    # If there is a trailing note or instruction separated by double newlines, trim it
-    parts = re.split(r"\n\s*\n(?=(?:note|please|make sure|confirm|do not)\b)", candidate, flags=re.IGNORECASE)
-    if parts:
-        candidate = parts[0].strip()
+    # 3. Search for substantial quoted strings (e.g. policy excerpts, specifications, documents)
+    m_quotes = re.findall(r'"([^"\n]{40,}(?:\n[^"]*)*?)"', raw_text, re.DOTALL)
+    if m_quotes:
+        longest = max(m_quotes, key=len).strip()
+        if len(longest) >= 50:
+            return longest
 
-    return candidate if candidate else None
+    return None
 
 
-def _parse_sandbox_witness(stdout_text: str) -> dict[str, Any] | None:
+def _normalize_witness_dict(d: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Normalize positive witness dictionary ensuring triples alias mapping is consistent."""
+    if not d or not isinstance(d, dict):
+        return d
+    if d.get("polarity") == "positive":
+        if isinstance(d.get("data"), dict):
+            d_data = d["data"]
+            if "triples" not in d_data:
+                for k in ("solution", "partition", "result", "partitions"):
+                    cand = d_data.get(k)
+                    if isinstance(cand, list) and cand and all(isinstance(x, (list, tuple)) and len(x) == 3 for x in cand):
+                        d_data["triples"] = [list(x) for x in cand]
+                        break
+        elif "data" not in d:
+            for k in ("triples", "solution", "partition", "result", "partitions"):
+                cand = d.get(k)
+                if isinstance(cand, list) and cand and all(isinstance(x, (list, tuple)) and len(x) == 3 for x in cand):
+                    d["data"] = {"triples": [list(x) for x in cand]}
+                    break
+    return d
+
+
+def _raw_parse_sandbox_witness(stdout_text: str) -> dict[str, Any] | None:
     """Parse candidate witness data from sandboxed code execution stdout."""
     text = (stdout_text or "").strip()
     if not text:
@@ -73,13 +113,17 @@ def _parse_sandbox_witness(stdout_text: str) -> dict[str, Any] | None:
         try:
             d = json.loads(blob)
             if isinstance(d, dict):
-                return d
+                if "polarity" in d:
+                    return d
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": d}
         except Exception:
             pass
         try:
             d = ast.literal_eval(blob)
             if isinstance(d, dict):
-                return d
+                if "polarity" in d:
+                    return d
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": d}
         except Exception:
             pass
 
@@ -93,19 +137,32 @@ def _parse_sandbox_witness(stdout_text: str) -> dict[str, Any] | None:
                 return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": data}
             if "data" in data and isinstance(data["data"], dict) and "triples" in data["data"]:
                 return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": data["data"]}
-        elif isinstance(data, list) and all(isinstance(x, (list, tuple)) and len(x) == 3 for x in data):
-            return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"triples": data}}
+            return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": data}
+        elif isinstance(data, list):
+            if all(isinstance(x, (list, tuple)) and len(x) == 3 for x in data):
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"triples": data}}
+            return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"solution": data}}
     except Exception:
         pass
     try:
         p_obj = ast.literal_eval(text)
-        if isinstance(p_obj, list) and all(isinstance(x, (list, tuple)) and len(x) == 3 for x in p_obj):
-            return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"triples": [list(x) for x in p_obj]}}
+        if isinstance(p_obj, dict):
+            if "polarity" in p_obj:
+                return p_obj
+            if "triples" in p_obj:
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": p_obj}
+            if "data" in p_obj and isinstance(p_obj["data"], dict) and "triples" in p_obj["data"]:
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": p_obj["data"]}
+            return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": p_obj}
+        elif isinstance(p_obj, list):
+            if all(isinstance(x, (list, tuple)) and len(x) == 3 for x in p_obj):
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"triples": [list(x) for x in p_obj]}}
+            return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"solution": list(p_obj)}}
     except Exception:
         pass
 
-    # 3. Search for embedded JSON object with 'triples'
-    for m in re.finditer(r"(\{.*?\"triples\".*?\})", text, re.DOTALL):
+    # 3. Search for embedded JSON object with 'triples' or 'polarity'
+    for m in re.finditer(r"(\{.*?\})", text, re.DOTALL):
         try:
             cand_obj = json.loads(m.group(1))
             if isinstance(cand_obj, dict):
@@ -118,24 +175,61 @@ def _parse_sandbox_witness(stdout_text: str) -> dict[str, Any] | None:
         except Exception:
             pass
 
-    # 4. Regex fallback: matches tuples/lists of 3 numbers and deduplicates
-    matches = re.findall(r"[\(\[]\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*[\)\]]", text)
-    if matches:
-        seen = set()
-        unique_triples = []
-        for a, b, c in matches:
-            ia, ib, ic = int(a), int(b), int(c)
-            key = tuple(sorted([ia, ib, ic]))
-            if key not in seen:
-                seen.add(key)
-                unique_triples.append([ia, ib, ic])
-        if len(unique_triples) >= 3:
-            return {
-                "polarity": "positive",
-                "evidence": {"path": "execution://witness"},
-                "data": {"triples": unique_triples},
-            }
+    # 4. Search for labeled solution output: e.g. "Hamiltonian path found: [...]", "solution: [...]", "path = [...]"
+    m_label = re.search(
+        r"(?i)(?:path|solution|assignment|result|cover|partition|witness)\s*(?:is|found)?\s*[:=]\s*(\[[^\]]+\]|\{[^\}]+\})",
+        text,
+    )
+    if m_label:
+        raw_val = m_label.group(1).strip()
+        parsed_val = None
+        try:
+            parsed_val = json.loads(raw_val)
+        except Exception:
+            pass
+        if parsed_val is None:
+            try:
+                parsed_val = ast.literal_eval(raw_val)
+            except Exception:
+                pass
+        if parsed_val is not None:
+            if isinstance(parsed_val, dict):
+                if "polarity" in parsed_val:
+                    return parsed_val
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": parsed_val}
+            elif isinstance(parsed_val, list):
+                if all(isinstance(x, (list, tuple)) and len(x) == 3 for x in parsed_val):
+                    return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"triples": [list(x) for x in parsed_val]}}
+                return {"polarity": "positive", "evidence": {"path": "execution://witness"}, "data": {"solution": parsed_val}}
     return None
+
+
+def _parse_sandbox_witness(stdout_text: str) -> dict[str, Any] | None:
+    """Parse and normalize candidate witness data from sandboxed code execution stdout."""
+    res = _raw_parse_sandbox_witness(stdout_text)
+    return _normalize_witness_dict(res)
+
+
+
+def _normalize_deliverable_blocks(body: str, ir_dict: dict[str, Any]) -> str:
+    """Ensure deliverable Python code is properly fenced and synchronized with Result IR JSON."""
+    ir_json_str = json.dumps(ir_dict, indent=2, ensure_ascii=False)
+    py_blocks = re.findall(r"```(?:python|py)?\s*\n(.*?)```", body, re.S)
+    if not py_blocks and ("import " in body or "def " in body) and "print(" in body:
+        raw_py = re.split(r"```(?:json)?\s*\{", body)[0].strip()
+        if raw_py:
+            fname = "solver.py"
+            if ir_dict.get("files") and isinstance(ir_dict["files"], list) and ir_dict["files"][0].get("filename"):
+                fname = ir_dict["files"][0]["filename"]
+            sec_hdr = f"### {fname}\n" if f"### {fname}" not in raw_py else ""
+            return f"{sec_hdr}```python\n{raw_py}\n```\n\n```json\n{ir_json_str}\n```"
+    fence_pattern = re.compile(r"```(?:json)?\s*\{.*?\"(?:files|witness|reconciliation)\".*?\}\s*```", re.S)
+    if fence_pattern.search(body):
+        return fence_pattern.sub(f"```json\n{ir_json_str}\n```", body, count=1)
+    trailing_match = re.search(r"(?:Result IR:|\n|^)\s*\{\s*\"(?:files|witness|reconciliation)\".*\}\s*$", body, re.S)
+    if trailing_match:
+        return body[:trailing_match.start()].rstrip() + f"\n\n```json\n{ir_json_str}\n```"
+    return body.rstrip() + f"\n\n```json\n{ir_json_str}\n```"
 
 
 from pdl_taskmaster.runtime.workspace import MemoryWorkspaceRun, WorkspaceError, WorkspaceRun
@@ -233,6 +327,7 @@ class SessionEngine:
         self._active_task_entities: tuple[str, ...] = ()
         self._bound_payload_inputs: str | None = None
         self._requires_verified_execution: bool = False
+        self._problem_domain: Any = None
         self._is_introspection: bool = False
         self._plan_redrafts: int = 0
         if workspace_root is None:
@@ -456,6 +551,7 @@ class SessionEngine:
         )
         if outcome["kind"] == "BLOCKED_BY_HIGHER_PRIORITY":
             self._bootstrap_cache[cache_key] = ""
+            self._blocked_response = outcome.get("response")
             return None
         import hashlib
 
@@ -599,6 +695,7 @@ class SessionEngine:
         assert self.workspace is not None
         self._bound_payload_inputs = _extract_data_payload(substantive_request)
         from pdl_taskmaster.providers.sys1.recipes.problem_class import ProblemClassRecipe
+        from pdl_taskmaster.verification.checkers.base import ProblemDomain
         requires_verified = ProblemClassRecipe.classify_text_deterministic(substantive_request)
         if not requires_verified and self.sys1_client and self.sys1_client.is_configured:
             try:
@@ -611,17 +708,28 @@ class SessionEngine:
             except Exception:
                 pass
         self._requires_verified_execution = requires_verified
+        if requires_verified:
+            from pdl_taskmaster.verification.output_verifier import OutputVerifier
+            det = OutputVerifier().detect_domain(substantive_request)
+            self._problem_domain = ProblemDomain.from_string(det) or ProblemDomain.GENERAL
+        else:
+            self._problem_domain = None
+
         if self.workspace is not None:
             self.workspace.append_event(
                 "PROBLEM_CLASS_CLASSIFIED",
-                {"requires_verified_execution": self._requires_verified_execution},
+                {
+                    "requires_verified_execution": self._requires_verified_execution,
+                    "domain": self._problem_domain.value if self._problem_domain else None,
+                },
             )
         # Protocol v2: raw content is read by BOOTSTRAP_ANALYSIS only; the
         # compile op receives the sanitized compiled analysis.
         compiled = self._semantic_read(substantive_request, traces)
         if compiled is None:
             self.workspace.append_event("PROTOCOL_BLOCKED", {"phase": "bootstrap"})
-            return EngineResponse(presentation.cancelled(), traces, closed=True)
+            resp_text = getattr(self, "_blocked_response", None) or presentation.cancelled()
+            return EngineResponse(resp_text, traces, closed=True)
         entities = self._task_entities_cache.get((substantive_request, self._previous_deliverable), ())
         self._active_task_entities = entities
 
@@ -784,8 +892,6 @@ class SessionEngine:
         if carried_raw != self.controller.state.approach_sources:
             raise WorkspaceError("approach_source_handoff")
         carried = [self._compile_approach_context(s, traces) for s in carried_raw]
-        if self._requires_verified_execution and not carried:
-            carried = ["EXECUTE a Python backtracking solver script to search for the partition triples."]
         from pdl_taskmaster.verification.plan_soundness import validate_plan_soundness
         body = self._call(
             "DRAFT_PLAN",
@@ -1012,8 +1118,7 @@ class SessionEngine:
             if self._requires_verified_execution:
                 channel_value += (
                     "\n\nMANDATORY VERIFICATION REQUIREMENT: This task requires verified execution. "
-                    "The deliverable must contain a complete, self-contained executable Python solver script in a ```python ... ``` block "
-                    "implementing an efficient search/solver (e.g. MRV / constraint-ordered) that executes in <1 second and prints the final witness solution."
+                    "The deliverable must contain a valid witness certifying substantive correctness."
                 )
             # DRAFT_EXECUTE (ADR-0009): entity extraction at the execute
             # boundary, mirroring DRAFT_PROMPT's task-entity channel. Turns are
@@ -1118,8 +1223,7 @@ class SessionEngine:
         if self._requires_verified_execution:
             py_mandate = (
                 "\n\nMANDATORY VERIFICATION REQUIREMENT: This task requires verified execution. "
-                "You MUST include the complete, self-contained executable Python solver script in a ```python ... ``` block. "
-                "The script must implement an efficient search/solver (e.g. MRV / constraint-ordered) that executes in <1 second and prints the final witness solution."
+                "The deliverable must contain a valid witness certifying substantive correctness."
             )
             execute_context["REQUIRED_TASK_INPUTS"] = (
                 (execute_context.get("REQUIRED_TASK_INPUTS") or "") + py_mandate
@@ -1157,11 +1261,19 @@ class SessionEngine:
                             "prompt_body": prompt_body,
                             "plan_body": plan_body,
                             "requirements": requirements,
+                            "domain": self._problem_domain,
                         }
                         verdict = None
                         # Sandboxed synthesis check (ADR-0015): if deliverable contains executable code,
                         # execute it in the OS-native ExecutionSandbox to recover/validate the grounded witness.
                         py_blocks = re.findall(r"```(?:python|py)?\s*\n(.*?)```", final_body, re.S)
+                        py_was_bare = False
+                        raw_py = ""
+                        if not py_blocks and ("import " in final_body or "def " in final_body) and "print(" in final_body:
+                            raw_py = re.split(r"```(?:json)?\s*\{", final_body)[0].strip()
+                            if raw_py:
+                                py_blocks = [raw_py]
+                                py_was_bare = True
                         for block in reversed(py_blocks):
                             if "print(" in block or "def " in block or "triples" in block:
                                 sb_timeout = 15.0 if self._requires_verified_execution else 5.0
@@ -1170,27 +1282,18 @@ class SessionEngine:
                                 if sb_out.success and sb_out.stdout:
                                     cand = _parse_sandbox_witness(sb_out.stdout)
                                     if cand:
-                                        v_cand = verifier.check(cand, verification_constraints, body=final_body)
+                                        v_cand = verifier.check(cand, verification_constraints, domain=self._problem_domain, body=final_body)
                                         if v_cand.valid:
-                                            ir["witness"] = cand
-                                            witness = cand
+                                            if witness is None:
+                                                witness = cand
                                             verdict = v_cand
-                                            ir_json_str = json.dumps(ir, indent=2, ensure_ascii=False)
-                                            fence_pattern = re.compile(r"```(?:json)?\s*\{.*?\"(?:files|witness|reconciliation)\".*?\}\s*```", re.S)
-                                            if fence_pattern.search(final_body):
-                                                final_body = fence_pattern.sub(f"```json\n{ir_json_str}\n```", final_body, count=1)
-                                            else:
-                                                trailing_match = re.search(r"(?:Result IR:|\n|^)\s*\{\s*\"(?:files|witness|reconciliation)\".*\}\s*$", final_body, re.S)
-                                                if trailing_match:
-                                                    final_body = final_body[:trailing_match.start()].rstrip() + f"\n\n```json\n{ir_json_str}\n```"
-                                                else:
-                                                    final_body = final_body.rstrip() + f"\n\n```json\n{ir_json_str}\n```"
                                             break
                         if verdict is None:
-                            verdict = verifier.check(witness, verification_constraints, body=final_body)
+                            verdict = verifier.check(witness, verification_constraints, domain=self._problem_domain, body=final_body)
                         if not verdict.valid:
                             ir_errors.append(f"Substantive verification error: {verdict.diagnostic}")
                         else:
+                            final_body = _normalize_deliverable_blocks(final_body, ir)
                             self.workspace.append_event(
                                 "VERIFICATION_PASSED",
                                 {"provisional": verdict.provisional, "details": verdict.details},
@@ -1250,9 +1353,14 @@ class SessionEngine:
                                 "prompt_body": prompt_body,
                                 "plan_body": plan_body,
                                 "requirements": requirements,
+                                "domain": self._problem_domain,
                             }
                             verdict = None
                             py_blocks = re.findall(r"```(?:python|py)?\s*\n(.*?)```", final_body, re.S)
+                            if not py_blocks and ("import " in final_body or "def " in final_body) and "print(" in final_body:
+                                raw_py = re.split(r"```(?:json)?\s*\{", final_body)[0].strip()
+                                if raw_py:
+                                    py_blocks = [raw_py]
                             for block in reversed(py_blocks):
                                 if "print(" in block or "def " in block or "triples" in block:
                                     sb_timeout = 15.0 if self._requires_verified_execution else 5.0
@@ -1261,13 +1369,13 @@ class SessionEngine:
                                     if sb_out.success and sb_out.stdout:
                                         cand = _parse_sandbox_witness(sb_out.stdout)
                                         if cand:
-                                            v_cand = verifier.check(cand, verification_constraints, body=final_body)
+                                            v_cand = verifier.check(cand, verification_constraints, domain=self._problem_domain, body=final_body)
                                             if v_cand.valid:
                                                 ir2["witness"] = cand
                                                 verdict = v_cand
                                                 break
                             if verdict is None:
-                                verdict = verifier.check(witness, verification_constraints, body=final_body)
+                                verdict = verifier.check(witness, verification_constraints, domain=self._problem_domain, body=final_body)
                             if not verdict.valid:
                                 e2.append(f"Substantive verification error: {verdict.diagnostic}")
                             else:
@@ -1276,15 +1384,7 @@ class SessionEngine:
                                     {"provisional": verdict.provisional, "details": verdict.details},
                                 )
                         if not e2:
-                            fence_open = "\n\n```json\n"
-                            fence_close = "\n```"
-                            final_body = (
-                                final_body
-                                + "\n\n"
-                                + fence_open
-                                + json.dumps(ir2, indent=2, ensure_ascii=False)
-                                + fence_close
-                            )
+                            final_body = _normalize_deliverable_blocks(final_body, ir2)
                             repaired = True
                             ir = ir2
                             errors = []
@@ -1330,6 +1430,7 @@ class SessionEngine:
                         f"Candidate deliverable:\n{final_body}"
                     )
             else:
+                final_body = _normalize_deliverable_blocks(final_body, ir)
                 self.workspace.append_event("RESULT_IR_VALIDATED", {"ir": ir})
         if outcome.kind == "REQUEST_INPUT":
             assert outcome.expected_type is not None and outcome.description is not None

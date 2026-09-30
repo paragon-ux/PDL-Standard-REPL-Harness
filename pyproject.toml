@@ -36,6 +36,11 @@ dev = [
     "pytest-xdist>=3.5.0",
     "anyio>=4.0.0",
 ]
+test = [
+    "pytest>=8.0.0",
+    "pytest-xdist>=3.5.0",
+    "anyio>=4.0.0",
+]
 
 [project.scripts]
 pdlt = "pdl_taskmaster.host.cli:main"
@@ -60,6 +65,10 @@ include = [
     "src/pdl_taskmaster",
     "contracts",
     "tests",
+    "confirm-with-pseudocode",
+    "SOURCE_PROVENANCE.json",
+    "VERSION",
+    "NOTICE.md",
     "LICENSE",
     "README.md",
     "pyproject.toml",
